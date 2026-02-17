@@ -1,4 +1,3 @@
-import Image from "next/image";
 import {Background} from "@/shared/ui/background";
 
 export default function Home() {
