@@ -1,28 +1,15 @@
-import React from "react";
-import {twMerge} from "tailwind-merge";
 import {Line} from "@/shared/ui/particles";
+import {twMerge} from "tailwind-merge";
+import type {ReactNode} from "react";
 import type {TextSize, TextTone} from "@/shared/ui/typography/types";
 
 type HeaderAs = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 
-// Потом дописать адаптив для шрифтов
-const s: Record<TextSize, string> = {
-    sm: 'text-lg leading-tight',
-    md: 'text-xl leading-tight',
-    lg: 'text-2xl leading-tight',
-    xl: 'text-4xl leading-tight',
-}
-
-const t: Record<TextTone, string> = {
-    primary: 'text-white',
-    secondary: 'text-cloud',
-}
-
 type Base = {
-    as: HeaderAs;
-    tone: TextTone;
-    size: TextSize;
-    children: React.ReactNode;
+    children: ReactNode;
+    as?: HeaderAs;
+    tone?: TextTone;
+    size?: TextSize;
     titleClassName?: string;
     containerClassName?: string;
 }
@@ -39,20 +26,33 @@ type LinedOff = Base & {
 
 type TitleProps = LinedOn | LinedOff;
 
+// Потом дописать адаптив для шрифтов
+const s: Record<TextSize, string> = {
+    sm: 'text-2xl leading-[0.7]',
+    md: 'text-3xl leading-[0.7]',
+    lg: 'text-4xl leading-[0.7]',
+    xl: 'text-8xl leading-[0.7]',
+}
+
+const t: Record<TextTone, string> = {
+    primary: 'text-white uppercase',
+    secondary: 'text-cloud',
+}
+
 export function Title({
-    as: Tag,
-    tone,
-    size,
     children,
+    as: Tag='h2',
+    tone='primary',
+    size='lg',
     titleClassName,
     containerClassName,
     lined,
     lineClassName}: TitleProps) {
 
     return (
-        <div className={twMerge(lined && 'flex flex-col gap-4', containerClassName)}>
+        <div className={twMerge(lined && 'flex flex-col gap-1', containerClassName)}>
             <Tag
-                className={twMerge(`font-dongle ${t[tone]} ${s[size]}`, titleClassName)}
+                className={twMerge(`font-dongle font-light ${t[tone]} ${s[size]}`, titleClassName)}
             >{children}</Tag>
             {lined && (
                 <Line className={lineClassName}/>
