@@ -1,10 +1,11 @@
 type BackgroundProps = {
     videoSrc: string;
+    fixed?: boolean;
 }
 
-export function Background({videoSrc}: BackgroundProps) {
+export function Background({videoSrc, fixed}: BackgroundProps) {
     return (
-        <div className='fixed -z-10 inset-0'>
+        <div className={`${fixed ? 'fixed' : 'absolute'} -z-10 inset-0`}>
             <video
                 src={videoSrc}
                 className='absolute inset-0 h-full w-full object-cover'
