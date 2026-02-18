@@ -1,3 +1,3 @@
-import {Background} from './Background';
+import {Background} from './ui/Background';
 
 export {Background};
