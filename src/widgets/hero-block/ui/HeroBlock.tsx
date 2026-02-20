@@ -1,6 +1,9 @@
+'use client'
+
 import {Title} from "@/shared/ui/text-blocks/ui/Title";
 import {Background} from "@/shared/ui/background";
 import {TextBlock} from "@/shared/ui/text-blocks";
+import {WaveButton} from "@/shared/ui/buttons/wave-button";
 
 export function HeroBlock() {
     return (
@@ -14,6 +17,10 @@ export function HeroBlock() {
                     <TextBlock className='w-11/12' size={'xl'} uppercase>
                         {"Contribute to improving the turtles' living conditions and survival. It's not difficult, but it will help save their lives."}
                     </TextBlock>
+                    <div className='flex gap-4 items-center'>
+                        <WaveButton onClick={() => {}}>Read More</WaveButton>
+                        <WaveButton onClick={() => {}} variant='secondary'>Contact us</WaveButton>
+                    </div>
 
                 </div>
             </div>
