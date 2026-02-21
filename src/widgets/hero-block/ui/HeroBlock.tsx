@@ -31,14 +31,52 @@ export function HeroBlock() {
                     outlineClassName='stroke-cyan-200/20'
                     innerClassName='p-20'
                     outline
+
+                    boundaryPoints={72}     // <-- больше точек
+                    bendK={95}              // <-- гасит кинки
+                    smoothK={0.08}          // <-- сглаживание
+                    smoothIters={2}
+                    pathTension={0.6}
+
                     pressureK={20000}
                     shapeK={85}
                     damping={7.2}
-                    hoverIndent={-2.0}
+
+                    hoverIndent={2.0}
                     hoverRadius={140}
-                    clickIndent={1.2}
+
+                    hoverIndentMul={1.35}
+                    hoverEnterMul={1.25}
+
+                    hoverIndentSigmaFactor={0.30}
+                    hoverEnterSigmaFactor={0.30}
+                    hoverIndentWeightPow={1.55}
+                    hoverEnterWeightPow={1.25}
+
+                    hoverPressureBoost={0.0}
+                    hoverRingStrength={720}
+                    hoverRingMul={1.15}
+                    hoverRingLengthFactor={0}
+
+                    hoverConeMul={1.2}
+                    hoverConeWidthBaseFactor={0.26}
+                    hoverConeWidthSlopeFactor={0.46}
+                    hoverConeLengthFactor={2.3}
+                    hoverConeNormalSpeedGain={1200}
+
+                    clickIndent={0.01}
                     clickWave={0.9}
 
+                    pointerSpeedMax={10000}
+                    hoverFastBoost={10}
+
+                    idle
+                    idleStrength={520}
+                    idleFreq={0.28}
+                    idleWaves={1.3}
+                    idleTurbulence={0.35}
+                    idleTangential={0.20}
+                    idleInteractMul={0.15}
                 >
                     <div>
                         <TextBlock size='xl'>

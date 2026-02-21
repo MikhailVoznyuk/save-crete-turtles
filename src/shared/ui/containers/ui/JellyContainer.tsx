@@ -13,12 +13,18 @@ type JellyContainerProps = {
 
     boundaryPoints?: number;
 
+    // contour smoothness
+    pathTension?: number;      // 0..1, lower = smoother curve
+    bendK?: number;            // curvature stiffness (removes sharp kinks)
+    smoothK?: number;          // post-step smoothing 0..1 (Laplacian on offsets)
+    smoothIters?: number;      // smoothing passes per frame
+
     edgeK?: number;
     shapeK?: number;
     damping?: number;
 
     pressureK?: number;        
-    maxOffset?: number;        
+    maxOffset?: number;
 
     bleed?: number;            
 
@@ -26,10 +32,68 @@ type JellyContainerProps = {
     hoverIndent?: number;      
     hoverDrag?: number;        
 
+    // pointer/hover tuning
+    pointerSpeedMax?: number;         // px/s clamp for pointer velocity
+    hoverPenetrationScale?: number;   // px for "how deep" normalization (near boundary)
+    hoverEnterStrength?: number;      // base multiplier for entry impact impulse
+    hoverEnterBase?: number;          // base magnitude for entry impulse
+    hoverEnterSpeedGain?: number;     // additional magnitude from speed (0..1)
+    hoverEnterSigmaFactor?: number;   // entry impact footprint relative to hoverRadius
+    hoverEnterWeightPow?: number;     // sharpness of entry impact
+    hoverEnterSpeedPow?: number;      // how much speed affects entry
+    hoverEnterDepthPow?: number;      // how much penetration depth affects entry
+    hoverEnterDecay?: number;         // how fast the entry window decays
+
+    hoverIndentSigmaFactor?: number;  // footprint for continuous indentation
+    hoverIndentWeightPow?: number;    // sharpness for continuous indentation
+    hoverIndentBase?: number;         // base force for continuous indentation
+    hoverIndentSpeedGain?: number;    // additional force from speed
+    hoverFastBoost?: number;          // extra boost based on per-event travel distance
+
+    hoverConeSpeedMin?: number;
+    hoverConeWidthBaseFactor?: number;
+    hoverConeWidthSlopeFactor?: number;
+    hoverConeLengthFactor?: number;
+    hoverConePhaseTravelFactor?: number;
+    hoverConePhaseScaleFactor?: number;
+    hoverConeFreq?: number;
+    hoverConeNormalBase?: number;
+    hoverConeNormalSpeedGain?: number;
+    hoverConeTangBase?: number;
+    hoverConeTangSpeedGain?: number;
+
+    // extra spread/impact tuning
+    hoverEnterMul?: number;
+    hoverIndentMul?: number;
+    hoverConeMul?: number;
+
+    // global coupling (helps opposite edge bulge)
+    hoverPressureBoost?: number;        // adds "virtual compression" from hover penetration
+    hoverPressureBoostPow?: number;     // exponent for penetration
+    hoverPressureBoostSpeedPow?: number;// exponent for speed
+
+    // radial ring wave (spreads to adjacent + opposite edges)
+    hoverRingStrength?: number;
+    hoverRingMul?: number;
+    hoverRingFreq?: number;
+    hoverRingLengthFactor?: number;
+    hoverRingPhaseTravelFactor?: number;
+    hoverRingPhaseScaleFactor?: number;
+    hoverRingWeightPow?: number;
+
     clickRadius?: number;      
     clickIndent?: number;
 
     clickWave?: number;
+
+    // idle motion (ambient living effect)
+    idle?: boolean;
+    idleStrength?: number;        // overall velocity scale
+    idleFreq?: number;            // cycles per second
+    idleWaves?: number;           // waves around perimeter
+    idleTurbulence?: number;      // 0..1 secondary noise mix
+    idleTangential?: number;      // 0..1 tangential component ratio
+    idleInteractMul?: number;     // 0..1 idle amount during hover
 
     children: React.ReactNode;
 };
@@ -51,6 +115,10 @@ const v2 = {
         return { x: a.x * k, y: a.y * k };
     },
 };
+
+const TAU = Math.PI * 2;
+const fract = (x: number) => x - Math.floor(x);
+const hash1 = (i: number) => fract(Math.sin(i * 127.1) * 43758.5453123);
 
 function polygonArea(pts: V2[]): number {
     let s = 0;
@@ -197,6 +265,10 @@ export function JellyContainer({
                                    outline = true,
                                    outlineClassName = 'stroke-white/25',
                                    boundaryPoints = 44,
+                                   pathTension = 0.65,
+                                   bendK = 70,
+                                   smoothK = 0.06,
+                                   smoothIters = 1,
                                    edgeK = 170,
                                    shapeK = 95,
                                    damping = 9,
@@ -206,9 +278,63 @@ export function JellyContainer({
                                    hoverRadius,
                                    hoverIndent = 1.25,
                                    hoverDrag = 0.35,
+
+                                   pointerSpeedMax = 4200,
+                                   hoverPenetrationScale = 42,
+                                   hoverEnterStrength = 1.0,
+                                   hoverEnterBase = 1400,
+                                   hoverEnterSpeedGain = 2200,
+                                   hoverEnterSigmaFactor = 0.22,
+                                   hoverEnterWeightPow = 1.45,
+                                   hoverEnterSpeedPow = 0.85,
+                                   hoverEnterDepthPow = 0.9,
+                                   hoverEnterDecay = 10,
+
+                                   hoverIndentSigmaFactor = 0.22,
+                                   hoverIndentWeightPow = 2.0,
+                                   hoverIndentBase = 750,
+                                   hoverIndentSpeedGain = 1400,
+                                   hoverFastBoost = 1.1,
+
+                                   hoverConeSpeedMin = 25,
+                                   hoverConeWidthBaseFactor = 0.22,
+                                   hoverConeWidthSlopeFactor = 0.38,
+                                   hoverConeLengthFactor = 1.8,
+                                   hoverConePhaseTravelFactor = 0.65,
+                                   hoverConePhaseScaleFactor = 0.55,
+                                   hoverConeFreq = 1.0,
+                                   hoverConeNormalBase = 420,
+                                   hoverConeNormalSpeedGain = 900,
+                                   hoverConeTangBase = 220,
+                                   hoverConeTangSpeedGain = 480,
+                                   hoverEnterMul = 1.0,
+                                   hoverIndentMul = 1.0,
+                                   hoverConeMul = 1.0,
+
+                                   hoverPressureBoost = 0.0,
+                                   hoverPressureBoostPow = 1.15,
+                                   hoverPressureBoostSpeedPow = 0.9,
+
+                                   hoverRingStrength = 520,
+                                   hoverRingMul = 1.0,
+                                   hoverRingFreq = 1.0,
+                                   hoverRingLengthFactor = 3.0,
+                                   hoverRingPhaseTravelFactor = 0.85,
+                                   hoverRingPhaseScaleFactor = 0.75,
+                                   hoverRingWeightPow = 1.0,
+
                                    clickRadius = 140,
                                    clickIndent = 1.35,
                                    clickWave = 0.8,
+
+                                   idle = true,
+                                   idleStrength = 220,
+                                   idleFreq = 0.55,
+                                   idleWaves = 2.2,
+                                   idleTurbulence = 0.35,
+                                   idleTangential = 0.22,
+                                   idleInteractMul = 0.25,
+
                                    children,
                                }: JellyContainerProps) {
     const id = useId();
@@ -233,6 +359,14 @@ export function JellyContainer({
         p: { x: 0, y: 0 } as V2,
         prev: { x: 0, y: 0 } as V2,
         v: { x: 0, y: 0 } as V2,
+
+        dir: { x: 1, y: 0 } as V2,
+        travel: 0,
+        enter: 0,
+
+        pen: 0,
+        prevPen: 0,
+        moveDist: 0,
     });
 
     const rafRef = useRef<number | null>(null);
@@ -307,7 +441,7 @@ export function JellyContainer({
 
             baseCenterRef.current = centroid(base);
 
-            const d = catmullRomClosedPath(nodes.map((n) => n.p));
+            const d = catmullRomClosedPath(nodes.map((n) => n.p), pathTension);
             if (supportsPath) blob.style.clipPath = `path("${d}")`;
             if (pathRef.current) pathRef.current.setAttribute('d', d);
         };
@@ -323,19 +457,55 @@ export function JellyContainer({
 
         ro.observe(wrap);
 
+        const onEnter = (e: PointerEvent) => {
+            const pr = pointerRef.current;
+            pr.inside = true;
+            pr.down = false;
+
+            const p0 = toLocal(e);
+            const { pad } = blobSizeRef.current;
+            const p = { x: p0.x + pad, y: p0.y + pad };
+
+            pr.prev = p;
+            pr.p = p;
+            pr.v = { x: 0, y: 0 };
+            pr.dir = { x: 1, y: 0 };
+            pr.travel = 0;
+            pr.enter = 1;
+
+            pr.pen = 0;
+            pr.prevPen = 0;
+            pr.moveDist = 0;
+        };
+
         const onLeave = () => {
-            pointerRef.current.inside = false;
-            pointerRef.current.down = false;
+            const pr = pointerRef.current;
+            pr.inside = false;
+            pr.down = false;
+            pr.enter = 0;
         };
 
         const onMove = (e: PointerEvent) => {
             const pr = pointerRef.current;
+            if (!pr.inside) pr.enter = 1;
             pr.inside = true;
-            pr.prev = pr.p;
 
             const p0 = toLocal(e);
             const { pad } = blobSizeRef.current;
-            pr.p = { x: p0.x + pad, y: p0.y + pad };
+            const p = { x: p0.x + pad, y: p0.y + pad };
+
+            const delta = v2.sub(p, pr.p);
+            const dist = v2.len(delta);
+
+            pr.moveDist = dist;
+
+            pr.prev = pr.p;
+            pr.p = p;
+
+            if (dist > 0.2) {
+                pr.dir = v2.norm(delta);
+                pr.travel += dist;
+            }
         };
 
         const applyIndentImpulse = (p: V2, radiusPx: number, indent: number, wave: number) => {
@@ -343,7 +513,7 @@ export function JellyContainer({
             if (!nodes.length) return;
 
             const c0 = baseCenterRef.current;
-            const sig = Math.max(18, radiusPx * 0.35);
+            const sig = Math.max(24, radiusPx * 0.65);
             const sig2 = sig * sig;
 
             for (let i = 0; i < nodes.length; i++) {
@@ -353,9 +523,8 @@ export function JellyContainer({
                 const dy = n.p.y - p.y;
                 const d2 = dx * dx + dy * dy;
                 let wgt = Math.exp(-d2 / (2 * sig2));
-                wgt = wgt * wgt; // sharper
+                wgt = Math.pow(wgt, 1.2);
 
-                // локальная нормаль (наружу)
                 const prev = nodes[(i - 1 + nodes.length) % nodes.length].p;
                 const next = nodes[(i + 1) % nodes.length].p;
                 const tangent = v2.sub(next, prev);
@@ -391,6 +560,7 @@ export function JellyContainer({
             try { wrap.releasePointerCapture(e.pointerId); } catch {}
         };
 
+        wrap.addEventListener('pointerenter', onEnter);
         wrap.addEventListener('pointerleave', onLeave);
         wrap.addEventListener('pointermove', onMove, { capture: true });
         wrap.addEventListener('pointerdown', onDown, { capture: true });
@@ -398,6 +568,7 @@ export function JellyContainer({
 
         return () => {
             ro.disconnect();
+            wrap.removeEventListener('pointerenter', onEnter);
             wrap.removeEventListener('pointerleave', onLeave);
             wrap.removeEventListener('pointermove', onMove, { capture: true } as any);
             wrap.removeEventListener('pointerdown', onDown, { capture: true } as any);
@@ -411,6 +582,7 @@ export function JellyContainer({
         clickRadius,
         clickIndent,
         clickWave,
+        pathTension,
     ]);
 
     useEffect(() => {
@@ -429,7 +601,9 @@ export function JellyContainer({
 
             const pr = pointerRef.current;
             const pv = v2.mul(v2.sub(pr.p, pr.prev), 1 / dt);
-            pr.v = v2.clampLen(pv, 2600);
+            pr.v = v2.clampLen(pv, pointerSpeedMax);
+            pr.enter *= Math.exp(-hoverEnterDecay * dt);
+            pr.moveDist *= Math.exp(-14 * dt);
 
             const rest = restRef.current;
             const baseArea = baseAreaRef.current;
@@ -446,11 +620,46 @@ export function JellyContainer({
             const maxIn = maxOffBase * 0.85;
 
             const poly = nodes.map((n) => n.p);
-            const c = centroid(poly);
             const area = Math.max(1, polygonArea(poly));
             const areaErr = (baseArea - area) / baseArea;
 
             const c0 = baseCenterRef.current;
+
+            // penetration depth near boundary (for entry impact)
+            let pen = 0;
+            let penN = 0;
+            let dPenN = 0;
+            if (pr.inside) {
+                let bestI = 0;
+                let bestD = 1e18;
+                for (let i = 0; i < nodes.length; i++) {
+                    const dx = nodes[i].b.x - pr.p.x;
+                    const dy = nodes[i].b.y - pr.p.y;
+                    const d2 = dx * dx + dy * dy;
+                    if (d2 < bestD) { bestD = d2; bestI = i; }
+                }
+
+                const nb = nodes[bestI].b;
+                const prevb = nodes[(bestI - 1 + nodes.length) % nodes.length].b;
+                const nextb = nodes[(bestI + 1) % nodes.length].b;
+                const tb = v2.sub(nextb, prevb);
+
+                let nOut = v2.norm({ x: -tb.y, y: tb.x });
+                if (v2.dot(nOut, v2.sub(nb, c0)) < 0) nOut = v2.mul(nOut, -1);
+
+                const nIn = v2.mul(nOut, -1);
+                pen = Math.max(0, v2.dot(v2.sub(pr.p, nb), nIn));
+
+                penN = Math.min(1, pen / Math.max(1, hoverPenetrationScale));
+                const dPen = Math.max(0, pen - pr.prevPen);
+                dPenN = Math.min(1, dPen / Math.max(1, hoverPenetrationScale * 0.55));
+
+                pr.prevPen = pen;
+                pr.pen = pen;
+            } else {
+                pr.prevPen = 0;
+                pr.pen = 0;
+            }
 
             for (let i = 0; i < nodes.length; i++) {
                 const a = nodes[i];
@@ -482,6 +691,24 @@ export function JellyContainer({
 
             const hr2 = hr * hr;
 
+            const hi = Math.abs(hoverIndent);
+
+            const speed = Math.min(pointerSpeedMax, v2.len(pr.v));
+            const speedN = pointerSpeedMax > 0 ? speed / pointerSpeedMax : 0;
+
+            // boost response for very fast cursor moves (large per-event travel)
+            const moveN = Math.min(1, pr.moveDist / Math.max(1, hr * 0.35));
+            const boost = 1 + hoverFastBoost * moveN;
+
+            const pressureExtra = pr.inside
+                ? hoverPressureBoost * Math.pow(penN, hoverPressureBoostPow) * Math.pow(speedN, hoverPressureBoostSpeedPow) * (0.35 + 0.65 * moveN) * boost
+                : 0;
+            const areaErrEff = areaErr + pressureExtra;
+
+            const idleFactor = idle ? (pr.inside ? idleInteractMul : 1) : 0;
+            const tt = t * 0.001;
+
+
             for (let i = 0; i < nodes.length; i++) {
                 const n = nodes[i];
 
@@ -494,30 +721,106 @@ export function JellyContainer({
                 const next = nodes[(i + 1) % nodes.length].p;
                 const tangent = v2.sub(next, prev);
                 let normal = v2.norm({ x: -tangent.y, y: tangent.x });
+                if (v2.dot(normal, v2.sub(n.b, c0)) < 0) normal = v2.mul(normal, -1);
                 const inward = v2.mul(normal, -1);
 
-                if (v2.dot(normal, v2.sub(n.b, c0)) < 0) normal = v2.mul(normal, -1);
-                n.v = v2.add(n.v, v2.mul(normal, pressureK * areaErr * dt));
+                if (bendK > 0) {
+                    const avg = v2.mul(v2.add(prev, next), 0.5);
+                    const lap = v2.sub(avg, n.p);
+                    n.v = v2.add(n.v, v2.mul(lap, bendK * dt));
+                }
+
+                n.v = v2.add(n.v, v2.mul(normal, pressureK * areaErrEff * dt));
+
+                // idle motion (subtle living drift even without input)
+                if (idleFactor > 0) {
+                    const u = i / nodes.length;
+                    const p1 = hash1(i) * TAU;
+                    const p2 = hash1(i + 97) * TAU;
+
+                    const a = Math.sin(u * idleWaves * TAU + tt * idleFreq * TAU + p1);
+                    const b = Math.sin(u * idleWaves * 1.9 * TAU + tt * idleFreq * 1.37 * TAU + p2);
+                    const val = a * (1 - idleTurbulence) + b * idleTurbulence;
+
+                    const amp = idleStrength * idleFactor;
+                    n.v = v2.add(n.v, v2.mul(normal, val * amp * dt));
+
+                    if (idleTangential > 0) {
+                        const tangDir = v2.norm(tangent);
+                        const vt = Math.cos(u * idleWaves * 1.3 * TAU + tt * idleFreq * 0.9 * TAU + p2);
+                        n.v = v2.add(n.v, v2.mul(tangDir, vt * amp * idleTangential * dt));
+                    }
+                }
 
 
                 if (pr.inside) {
                     const d = v2.sub(n.p, pr.p);
                     const d2 = d.x * d.x + d.y * d.y;
 
+                    // 0) радиальная волна (распространяется на смежные + противоположные края)
+                    if (hoverRingStrength > 0 && speed > hoverConeSpeedMin) {
+                        const r = Math.sqrt(d2);
+                        const wl = hr * hoverRingLengthFactor;
+                        let wr = Math.exp(-r / Math.max(1, wl));
+                        wr = Math.pow(wr, hoverRingWeightPow);
+
+                        const phase = (r - pr.travel * hoverRingPhaseTravelFactor) / Math.max(1, hr * hoverRingPhaseScaleFactor);
+                        const ripple = Math.sin(phase * Math.PI * 2 * hoverRingFreq);
+
+                        const ringAmp = hoverRingMul * hi * hoverRingStrength;
+                        n.v = v2.add(n.v, v2.mul(normal, ripple * ringAmp * wr * dt * boost));
+                    }
+
                     if (d2 < hr2) {
-                        const sig = hr * 0.33;
+                        // 1) вход курсора: импульс зависит от скорости + "глубины" входа
+                        if (pr.enter > 0.001) {
+                            const se = hr * hoverEnterSigmaFactor;
+                            const se2 = se * se;
+                            let we = Math.exp(-d2 / (2 * se2));
+                            we = Math.pow(we, hoverEnterWeightPow);
+
+                            const enterAmp = hoverEnterStrength *
+                                (hoverEnterBase + hoverEnterSpeedGain * speedN) *
+                                Math.pow(speedN, hoverEnterSpeedPow) *
+                                Math.pow(penN, hoverEnterDepthPow) *
+                                (0.25 + 0.75 * dPenN) *
+                                (0.35 + 0.65 * moveN);
+
+                            n.v = v2.add(n.v, v2.mul(inward, hoverEnterMul * hi * enterAmp * we * pr.enter * boost));
+                        }
+
+                        // 2) постоянное продавливание под курсором (плавнее, но чувствительнее к скорости)
+                        const sig = hr * hoverIndentSigmaFactor;
                         const sig2 = sig * sig;
+                        let w0 = Math.exp(-d2 / (2 * sig2));
+                        w0 = Math.pow(w0, hoverIndentWeightPow);
 
-                        let wgt = Math.exp(-d2 / (2 * sig2));
-                        wgt = wgt * wgt;
-                        const speed = Math.min(2600, v2.len(pr.v));
+                        const indentAmp = hoverIndentMul * hi * (hoverIndentBase + hoverIndentSpeedGain * speedN);
+                        n.v = v2.add(n.v, v2.mul(inward, indentAmp * w0 * dt * boost));
 
-                        n.v = v2.add(
-                            n.v,
-                            v2.mul(inward, hoverIndent * (1200 + 1600 * (speed / 2600)) * wgt * dt)
-                        );
+                        // 3) инерция по направлению движения: "конусная" волна вперёд
+                        if (speed > hoverConeSpeedMin) {
+                            const dir = pr.dir;
+                            const vec = v2.sub(n.p, pr.p);
+                            const along = v2.dot(vec, dir);
 
-                        n.v = v2.add(n.v, v2.mul(pr.v, hoverDrag * 0.15 * wgt * dt));
+                            if (along > 0) {
+                                const perp = v2.sub(vec, v2.mul(dir, along));
+                                const width = hr * hoverConeWidthBaseFactor + along * hoverConeWidthSlopeFactor;
+                                const wCone =
+                                    Math.exp(-(perp.x * perp.x + perp.y * perp.y) / (2 * width * width)) *
+                                    Math.exp(-along / (hr * hoverConeLengthFactor));
+
+                                const phase = (along - pr.travel * hoverConePhaseTravelFactor) / (hr * hoverConePhaseScaleFactor);
+                                const ripple = Math.sin(phase * Math.PI * 2 * hoverConeFreq);
+
+                                const ampN = hoverConeMul * hi * (hoverConeNormalBase + hoverConeNormalSpeedGain * speedN);
+                                n.v = v2.add(n.v, v2.mul(normal, ripple * ampN * wCone * dt * boost));
+
+                                const ampT = hoverConeMul * hoverDrag * (hoverConeTangBase + hoverConeTangSpeedGain * speedN);
+                                n.v = v2.add(n.v, v2.mul(dir, ampT * wCone * dt * boost));
+                            }
+                        }
                     }
                 }
 
@@ -536,7 +839,23 @@ export function JellyContainer({
                 n.p = v2.add(n.b, v2.add(v2.mul(out, radialClamped), tangClamped));
             }
 
-            const d = catmullRomClosedPath(nodes.map((n) => n.p));
+            // post-step smoothing: reduces sharp spikes (kinks) without killing the overall motion
+            if (smoothK > 0 && smoothIters > 0) {
+                const N = nodes.length;
+                for (let pass = 0; pass < smoothIters; pass++) {
+                    const off = nodes.map((n) => v2.sub(n.p, n.b));
+                    for (let i = 0; i < N; i++) {
+                        const a = off[(i - 1 + N) % N];
+                        const b = off[i];
+                        const c = off[(i + 1) % N];
+                        const avg = v2.mul(v2.add(v2.add(a, b), c), 1 / 3);
+                        const nextOff = v2.add(b, v2.mul(v2.sub(avg, b), smoothK));
+                        nodes[i].p = v2.add(nodes[i].b, nextOff);
+                    }
+                }
+            }
+
+            const d = catmullRomClosedPath(nodes.map((n) => n.p), pathTension);
             if (supportsPath) blob.style.clipPath = `path("${d}")`;
             if (pathRef.current) pathRef.current.setAttribute('d', d);
 
@@ -558,6 +877,56 @@ export function JellyContainer({
         hoverRadius,
         hoverIndent,
         hoverDrag,
+        pointerSpeedMax,
+        hoverPenetrationScale,
+        hoverEnterStrength,
+        hoverEnterBase,
+        hoverEnterSpeedGain,
+        hoverEnterSigmaFactor,
+        hoverEnterWeightPow,
+        hoverEnterSpeedPow,
+        hoverEnterDepthPow,
+        hoverEnterDecay,
+        hoverIndentSigmaFactor,
+        hoverIndentWeightPow,
+        hoverIndentBase,
+        hoverIndentSpeedGain,
+        hoverFastBoost,
+        hoverConeSpeedMin,
+        hoverConeWidthBaseFactor,
+        hoverConeWidthSlopeFactor,
+        hoverConeLengthFactor,
+        hoverConePhaseTravelFactor,
+        hoverConePhaseScaleFactor,
+        hoverConeFreq,
+        hoverConeNormalBase,
+        hoverConeNormalSpeedGain,
+        hoverConeTangBase,
+        hoverConeTangSpeedGain,
+        hoverEnterMul,
+        hoverIndentMul,
+        hoverConeMul,
+        hoverPressureBoost,
+        hoverPressureBoostPow,
+        hoverPressureBoostSpeedPow,
+        hoverRingStrength,
+        hoverRingMul,
+        hoverRingFreq,
+        hoverRingLengthFactor,
+        hoverRingPhaseTravelFactor,
+        hoverRingPhaseScaleFactor,
+        hoverRingWeightPow,
+        idle,
+        idleStrength,
+        idleFreq,
+        idleWaves,
+        idleTurbulence,
+        idleTangential,
+        idleInteractMul,
+        bendK,
+        smoothK,
+        smoothIters,
+        pathTension,
     ]);
 
     return (
