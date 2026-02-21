@@ -4,6 +4,7 @@ import {Title} from "@/shared/ui/text-blocks/ui/Title";
 import {Background} from "@/shared/ui/background";
 import {TextBlock} from "@/shared/ui/text-blocks";
 import {WaveButton} from "@/shared/ui/buttons/wave-button";
+import {JellyContainer} from "@/shared/ui/containers";
 
 export function HeroBlock() {
     return (
@@ -24,6 +25,30 @@ export function HeroBlock() {
 
                 </div>
             </div>
+            <div className='absolute right-24 top-24'>
+                <JellyContainer
+                    className='rounded-full bg-cyan-200/10'
+                    outlineClassName='stroke-cyan-200/20'
+                    innerClassName='p-20'
+                    outline
+                    pressureK={20000}
+                    shapeK={85}
+                    damping={7.2}
+                    hoverIndent={-2.0}
+                    hoverRadius={140}
+                    clickIndent={1.2}
+                    clickWave={0.9}
+
+                >
+                    <div>
+                        <TextBlock size='xl'>
+                            Help Me to survive!
+                        </TextBlock>
+                    </div>
+
+                </JellyContainer>
+            </div>
+
 
 
         </section>
