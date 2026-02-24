@@ -33,8 +33,8 @@ export function HeroBlock() {
                     outline
 
                     boundaryPoints={72}     // <-- больше точек
-                    bendK={95}              // <-- гасит кинки
-                    smoothK={0.08}          // <-- сглаживание
+                    bendK={200}              // <-- гасит кинки
+                    smoothK={0.44}          // <-- сглаживание
                     smoothIters={2}
                     pathTension={0.6}
 
@@ -71,7 +71,7 @@ export function HeroBlock() {
                     hoverFastBoost={10}
 
                     idle
-                    idleStrength={520}
+                    idleStrength={800}
                     idleFreq={0.28}
                     idleWaves={1.3}
                     idleTurbulence={0.35}
