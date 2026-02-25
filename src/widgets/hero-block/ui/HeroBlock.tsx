@@ -71,10 +71,10 @@ export function HeroBlock() {
                     hoverFastBoost={10}
 
                     idle
-                    idleStrength={800}
+                    idleStrength={1000}
                     idleFreq={0.28}
                     idleWaves={1.3}
-                    idleTurbulence={0.35}
+                    idleTurbulence={0.7}
                     idleTangential={0.20}
                     idleInteractMul={0.15}
                 >
