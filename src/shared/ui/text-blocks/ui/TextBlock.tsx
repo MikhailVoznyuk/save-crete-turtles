@@ -1,6 +1,6 @@
 import {twMerge} from "tailwind-merge";
 import type {ReactNode} from 'react'
-import type {TextSize} from "@/shared/ui/typography/types";
+import type {TextSize, Variant} from "@/shared/ui/typography/types";
 
 type TextBlockProps = {
     children: ReactNode;
@@ -15,6 +15,7 @@ const s: Record<TextSize, string> = {
     lg: 'text-3xl',
     xl: 'text-5xl leading-[0.7]',
 }
+
 
 export function TextBlock({
     children,

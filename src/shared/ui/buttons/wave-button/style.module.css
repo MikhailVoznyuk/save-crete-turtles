@@ -1,0 +1,54 @@
+.btn {
+    --wave-color: #1B1750;
+    overflow: hidden;
+}
+
+
+.liquid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.liquid:before, .liquid:after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+
+    width: 200%;
+    height: 200%;
+    border-radius: 50%;
+
+    background: var(--wave-color);
+
+}
+
+.liquid:before {
+    right: 100%;
+    top: 120%;
+    background: var(--wave-color);
+    transition: 1s ease;
+
+}
+
+.liquid:after {
+    top: 100%;
+    right: 30%;
+    opacity: 0.8;
+    transition: 1.2s ease;
+}
+
+.btn:hover .liquid:before, .btn:hover .liquid:after {
+    transform: translate(75%, -75%) ;
+}
+
+.btn:hover .liquid:before {
+    transform: translate(75%, -75%);
+}
+
+.btn:hover .liquid:after {
+    transform: translate(75%, -75%)   rotate(-10deg);
+
+}

@@ -1,14 +1,14 @@
 import {Line} from "@/shared/ui/particles";
 import {twMerge} from "tailwind-merge";
 import type {ReactNode} from "react";
-import type {TextSize, TextTone} from "@/shared/ui/typography/types";
+import type {TextSize, Variant} from "@/shared/ui/typography/types";
 
 type HeaderAs = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 
 type Base = {
     children: ReactNode;
     as?: HeaderAs;
-    tone?: TextTone;
+    variant?: Variant;
     size?: TextSize;
     titleClassName?: string;
     containerClassName?: string;
@@ -34,7 +34,7 @@ const s: Record<TextSize, string> = {
     xl: 'text-8xl leading-[0.7]',
 }
 
-const t: Record<TextTone, string> = {
+const t: Record<Variant, string> = {
     primary: 'text-white uppercase',
     secondary: 'text-cloud',
 }
@@ -42,7 +42,7 @@ const t: Record<TextTone, string> = {
 export function Title({
     children,
     as: Tag='h2',
-    tone='primary',
+    variant='primary',
     size='lg',
     titleClassName,
     containerClassName,
@@ -52,7 +52,7 @@ export function Title({
     return (
         <div className={twMerge(lined && 'flex flex-col gap-1', containerClassName)}>
             <Tag
-                className={twMerge(`font-dongle font-light ${t[tone]} ${s[size]}`, titleClassName)}
+                className={twMerge(`font-dongle font-light ${t[variant]} ${s[size]}`, titleClassName)}
             >{children}</Tag>
             {lined && (
                 <Line className={lineClassName}/>

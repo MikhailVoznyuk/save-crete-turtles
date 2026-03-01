@@ -1,11 +1,22 @@
+'use client';
+
+import {useRef} from 'react'
 import {HeroBlock} from "@/widgets/hero-block";
+import {LiquidGlassProvider} from "@/shared/effects/liquid-glass/ui/LiquidGlassProvider";
+import {Background} from "@/shared/ui/background";
+import React from "react";
 
 export default function Home() {
-  return (
-    <div className='min-w-screen'>
-      <main className='w-full'>
-          <HeroBlock />
-      </main>
-    </div>
-  );
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    return (
+        <div className='min-w-screen'>
+            <main className='w-full'>
+                <Background videoRef={videoRef} videoSrc='/media/video/bg/bg_1.mp4' fixed />
+                <LiquidGlassProvider videoRef={videoRef}>
+                    <HeroBlock />
+                </LiquidGlassProvider>
+
+            </main>
+        </div>
+    );
 }
