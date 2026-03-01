@@ -1,6 +1,8 @@
 'use client';
 
+
 import React, { useEffect, useId, useMemo, useRef } from 'react';
+import {JellyShapeProvider} from "@/shared/ui/containers/jelly-container/model/shapeContext";
 
 type V2 = { x: number; y: number };
 type Node = { p: V2; v: V2; b: V2 };
@@ -343,6 +345,9 @@ export function JellyContainer({
     const blobRef = useRef<HTMLDivElement | null>(null);
     const svgRef = useRef<SVGSVGElement | null>(null);
     const pathRef = useRef<SVGPathElement | null>(null);
+    const pointsRef = useRef<Float32Array>(new Float32Array(0));
+    const countRef = useRef<number>(0);
+    const padRef = useRef<number>(0);
 
     const nodesRef = useRef<Node[]>([]);
     const restRef = useRef<number[]>([]);
@@ -401,6 +406,8 @@ export function JellyContainer({
                 Math.min(140, Math.round(bleed ?? (maxOff * 1.7 + 18)))
             );
 
+            padRef.current = pad;
+
             const bw = w0 + pad * 2;
             const bh = h0 + pad * 2;
 
@@ -440,6 +447,15 @@ export function JellyContainer({
             baseAreaRef.current = Math.max(1, polygonArea(base));
 
             baseCenterRef.current = centroid(base);
+
+            padRef.current = pad;
+            countRef.current = nodes.length;
+
+            pointsRef.current = new Float32Array(nodes.length * 2);
+            for (let i = 0; i < nodes.length; i++) {
+                pointsRef.current[i * 2] = nodes[i].p.x;
+                pointsRef.current[i * 2 + 1] = nodes[i].p.y;
+            }
 
             const d = catmullRomClosedPath(nodes.map((n) => n.p), pathTension);
             if (supportsPath) blob.style.clipPath = `path("${d}")`;
@@ -855,6 +871,20 @@ export function JellyContainer({
                 }
             }
 
+            const N = nodes.length;
+            countRef.current = N;
+
+            let arr = pointsRef.current;
+            if (arr.length !== N * 2) {
+                arr = new Float32Array(N * 2);
+                pointsRef.current = arr;
+            }
+
+            for (let i = 0; i < N; i++) {
+                arr[i * 2] = nodes[i].p.x;
+                arr[i * 2 + 1] = nodes[i].p.y;
+            }
+
             const d = catmullRomClosedPath(nodes.map((n) => n.p), pathTension);
             if (supportsPath) blob.style.clipPath = `path("${d}")`;
             if (pathRef.current) pathRef.current.setAttribute('d', d);
@@ -930,24 +960,26 @@ export function JellyContainer({
     ]);
 
     return (
-        <div ref={wrapRef} className="relative inline-block overflow-visible">
-            <div ref={blobRef} className={['absolute', className].filter(Boolean).join(' ')} />
+        <JellyShapeProvider value={{blobRef, pointsRef, countRef, padRef}}>
+            <div ref={wrapRef} className="relative inline-block overflow-visible">
+                <div ref={blobRef} className={['absolute', className].filter(Boolean).join(' ')} />
 
-            {outline && (
-                <svg ref={svgRef} className="pointer-events-none" aria-hidden>
-                    <path
-                        ref={pathRef}
-                        className={outlineClassName}
-                        fill="none"
-                        strokeWidth={1.5}
-                        vectorEffect="non-scaling-stroke"
-                    />
-                </svg>
-            )}
+                {outline && (
+                    <svg ref={svgRef} className="pointer-events-none" aria-hidden>
+                        <path
+                            ref={pathRef}
+                            className={outlineClassName}
+                            fill="none"
+                            strokeWidth={1.5}
+                            vectorEffect="non-scaling-stroke"
+                        />
+                    </svg>
+                )}
 
-            <div className={['relative z-10', innerClassName].filter(Boolean).join(' ')}>
-                {children}
+                <div className={['relative z-10', innerClassName].filter(Boolean).join(' ')}>
+                    {children}
+                </div>
             </div>
-        </div>
+        </JellyShapeProvider>
     );
 }
