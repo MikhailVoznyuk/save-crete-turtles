@@ -15,6 +15,8 @@ export type LiquidGlassParams = {
     edgePull: number;        // сила стягивания у края
     edgePower: number;       // насколько резко растёт к краю
     edgeSingularity: number; // "почти бесконечность" у края (меньше = сильнее)
+
+    dirMode: number;
 };
 
 export type LiquidGlassHandle = {

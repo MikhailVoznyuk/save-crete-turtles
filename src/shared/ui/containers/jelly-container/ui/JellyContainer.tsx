@@ -118,6 +118,8 @@ const v2 = {
     },
 };
 
+const MASK_STEPS = 100;
+
 const TAU = Math.PI * 2;
 const fract = (x: number) => x - Math.floor(x);
 const hash1 = (i: number) => fract(Math.sin(i * 127.1) * 43758.5453123);
@@ -259,6 +261,56 @@ function catmullRomClosedPath(pts: V2[], tension = 0.7): string {
     }
     d += ' Z';
     return d;
+}
+
+function fillMaskFromCatmullRom(
+    nodes: { p: { x: number; y: number } }[],
+    tension: number,
+    stepsPerSeg: number,
+    out: Float32Array
+) {
+    const N = nodes.length;
+    const k = tension / 6;
+    let o = 0;
+
+    const get = (i: number) => nodes[(i % N + N) % N].p;
+
+    for (let i = 0; i < N; i++) {
+        const p0 = get(i - 1);
+        const p1 = get(i);
+        const p2 = get(i + 1);
+        const p3 = get(i + 2);
+
+        const c1x = p1.x + (p2.x - p0.x) * k;
+        const c1y = p1.y + (p2.y - p0.y) * k;
+        const c2x = p2.x - (p3.x - p1.x) * k;
+        const c2y = p2.y - (p3.y - p1.y) * k;
+
+        // Сэмплим u в [0..1), чтобы не дублировать точку p2 на следующем сегменте
+        for (let s = 0; s < stepsPerSeg; s++) {
+            const u = s / stepsPerSeg;
+            const uu = u * u;
+            const uuu = uu * u;
+            const om = 1 - u;
+            const om2 = om * om;
+            const om3 = om2 * om;
+
+            const x =
+                om3 * p1.x +
+                3 * om2 * u * c1x +
+                3 * om * uu * c2x +
+                uuu * p2.x;
+
+            const y =
+                om3 * p1.y +
+                3 * om2 * u * c1y +
+                3 * om * uu * c2y +
+                uuu * p2.y;
+
+            out[o++] = x;
+            out[o++] = y;
+        }
+    }
 }
 
 export function JellyContainer({
@@ -451,11 +503,11 @@ export function JellyContainer({
             padRef.current = pad;
             countRef.current = nodes.length;
 
-            pointsRef.current = new Float32Array(nodes.length * 2);
-            for (let i = 0; i < nodes.length; i++) {
-                pointsRef.current[i * 2] = nodes[i].p.x;
-                pointsRef.current[i * 2 + 1] = nodes[i].p.y;
-            }
+            const M = nodes.length * MASK_STEPS;
+            pointsRef.current = new Float32Array(M * 2);
+            countRef.current = M;
+
+            fillMaskFromCatmullRom(nodes, pathTension, MASK_STEPS, pointsRef.current);
 
             const d = catmullRomClosedPath(nodes.map((n) => n.p), pathTension);
             if (supportsPath) blob.style.clipPath = `path("${d}")`;
@@ -872,18 +924,16 @@ export function JellyContainer({
             }
 
             const N = nodes.length;
-            countRef.current = N;
+            const M = N * MASK_STEPS;
+            countRef.current = M;
 
             let arr = pointsRef.current;
-            if (arr.length !== N * 2) {
-                arr = new Float32Array(N * 2);
+            if (arr.length !== M * 2) {
+                arr = new Float32Array(M * 2);
                 pointsRef.current = arr;
             }
 
-            for (let i = 0; i < N; i++) {
-                arr[i * 2] = nodes[i].p.x;
-                arr[i * 2 + 1] = nodes[i].p.y;
-            }
+            fillMaskFromCatmullRom(nodes, pathTension, MASK_STEPS, arr);
 
             const d = catmullRomClosedPath(nodes.map((n) => n.p), pathTension);
             if (supportsPath) blob.style.clipPath = `path("${d}")`;

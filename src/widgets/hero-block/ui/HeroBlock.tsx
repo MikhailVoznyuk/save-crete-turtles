@@ -78,6 +78,7 @@ export function HeroBlock() {
                         spec={0.55}
                         tint={0.35}
                         alpha={1}
+                        dirMode={0}
                     />
                     <div>
                         <TextBlock size="xl">Help Me to survive!</TextBlock>

@@ -22,23 +22,26 @@ type Props = {
     edgePull?: number;
     edgePower?: number;
     edgeSingularity?: number;
+
+    dirMode?: 0 | 1;
 };
 
 export function LiquidGlass({
-                                enabled = true,
-                                intensity = 0.95,
-                                magnify = 0.10,
-                                blur = 0.55,
-                                chromatic = 0.22,
-                                rim = 0.55,
-                                spec = 0.35,
-                                tint = 0.65,
-                                alpha = 1.0,
-                                overlay = false,
-                                edgePull = 10,
-                                edgePower = 8,
-                                edgeSingularity = 0.015,
-                            }: Props) {
+        enabled = true,
+        intensity = 0.95,
+        magnify = 0.10,
+        blur = 0.55,
+        chromatic = 0.22,
+        rim = 0.55,
+        spec = 0.35,
+        tint = 0.65,
+        alpha = 1.0,
+        overlay = false,
+        edgePull = 10,
+        edgePower = 8,
+        edgeSingularity = 0.015,
+        dirMode = 1,
+    }: Props) {
     const id = useId();
     const register = useRegisterLiquidGlass();
     const { blobRef, pointsRef, countRef, padRef } = useJellyShape();
@@ -58,6 +61,7 @@ export function LiquidGlass({
         edgePull,
         edgePower,
         edgeSingularity,
+        dirMode,
     });
     paramsRef.current.intensity = intensity;
     paramsRef.current.magnify = magnify;
@@ -70,6 +74,7 @@ export function LiquidGlass({
     paramsRef.current.edgePull = edgePull;
     paramsRef.current.edgePower = edgePower;
     paramsRef.current.edgeSingularity = edgeSingularity;
+    paramsRef.current.dirMode = dirMode;
 
     useEffect(() => {
         if (!register) return;
