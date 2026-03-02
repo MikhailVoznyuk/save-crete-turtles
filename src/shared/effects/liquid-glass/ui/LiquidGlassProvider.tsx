@@ -132,7 +132,7 @@ uniform float uAlpha;
 uniform float uEdgePull;
 uniform float uEdgePower;
 uniform float uEdgeSingularity;
-uniform float uDirMode
+uniform float uDirMode;
 
 float hash12(vec2 p){
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -318,6 +318,7 @@ export function LiquidGlassProvider({
         uEdgePull: null as any,
         uEdgePower: null as any,
         uEdgeSingularity: null as any,
+        uDirMode: null as any,
     });
 
     const lightRef = useRef({x: 0.15, y: -0.10});
@@ -598,6 +599,7 @@ export function LiquidGlassProvider({
                 gl.uniform1f(uniLens.current.uEdgePull, p.edgePull);
                 gl.uniform1f(uniLens.current.uEdgePower, p.edgePower);
                 gl.uniform1f(uniLens.current.uEdgeSingularity, p.edgeSingularity);
+                gl.uniform1f(uniLens.current.uDirMode, p.dirMode ?? 0);
 
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
 
@@ -747,6 +749,7 @@ export function LiquidGlassProvider({
         uniLens.current.uEdgePull = gl.getUniformLocation(progLens, 'uEdgePull');
         uniLens.current.uEdgePower = gl.getUniformLocation(progLens, 'uEdgePower');
         uniLens.current.uEdgeSingularity = gl.getUniformLocation(progLens, 'uEdgeSingularity');
+        uniLens.current.uDirMode = gl.getUniformLocation(progLens, 'uDirMode');
 
         const onMove = (e: PointerEvent) => {
             const x = (e.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
