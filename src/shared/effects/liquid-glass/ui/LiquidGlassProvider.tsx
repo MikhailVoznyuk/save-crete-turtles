@@ -134,10 +134,20 @@ uniform float uEdgePower;
 uniform float uEdgeSingularity;
 uniform float uDirMode;
 
+uniform sampler2D uShapePolar;
+uniform vec2  uCenterCss;
+uniform float uShapeMaxRadius;
+
 float hash12(vec2 p){
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
   p3 += dot(p3, p3.yzx + 33.33);
   return fract((p3.x + p3.y) * p3.z);
+}
+
+float boundaryRadius(vec2 dir){
+  float ang = atan(dir.y, dir.x);
+  float u = (ang + 3.141592653589793) / 6.283185307179586;
+  return max(1.0, texture(uShapePolar, vec2(fract(u), 0.5)).r * uShapeMaxRadius);
 }
 
 void main(){
@@ -145,55 +155,40 @@ void main(){
   float cssY = ((uViewportCss.y*uScale) - gl_FragCoord.y) / uScale;
   vec2 css = vec2(cssX, cssY);
 
-  vec2 local = (css - uRectPosCss) / max(uRectSizeCss, vec2(1.0)); // 0..1
-  vec2 p = local - 0.5;                                            // -0.5..0.5
+  vec2 dCss = css - uCenterCss;
+float r = length(dCss);
+vec2 dir = (r > 1e-5) ? (dCss / r) : vec2(1.0, 0.0);
 
-  // ВАЖНО: радиус считаем по p (без aspect). Тогда овал покрывается целиком.
-  float rho = length(p) * 2.0; // ~1 у края овала
-  float edge = smoothstep(0.65, 1.02, rho);
-  float center = 1.0 - smoothstep(0.0, 0.95, rho);
+float rb = boundaryRadius(dir);
+float rho = r / max(rb, 1.0);
+float rho01 = clamp(rho, 0.0, 1.2);
 
-  vec2 centerCss = uRectPosCss + 0.5 * uRectSizeCss;
+float edge = smoothstep(0.65, 1.02, rho01);
+float center = 1.0 - smoothstep(0.0, 0.95, rho01);
 
-          vec2 dirRad = normalize(p + 1e-6);
-        
-        // расстояние до ближайших сторон в нормализованных координатах (-0.5..0.5)
-        float dx = 0.5 - abs(p.x);
-        float dy = 0.5 - abs(p.y);
-        
-        // плавный выбор: ближе к вертикальным сторонам -> тянем по X, ближе к горизонтальным -> по Y
-        float d = dy - dx;                 // >0 => ближе к вертикальной стороне
-        float wX = smoothstep(-0.06, 0.06, d);
-        
-        vec2 dirSide = normalize(vec2(sign(p.x) * wX, sign(p.y) * (1.0 - wX)) + 1e-6);
-        
-        vec2 dir = (uDirMode < 0.5) ? dirRad : dirSide;
+// базовый "объем"
+float mag = uMagnify * (0.25 + 0.75 * edge);
+float r2 = r * (1.0 - mag);
 
-  // базовый "объем": легкий масштаб внутрь (толщина)
-  float mag = uMagnify * (0.25 + 0.75 * edge);
-  vec2 p2 = p * (1.0 - mag);
-    float rhoC = clamp(rho, 0.0, 0.995);
+float rhoC = clamp(rho, 0.0, 0.995);
+float e0 = smoothstep(0.45, 1.0, rhoC);
+float hard = pow(e0, uEdgePower);
+float singular = 1.0 / max(uEdgeSingularity, 1.0 - rhoC);
 
-    // включаем эффект не с центра
-    float e0 = smoothstep(0.45, 1.0, rhoC);
-    float hard = pow(e0, uEdgePower);
-    
-    // сингулярность у края
-    float singular = 1.0 / max(uEdgeSingularity, 1.0 - rhoC);
-    
-    // итоговый pull (сильный у края, почти 0 в центре)
-    float pull = uIntensity * uEdgePull * hard * (0.00020 + 0.00110 * singular);
-    
-    // без “убийственного” clamp, иначе edgePull=10 будет выглядеть как edgePull=1
-    p2 += dir * pull;
+// ВАЖНО: теперь pull считается относительно РЕАЛЬНОЙ границы, а не овала
+float pull = uIntensity * uEdgePull * hard * (0.00020 + 0.00110 * singular);
+r2 += pull * rb;
 
-  // микроволна (очень мягко, иначе будет "желе-мыло")
-  float wob = (sin(uTime*1.1 + (p.x+p.y)*7.0) + sin(uTime*0.8 + p.y*11.0)) * 0.5;
-  p2 += vec2(wob, -wob) * (0.0022 * uIntensity) * hard;
+float wob = (
+  sin(uTime * 1.1 + dir.x * 7.0 + dir.y * 3.0) +
+  sin(uTime * 0.8 + dir.y * 11.0)
+) * 0.5;
 
-  vec2 css2 = centerCss + (p2 * uRectSizeCss);
-  vec2 uv = css2 / max(uViewportCss, vec2(1.0));
-  uv = clamp(uv, vec2(0.001), vec2(0.999));
+r2 += wob * (0.0022 * uIntensity) * hard * rb;
+
+vec2 css2 = uCenterCss + dir * r2;
+vec2 uv = css2 / max(uViewportCss, vec2(1.0));
+uv = clamp(uv, vec2(0.001), vec2(0.999));
 
   // chromatic aberration near edge
   float ca = uChromatic * pow(edge, 1.6) * 0.0022;
@@ -216,7 +211,7 @@ void main(){
   col += blue * (0.035 + 0.12*uTint) * (0.55*center + 0.15*edge);
 
   // --- Fresnel + specular (живой блик) ---
-  vec2 pr = p * 2.0;                 // граница ~1
+  vec2 pr = dir * clamp(rho, 0.0, 1.0);              // граница ~1
   float rr = clamp(length(pr), 0.0, 1.0);
   float z = sqrt(max(0.0, 1.0 - rr*rr));
   vec3 n = normalize(vec3(pr.x, pr.y, z));
@@ -296,6 +291,8 @@ export function LiquidGlassProvider({
 
     const sizesRef = useRef({ bgW: 1, bgH: 1, blurW: 1, blurH: 1 });
 
+
+
     const uniBg = useRef({ uVideo: null as any, uViewport: null as any, uVideoSize: null as any });
     const uniBlur = useRef({ uSrc: null as any, uSrcSize: null as any });
     const uniLens = useRef({
@@ -319,15 +316,96 @@ export function LiquidGlassProvider({
         uEdgePower: null as any,
         uEdgeSingularity: null as any,
         uDirMode: null as any,
+        uShapePolar: null as any,
+        uCenterCss: null as any,
+        uShapeMaxRadius: null as any,
     });
 
     const lightRef = useRef({x: 0.15, y: -0.10});
 
+    const SHAPE_SAMPLES = 256;
 
+    const shapeTexRef = useRef<WebGLTexture | null>(null);
+    const shapeBytesRef = useRef<Uint8Array>(new Uint8Array(SHAPE_SAMPLES));
+    const shapeRadiiRef = useRef<Float32Array>(new Float32Array(SHAPE_SAMPLES));
 
     const ensureFanTmp = (need: number) => {
         if (fanTmpRef.current.length < need) fanTmpRef.current = new Float32Array(Math.ceil(need * 1.25));
         return fanTmpRef.current;
+    };
+
+    const buildPolarShape = (
+        pts: Float32Array,
+        N: number,
+        rect: DOMRect,
+        scaleX: number,
+        scaleY: number
+    ) => {
+        const radii = shapeRadiiRef.current;
+        const bytes = shapeBytesRef.current;
+
+        radii.fill(0);
+
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        let sumX = 0;
+        let sumY = 0;
+
+        for (let i = 0; i < N; i++) {
+            const x = rect.left + pts[i * 2] * scaleX;
+            const y = rect.top + pts[i * 2 + 1] * scaleY;
+
+            sumX += x;
+            sumY += y;
+
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+        }
+
+        const cx = sumX / N;
+        const cy = sumY / N;
+
+        let maxRadius = 1;
+
+        for (let i = 0; i < N; i++) {
+            const x = rect.left + pts[i * 2] * scaleX;
+            const y = rect.top + pts[i * 2 + 1] * scaleY;
+
+            const dx = x - cx;
+            const dy = y - cy;
+            const r = Math.hypot(dx, dy);
+
+            const a = Math.atan2(dy, dx);
+            let idx = Math.floor(((a + Math.PI) / (Math.PI * 2)) * SHAPE_SAMPLES);
+            if (idx < 0) idx += SHAPE_SAMPLES;
+            if (idx >= SHAPE_SAMPLES) idx -= SHAPE_SAMPLES;
+
+            if (r > radii[idx]) radii[idx] = r;
+            if (r > maxRadius) maxRadius = r;
+        }
+
+        let last = 0;
+        for (let i = 0; i < SHAPE_SAMPLES; i++) {
+            if (radii[i] === 0) radii[i] = last;
+            else last = radii[i];
+        }
+
+        last = radii[SHAPE_SAMPLES - 1] || last || maxRadius;
+        for (let i = SHAPE_SAMPLES - 1; i >= 0; i--) {
+            if (radii[i] === 0) radii[i] = last;
+            else last = radii[i];
+        }
+
+        for (let i = 0; i < SHAPE_SAMPLES; i++) {
+            bytes[i] = Math.max(1, Math.min(255, Math.round((radii[i] / maxRadius) * 255)));
+        }
+
+        return { cx, cy, maxRadius, minX, minY, maxX, maxY };
     };
 
     const setupTex = (gl: WebGL2RenderingContext, w: number, h: number) => {
@@ -451,6 +529,8 @@ export function LiquidGlassProvider({
             const vp = vpCssRef.current;
             const { bgW, bgH, blurW, blurH } = sizesRef.current;
 
+
+
             // pass 1: video -> bgTex (cover)
             gl.bindFramebuffer(gl.FRAMEBUFFER, fboBg);
             gl.viewport(0, 0, bgW, bgH);
@@ -508,11 +588,23 @@ export function LiquidGlassProvider({
 
                 const pad = h.padRef.current || 0;
 
-                // inner rect (реальная область пузыря)
-                const innerLeft = rect.left + pad;
-                const innerTop = rect.top + pad;
-                const innerW = rect.width - pad * 2;
-                const innerH = rect.height - pad * 2;
+// исходный размер blob ДО css transform
+                const baseW = Math.max(1, h.el.offsetWidth);
+                const baseH = Math.max(1, h.el.offsetHeight);
+
+// фактический scale по осям
+                const scaleX = rect.width / baseW;
+                const scaleY = rect.height / baseH;
+
+// pad тоже обязан масштабироваться
+                const padX = pad * scaleX;
+                const padY = pad * scaleY;
+
+// inner rect (реальная область пузыря уже после transform)
+                const innerLeft = rect.left + padX;
+                const innerTop = rect.top + padY;
+                const innerW = rect.width - padX * 2;
+                const innerH = rect.height - padY * 2;
 
                 if (innerW < 2 || innerH < 2) continue;
 
@@ -520,11 +612,13 @@ export function LiquidGlassProvider({
                 const N = h.countRef.current;
                 if (N < 3 || pts.length < N * 2) continue;
 
+                const shape = buildPolarShape(pts, N, rect, scaleX, scaleY);
+
                 // scissor (fb coords)
-                const sx = Math.floor(rect.left * scale);
-                const sy = Math.floor((vp.h - rect.bottom) * scale);
-                const sw = Math.ceil(rect.width * scale);
-                const sh = Math.ceil(rect.height * scale);
+                const sx = Math.floor(shape.minX * scale) - 2;
+                const sy = Math.floor((vp.h - shape.maxY) * scale) - 2;
+                const sw = Math.ceil((shape.maxX - shape.minX) * scale) + 4;
+                const sh = Math.ceil((shape.maxY - shape.minY) * scale) + 4;
 
                 gl.enable(gl.SCISSOR_TEST);
                 gl.scissor(sx, sy, sw, sh);
@@ -543,14 +637,14 @@ export function LiquidGlassProvider({
                 let o = 2;
 
                 for (let i = 0; i < N; i++) {
-                    const x = rect.left + pts[i * 2];
-                    const y = rect.top + pts[i * 2 + 1];
+                    const x = rect.left + pts[i * 2] * scaleX;
+                    const y = rect.top + pts[i * 2 + 1] * scaleY;
                     tmp[o++] = (x / vp.w) * 2 - 1;
                     tmp[o++] = 1 - (y / vp.h) * 2;
                 }
 
-                const x0 = rect.left + pts[0];
-                const y0 = rect.top + pts[1];
+                const x0 = rect.left + pts[0] * scaleX;
+                const y0 = rect.top + pts[1] * scaleY;
                 tmp[o++] = (x0 / vp.w) * 2 - 1;
                 tmp[o++] = 1 - (y0 / vp.h) * 2;
 
@@ -600,6 +694,24 @@ export function LiquidGlassProvider({
                 gl.uniform1f(uniLens.current.uEdgePower, p.edgePower);
                 gl.uniform1f(uniLens.current.uEdgeSingularity, p.edgeSingularity);
                 gl.uniform1f(uniLens.current.uDirMode, p.dirMode ?? 0);
+
+                gl.activeTexture(gl.TEXTURE2);
+                gl.bindTexture(gl.TEXTURE_2D, shapeTexRef.current);
+                gl.texSubImage2D(
+                    gl.TEXTURE_2D,
+                    0,
+                    0,
+                    0,
+                    SHAPE_SAMPLES,
+                    1,
+                    gl.RED,
+                    gl.UNSIGNED_BYTE,
+                    shapeBytesRef.current
+                );
+
+                gl.uniform1i(uniLens.current.uShapePolar, 2);
+                gl.uniform2f(uniLens.current.uCenterCss, shape.cx, shape.cy);
+                gl.uniform1f(uniLens.current.uShapeMaxRadius, shape.maxRadius);
 
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
 
@@ -712,12 +824,35 @@ export function LiquidGlassProvider({
         const texVideo = gl.createTexture();
         if (!texVideo) return;
         texVideoRef.current = texVideo;
+
         gl.bindTexture(gl.TEXTURE_2D, texVideo);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+
+        const texShape = gl.createTexture();
+        if (!texShape) return;
+        shapeTexRef.current = texShape;
+
+        gl.bindTexture(gl.TEXTURE_2D, texShape);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.R8,
+            SHAPE_SAMPLES,
+            1,
+            0,
+            gl.RED,
+            gl.UNSIGNED_BYTE,
+            new Uint8Array(SHAPE_SAMPLES)
+        );
 
         // uniforms
         gl.useProgram(progBg);
@@ -750,6 +885,9 @@ export function LiquidGlassProvider({
         uniLens.current.uEdgePower = gl.getUniformLocation(progLens, 'uEdgePower');
         uniLens.current.uEdgeSingularity = gl.getUniformLocation(progLens, 'uEdgeSingularity');
         uniLens.current.uDirMode = gl.getUniformLocation(progLens, 'uDirMode');
+        uniLens.current.uShapePolar = gl.getUniformLocation(progLens, 'uShapePolar');
+        uniLens.current.uCenterCss = gl.getUniformLocation(progLens, 'uCenterCss');
+        uniLens.current.uShapeMaxRadius = gl.getUniformLocation(progLens, 'uShapeMaxRadius');
 
         const onMove = (e: PointerEvent) => {
             const x = (e.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
@@ -772,6 +910,7 @@ export function LiquidGlassProvider({
             mapRef.current.clear();
 
             if (texVideoRef.current) gl.deleteTexture(texVideoRef.current);
+            if (shapeTexRef.current) gl.deleteTexture(shapeTexRef.current);
             if (texBgRef.current) gl.deleteTexture(texBgRef.current);
             if (texBlurRef.current) gl.deleteTexture(texBlurRef.current);
             if (fboBgRef.current) gl.deleteFramebuffer(fboBgRef.current);
