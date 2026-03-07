@@ -9,7 +9,7 @@ type Node = { p: V2; v: V2; b: V2 };
 
 type JellyContainerProps = {
     className?: string;        
-    innerClassName?: string;   
+    innerClassName?: string;
     outline?: boolean;
     outlineClassName?: string; 
 
