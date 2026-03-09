@@ -4,112 +4,224 @@ import {JellyContainer} from "@/shared/ui/containers";
 import {LiquidGlass} from "@/shared/effects/liquid-glass";
 import {TextBlock} from "@/shared/ui/text-blocks";
 import {Timeline} from "@/shared/utils/animations";
+import {mapVideoPointToScreen} from "@/shared/utils/position";
 
 
 // засторить позицию элементов для каждого состояния
 type Stage = 'enter' | 'show' | 'out'
 type StageProps  = {
-    style: Record<string, string>,
+    style?: Record<string, string>,
+    offsetX?: number,
+    offsetY?: number,
     duration?: number;
     delay?: number;
     stay?: number;
 }
 
 // 0 - основной пузырь, 1 - вспомогательный (средний) 2 - завершающий
-const BUBBLE_STAGES: StageProps[][] = [
-    [{
-        style: {
-            top: '400px',
-            left: '800px',
-            transform: 'scale(0)'
-        }
-    },
-    {
-        style: {
-            top: '200px',
-            left: '900px',
-            transform: 'scale(1)',
-        },
-        delay: 5000,
-        duration: 1000,
-        stay: 4000
-    },
-    {
-        style: {
-            top: '100px',
-            left: '800px',
-            transform: 'scale(0)'
-        },
-        duration: 1000
-    },
 
-    ],
-    [{
-        style: {
-            top: '400px',
-            left: '800px',
-            transform: 'scale(0)'
-        }
-    },
+// Задать смещение относительно изначального якоря, не позиционирование стилями
+// TODO: задать offset
+// 11500мс - длинна видео
+
+const BUBBLE_STAGES: StageProps[][] = [
+    [
         {
             style: {
-                top: '200px',
-                left: '900px',
-                transform: 'scale(1)'
+                transform: 'scale(0)'
             }
         },
         {
-            style: {
-                top: '100px',
-                left: '900px',
-                transform: 'scale(0)'
-            }
-        }
-    ],
-    [{
-        style: {
-            top: '400px',
-            left: '800px',
-            transform: 'scale(0)'
-        }
-    },
-        {
+            offsetX: 10,
+            offsetY: 128,
             style: {
                 top: '200px',
                 left: '900px',
-                transform: 'scale(1)'
+                transform: 'scale(1)',
+            },
+            delay: 5300,
+            duration: 1000,
+            stay: 3700
+        },
+        {
+            offsetX: 20,
+            offsetY: 300,
+            style: {
+                transform: 'scale(0)'
+            },
+            duration: 1000,
+            stay: 500
+        },
+    ],
+    [
+        {
+            style: {
+                transform: 'scale(0)'
             }
         },
         {
+            offsetX: 40,
+            offsetY: 170,
             style: {
-                top: '100px',
-                left: '900px',
+                transform: 'scale(1)'
+            },
+            delay: 5500,
+            duration: 1000,
+            stay: 0,
+        },
+        {
+            offsetX: 60,
+            offsetY: 200,
+            style: {
+                transform: 'scale(0)'
+            },
+
+            duration: 200,
+            stay: 3300 // 10000 - 3300
+        },
+        {
+            offsetX: 40,
+            offsetY: 240,
+            style: {
+                transform: 'scale(1)'
+            },
+            duration: 200,
+        },
+        {
+            offsetX: 10,
+            offsetY: 300,
+            style: {
+                transform: 'scale(0)'
+            },
+            duration: 1000, // 11200 - 100
+            stay: 300
+        }
+    ],
+    [
+        {
+            style: {
                 transform: 'scale(0)'
             }
+        },
+        {
+            offsetX: 40,
+            offsetY: 170,
+            style: {
+                transform: 'scale(1)'
+            },
+            delay: 5500,
+            duration: 1000,
+            stay: 0,
+        },
+        {
+            offsetX: 60,
+            offsetY: 200,
+            style: {
+                transform: 'scale(0)'
+            },
+
+            duration: 200,
+            stay: 3300 // 10000 - 3300
+        },
+        {
+            offsetX: 40,
+            offsetY: 240,
+            style: {
+                transform: 'scale(1)'
+            },
+            duration: 200,
+        },
+        {
+            offsetX: 10,
+            offsetY: 300,
+            style: {
+                transform: 'scale(0)'
+            },
+            duration: 1000, // 11200 - 100
+            stay: 300
         }
     ],
 ];
 
+const TURTLE_ANCHOR = {x: 848, y: 438};
+const DELAY = 500;
+const SHOW_DURATION = 500000;
+
 export function Bubbles() {
-    const DELAY = 500;
-    const SHOW_DURATION = 500000;
 
-    const bubbles = useRef<(HTMLElement | null)[]>([]);
-
+    const bubblesRef = useRef<(HTMLElement | null)[]>([]);
+    const timelinesRef = useRef<Timeline[]>([]);
 
     useEffect(() => {
-        if (bubbles.current[0] === null) return;
+        if (bubblesRef.current.length === 0) return;
 
-        const tl = new Timeline({el: bubbles.current[0], initStyle: BUBBLE_STAGES[0][0].style})
-        tl.add(BUBBLE_STAGES[0][1]).add(BUBBLE_STAGES[0][2]);
+        const updateSteps= () => {
+            const pos = mapVideoPointToScreen(
+                TURTLE_ANCHOR,
+                window.innerWidth,
+                window.innerHeight,
+                1920,
+                1080
+            )
+
+            for (let i = 0; i < BUBBLE_STAGES.length; i++) {
+                const el = bubblesRef.current[i];
+                if (el === null) {
+                    continue;
+                }
+
+                let tl;
+                if (timelinesRef.current[i]) {
+                    tl = timelinesRef.current[i];
+                    tl.clear(false);
+                } else {
+                    tl = new Timeline({el, loop: true});
+                }
+
+                const stages = BUBBLE_STAGES[i];
+                const initStage = stages[0];
+
+
+                const tlInitStyle = {
+                    left: `${pos.x + (initStage.offsetX ?? 0)}`,
+                    top: `${pos.y - (initStage.offsetY ?? 0)}`,
+                    ...initStage.style
+                }
+
+                tl.applyStyles(tlInitStyle);
+
+                for (let j = 1; j < stages.length; j++) {
+                    const stage = stages[j];
+                    const stageStyle = {
+                        left: `${pos.x + (stage.offsetX ?? 0)}`,
+                        top: `${pos.y + (stage.offsetY ?? 0)}`,
+                        ...stage.style
+                    };
+
+                    tl.add({
+                        style: stageStyle,
+                        duration: stage.duration,
+                        stay: stage.stay,
+                        delay: stage.delay,
+                    })
+                }
+
+                timelinesRef.current[i] = tl;
+
+            }
+        }
+
+        window.addEventListener('resize', updateSteps);
+
+        return () => removeEventListener('resize', updateSteps);
     }, []);
 
 
 
     return (
         <>
-            <div className='absolute rounded-full'
-                 ref={(el) => {bubbles.current[0] = el}}
+            <div className='fixed rounded-full'
+                 ref={(el) => {bubblesRef.current[0] = el}}
             >
                 <JellyContainer
                     className="rounded-full"
@@ -170,8 +282,8 @@ export function Bubbles() {
                     </div>
                 </JellyContainer>
             </div>
-            <div className='absolute transition-all rounded-full'
-                 ref={el => {bubbles.current[1] = el}}
+            <div className='fixed transition-all rounded-full'
+                 ref={el => {bubblesRef.current[1] = el}}
             >
                 <JellyContainer
                     className="rounded-full"
@@ -230,8 +342,8 @@ export function Bubbles() {
 
                 </JellyContainer>
             </div>
-            <div className='absolute transition-all rounded-full'
-                 ref={el => {bubbles.current[2] = el}}
+            <div className='fixed transition-all rounded-full'
+                 ref={el => {bubblesRef.current[2] = el}}
             >
                 <JellyContainer
                     className="rounded-full"
