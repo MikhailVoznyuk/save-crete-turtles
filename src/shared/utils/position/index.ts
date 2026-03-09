@@ -1,0 +1,1 @@
+export {mapVideoPointToScreen} from "@/shared/utils/position/matchVideoPointToScreen";
