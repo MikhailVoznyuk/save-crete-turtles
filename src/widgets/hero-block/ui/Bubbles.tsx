@@ -1,10 +1,10 @@
 import React from 'react';
-import {useEffect, useRef} from 'react'
+import {useEffect, useState, useRef} from 'react'
 import {JellyContainer} from "@/shared/ui/containers";
 import {LiquidGlass} from "@/shared/effects/liquid-glass";
 import {TextBlock} from "@/shared/ui/text-blocks";
 import {Timeline} from "@/shared/utils/animations";
-import {mapVideoPointToScreen} from "@/shared/utils/position";
+import {VideoPointAnchor} from "@/shared/utils/position";
 
 
 // засторить позицию элементов для каждого состояния
@@ -28,26 +28,24 @@ const BUBBLE_STAGES: StageProps[][] = [
     [
         {
             style: {
-                transform: 'scale(0)'
+                scale: '0',
             }
         },
         {
             offsetX: 10,
-            offsetY: 128,
+            offsetY: 50,
             style: {
-                top: '200px',
-                left: '900px',
-                transform: 'scale(1)',
+                scale: '1',
             },
             delay: 5300,
             duration: 1000,
-            stay: 3700
+            stay: 3700 // 3700 default
         },
         {
             offsetX: 20,
-            offsetY: 300,
+            offsetY: 268,
             style: {
-                transform: 'scale(0)'
+                scale: '0'
             },
             duration: 1000,
             stay: 500
@@ -56,14 +54,14 @@ const BUBBLE_STAGES: StageProps[][] = [
     [
         {
             style: {
-                transform: 'scale(0)'
+                scale: '0'
             }
         },
         {
             offsetX: 40,
-            offsetY: 170,
+            offsetY: 40,
             style: {
-                transform: 'scale(1)'
+                scale: '1'
             },
             delay: 5500,
             duration: 1000,
@@ -71,9 +69,9 @@ const BUBBLE_STAGES: StageProps[][] = [
         },
         {
             offsetX: 60,
-            offsetY: 200,
+            offsetY: 60,
             style: {
-                transform: 'scale(0)'
+                scale: '0'
             },
 
             duration: 200,
@@ -81,9 +79,9 @@ const BUBBLE_STAGES: StageProps[][] = [
         },
         {
             offsetX: 40,
-            offsetY: 240,
+            offsetY: 20,
             style: {
-                transform: 'scale(1)'
+                scale: '1'
             },
             duration: 200,
         },
@@ -91,7 +89,7 @@ const BUBBLE_STAGES: StageProps[][] = [
             offsetX: 10,
             offsetY: 300,
             style: {
-                transform: 'scale(0)'
+                scale: '0'
             },
             duration: 1000, // 11200 - 100
             stay: 300
@@ -100,14 +98,14 @@ const BUBBLE_STAGES: StageProps[][] = [
     [
         {
             style: {
-                transform: 'scale(0)'
+                scale: '0'
             }
         },
         {
             offsetX: 40,
             offsetY: 170,
             style: {
-                transform: 'scale(1)'
+                scale: '1'
             },
             delay: 5500,
             duration: 1000,
@@ -117,7 +115,7 @@ const BUBBLE_STAGES: StageProps[][] = [
             offsetX: 60,
             offsetY: 200,
             style: {
-                transform: 'scale(0)'
+                scale: '0'
             },
 
             duration: 200,
@@ -127,7 +125,7 @@ const BUBBLE_STAGES: StageProps[][] = [
             offsetX: 40,
             offsetY: 240,
             style: {
-                transform: 'scale(1)'
+                scale: '1'
             },
             duration: 200,
         },
@@ -135,66 +133,80 @@ const BUBBLE_STAGES: StageProps[][] = [
             offsetX: 10,
             offsetY: 300,
             style: {
-                transform: 'scale(0)'
+                scale: '0'
             },
             duration: 1000, // 11200 - 100
             stay: 300
         }
-    ],
+    ]
 ];
 
-const TURTLE_ANCHOR = {x: 848, y: 438};
-const DELAY = 500;
-const SHOW_DURATION = 500000;
+type Cords = {x: number, y: number};
+type Sizes = {width: number, height: number};
+
+const TURTLE_ANCHOR: Cords = {x: 1100, y: 548};
 
 export function Bubbles() {
 
     const bubblesRef = useRef<(HTMLElement | null)[]>([]);
     const timelinesRef = useRef<Timeline[]>([]);
-
+    const [bubbleSizes, setBubbleSizes] = useState<Sizes[]>([{width: 256, height: 160}]);
+    const scopeRef = useRef<HTMLDivElement | null>(null);
+    const [anchor, setAnchor] = useState<Cords | null>(null);
     useEffect(() => {
         if (bubblesRef.current.length === 0) return;
-
         const updateSteps= () => {
-            const pos = mapVideoPointToScreen(
-                TURTLE_ANCHOR,
-                window.innerWidth,
-                window.innerHeight,
-                1920,
-                1080
-            )
+            const pointAnchor = new VideoPointAnchor(
+                {
+                    anchor: TURTLE_ANCHOR,
+                    containerW: window.innerWidth,
+                    containerH: window.innerHeight,
+                    videoW: 1920,
+                    videoH: 1080
+                }
+            );
 
-            for (let i = 0; i < BUBBLE_STAGES.length; i++) {
+            const pos = pointAnchor.getAnchorPos();
+
+            setAnchor(pos);
+
+            for (let i = 0; i < 1; i++) {
                 const el = bubblesRef.current[i];
                 if (el === null) {
                     continue;
                 }
+
+                const stages = BUBBLE_STAGES[i];
 
                 let tl;
                 if (timelinesRef.current[i]) {
                     tl = timelinesRef.current[i];
                     tl.clear(false);
                 } else {
-                    tl = new Timeline({el, loop: true});
+                    const initStage = stages[0];
+                    const initCords = pointAnchor.getAnchorPos({
+                        x: initStage.offsetX ?? 0,
+                        y: -(initStage.offsetY ?? 0),
+                    })
+
+                    const initStyle = {
+                        left: `${initCords.x - bubbleSizes[i].width / 2}px`,
+                        top: `${initCords.y - bubbleSizes[i].height / 2}px`,
+                        ...initStage.style
+                    }
+
+                    tl = new Timeline({el, loop: true, initStyle: initStyle});
                 }
-
-                const stages = BUBBLE_STAGES[i];
-                const initStage = stages[0];
-
-
-                const tlInitStyle = {
-                    left: `${pos.x + (initStage.offsetX ?? 0)}`,
-                    top: `${pos.y - (initStage.offsetY ?? 0)}`,
-                    ...initStage.style
-                }
-
-                tl.applyStyles(tlInitStyle);
 
                 for (let j = 1; j < stages.length; j++) {
                     const stage = stages[j];
+                    const coords = pointAnchor.getAnchorPos({
+                        x: stage.offsetX ?? 0,
+                        y: -(stage.offsetY ?? 0),
+                    })
                     const stageStyle = {
-                        left: `${pos.x + (stage.offsetX ?? 0)}`,
-                        top: `${pos.y + (stage.offsetY ?? 0)}`,
+                        left: `${coords.x}px`,
+                        top: `${coords.y - bubbleSizes[i].height}px`,
                         ...stage.style
                     };
 
@@ -211,6 +223,8 @@ export function Bubbles() {
             }
         }
 
+        updateSteps();
+
         window.addEventListener('resize', updateSteps);
 
         return () => removeEventListener('resize', updateSteps);
@@ -220,13 +234,20 @@ export function Bubbles() {
 
     return (
         <>
-            <div className='fixed rounded-full'
+            <div className='fixed size-2 rounded-full bg-red-600'
+                 ref={scopeRef}
+                 style={{
+                     left: `${anchor?.x ?? 0}px`,
+                     top: `${anchor?.y ?? 0}px`,
+                 }}
+            ></div>
+            <div className='fixed rounded-full animate-turbulence'
                  ref={(el) => {bubblesRef.current[0] = el}}
             >
                 <JellyContainer
-                    className="rounded-full"
+                    className="rounded-full "
                     outlineClassName="stroke-cyan-200/20"
-                    innerClassName="p-20"
+                    innerClassName="w-64 h-40" // p-20
                     outline
                     boundaryPoints={72}
                     bendK={200}
@@ -277,12 +298,10 @@ export function Bubbles() {
                         alpha={1}
                         dirMode={0}
                     />
-                    <div>
-                        <TextBlock size="xl">Help Me to survive!</TextBlock>
-                    </div>
+
                 </JellyContainer>
             </div>
-            <div className='fixed transition-all rounded-full'
+            <div className='fixed transition-all rounded-full size-12 animate-turbulence'
                  ref={el => {bubblesRef.current[1] = el}}
             >
                 <JellyContainer
@@ -342,7 +361,7 @@ export function Bubbles() {
 
                 </JellyContainer>
             </div>
-            <div className='fixed transition-all rounded-full'
+            <div className='fixed transition-all rounded-full size-12 animate-turbulence'
                  ref={el => {bubblesRef.current[2] = el}}
             >
                 <JellyContainer

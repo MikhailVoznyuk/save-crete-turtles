@@ -15,6 +15,28 @@
   --color-foreground: var(--foreground);
   --font-inter: var(--font-inter);
   --font-dongle: var(--font-dongle);
+  --animate-turbulence: turbulence 8s ease-in-out infinite;
+}
+
+@keyframes turbulence {
+  0% {
+    translate: 0 0
+  }
+  16% {
+    translate: 5% 5%;
+  }
+  32% {
+    translate: -5% 10%
+  }
+  50% {
+    translate: 0 0
+  }
+  66% {
+    translate: -5% -5%
+  }
+  82% {
+    translate: 5% -10%;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
