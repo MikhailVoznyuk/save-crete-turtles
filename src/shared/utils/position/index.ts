@@ -1,1 +1,1 @@
-export {mapVideoPointToScreen} from "@/shared/utils/position/matchVideoPointToScreen";
+export {VideoPointAnchor} from "@/shared/utils/position/matchVideoPointToScreen";
