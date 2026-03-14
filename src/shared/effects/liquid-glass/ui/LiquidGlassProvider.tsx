@@ -267,9 +267,22 @@ float frost = clamp(uBlurAmt, 0.0, 1.0);
 float mixW = frost * (0.10 + 0.12 * body + 0.04 * edge);
 vec3 col = mix(sharp, blur, mixW);
 
+float bgLum = dot(sharp, vec3(0.2126, 0.7152, 0.0722));
+
+// На ярком фоне стекло должно чуть плотнеть и меньше "светиться".
+// На тёмном можно позволить больше блика.
+float brightBg = smoothstep(0.45, 0.82, bgLum);
+float darkBg = 1.0 - brightBg;
+
+// Лёгкая адаптивная плотность материала.
+// Это не грязная серость, а мягкое удержание формы на ярком видео.
+col *= mix(1.0, 0.88, brightBg * (0.35 + 0.65 * body));
+
 // холодный глянец, а не синяя молочная заливка
 vec3 blue = vec3(0.18, 0.56, 1.0);
-col += blue * (0.010 + 0.040 * uTint) * (0.20 + 0.22 * body + 0.18 * edge);
+float tintAmt = (0.008 + 0.028 * uTint) * (0.16 + 0.18 * body + 0.16 * edge);
+tintAmt *= mix(1.0, 0.55, brightBg);
+col += blue * tintAmt;
 
 // нормаль для glossy-стекла
 vec2 pr = dir * clamp(rho, 0.0, 1.0);
@@ -370,10 +383,25 @@ vec3 filmRim    = film * (0.09 + 0.1 * uSpec) * filmMask;
 vec3 filmSheen  = film * (0.14 + 0.18 * uSpec) * filmBroad * filmMask;
 vec3 filmAccent = film * (0.1 + 0.13 * uSpec) * filmSharp * filmMask * (0.45 + 0.55 * streak);
 
-col += rimCol + specCol + specCol2 + filmRim + filmSheen + filmAccent;
+float glareCut = mix(1.0, 0.58, brightBg);
+float filmCut  = mix(1.0, 0.64, brightBg);
+
+rimCol     *= glareCut;
+specCol    *= glareCut;
+specCol2   *= glareCut;
+filmRim    *= filmCut;
+filmSheen  *= filmCut;
+filmAccent *= filmCut;
+
+vec3 glassAdd = rimCol + specCol + specCol2;
+vec3 filmAdd = filmRim + filmSheen + filmAccent;
+
+col += glassAdd;
+col = mix(col, col + filmAdd, 0.72);
 
 // почти убираем внутреннюю "грязную" тень
-col *= 1.0 - (0.025 * edge);
+float formHold = 0.018 * shoulder + 0.030 * edge;
+col *= 1.0 - formHold * (0.55 + 0.45 * brightBg);
 
 // шум сильно тише, чтобы не было ощущения матового пластика
 float nse = hash12(gl_FragCoord.xy + uTime * 60.0);
