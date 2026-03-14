@@ -10,7 +10,8 @@ type StepProps = {
     style: Style;
     duration?: number;
     delay?: number;
-    stay?: number
+    stay?: number;
+    ease: string;
 }
 
 export class Timeline {
@@ -50,13 +51,11 @@ export class Timeline {
                    break;
                }
            } else {
-
-
                await new Promise<void>(resolve => {
                    const step = this.stepsQueue[this.stepInd];
                    setTimeout(() => {
                        if (!step) return resolve();
-                       this.el.style.transition = `${step.duration}ms ease`;
+                       this.el.style.transition = `${step.duration}ms ${step.ease ?? 'ease'}`;
                        this.applyStyles(step.style);
                        setTimeout(() => resolve(), (step.duration ?? 0) + (step.stay ?? 0));
                    }, step.delay ?? 0)

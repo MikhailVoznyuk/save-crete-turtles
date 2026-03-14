@@ -27,6 +27,7 @@ export type LiquidGlassHandle = {
     enabledRef: React.RefObject<boolean>;
     paramsRef: React.RefObject<LiquidGlassParams>;
     padRef: React.RefObject<number>;
+    orderRef: React.RefObject<number>;
 };
 
 export type RegisterLiquidGlass = (h: LiquidGlassHandle) => () => void;

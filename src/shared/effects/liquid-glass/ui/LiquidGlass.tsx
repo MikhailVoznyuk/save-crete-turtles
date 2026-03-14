@@ -24,6 +24,7 @@ type Props = {
     edgeSingularity?: number;
 
     dirMode?: 0 | 1;
+    order?: number;
 };
 
 export function LiquidGlass({
@@ -41,6 +42,7 @@ export function LiquidGlass({
         edgePower = 8,
         edgeSingularity = 0.015,
         dirMode = 1,
+        order = 0
     }: Props) {
     const id = useId();
     const register = useRegisterLiquidGlass();
@@ -48,6 +50,9 @@ export function LiquidGlass({
 
     const enabledRef = useRef(enabled);
     enabledRef.current = enabled;
+
+    const orderRef = useRef(order);
+    orderRef.current = order;
 
     const paramsRef = useRef({
         intensity,
@@ -88,7 +93,8 @@ export function LiquidGlass({
             countRef,
             enabledRef,
             paramsRef,
-            padRef
+            padRef,
+            orderRef
         });
 
         return () => un();

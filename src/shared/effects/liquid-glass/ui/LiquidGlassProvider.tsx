@@ -163,20 +163,23 @@ float rb = boundaryRadius(dir);
 float rho = r / max(rb, 1.0);
 float rho01 = clamp(rho, 0.0, 1.2);
 
-float edge = smoothstep(0.65, 1.02, rho01);
-float center = 1.0 - smoothstep(0.0, 0.95, rho01);
+float edge = smoothstep(0.72, 1.02, rho01);
+float body = 1.0 - smoothstep(0.0, 0.82, rho01);
+float shoulder =
+  smoothstep(0.10, 0.82, rho01) *
+  (1.0 - smoothstep(0.58, 1.02, rho01));
 
-// базовый "объем"
-float mag = uMagnify * (0.25 + 0.75 * edge);
+// рефракция теперь живет не только на краю, а по большей части линзы
+float mag = uMagnify * (0.68 * body + 0.52 * shoulder + 0.18 * edge);
 float r2 = r * (1.0 - mag);
 
 float rhoC = clamp(rho, 0.0, 0.995);
-float e0 = smoothstep(0.45, 1.0, rhoC);
-float hard = pow(e0, uEdgePower);
+float e0 = smoothstep(0.25, 1.0, rhoC);
+float hard = pow(e0, max(1.0, uEdgePower));
 float singular = 1.0 / max(uEdgeSingularity, 1.0 - rhoC);
 
-// ВАЖНО: теперь pull считается относительно РЕАЛЬНОЙ границы, а не овала
-float pull = uIntensity * uEdgePull * hard * (0.00020 + 0.00110 * singular);
+// край всё ещё работает, но уже не монопольно
+float pull = uIntensity * uEdgePull * (0.00008 + 0.00048 * singular) * (0.30 + 0.70 * hard);
 r2 += pull * rb;
 
 float wob = (
@@ -184,67 +187,68 @@ float wob = (
   sin(uTime * 0.8 + dir.y * 11.0)
 ) * 0.5;
 
-r2 += wob * (0.0022 * uIntensity) * hard * rb;
+// делаем wob тише, чтобы не было ощущения мутной массы
+r2 += wob * (0.0014 * uIntensity) * (0.25 + 0.75 * hard) * rb;
 
 vec2 css2 = uCenterCss + dir * r2;
 vec2 uv = css2 / max(uViewportCss, vec2(1.0));
 uv = clamp(uv, vec2(0.001), vec2(0.999));
 
-  // chromatic aberration near edge
-  float ca = uChromatic * pow(edge, 1.6) * 0.0022;
-  vec2 caOff = dir * ca;
+// лёгкая CA, без жирной радужной грязи
+float ca = uChromatic * pow(edge, 1.35) * 0.0012;
+vec2 caOff = dir * ca;
 
-  vec3 sharp;
-  sharp.r = texture(uBg, uv + caOff).r;
-  sharp.g = texture(uBg, uv).g;
-  sharp.b = texture(uBg, uv - caOff).b;
+vec3 sharp;
+sharp.r = texture(uBg, uv + caOff).r;
+sharp.g = texture(uBg, uv).g;
+sharp.b = texture(uBg, uv - caOff).b;
 
-  vec3 blur = texture(uBlur, uv).rgb;
+vec3 blur = texture(uBlur, uv).rgb;
 
-  // blur profile: центр более матовый, край чище
-  float frost = clamp(uBlurAmt, 0.0, 1.0);
-  float mixW = frost * (0.78 * pow(center, 1.35) + 0.12 * edge);
-  vec3 col = mix(sharp, blur, mixW);
+// blur оставляем, но уже как тонкую мягкость, а не матовость
+float frost = clamp(uBlurAmt, 0.0, 1.0);
+float mixW = frost * (0.10 + 0.12 * body + 0.04 * edge);
+vec3 col = mix(sharp, blur, mixW);
 
-  // мягкий синий оттенок материала (не "заливка")
-  vec3 blue = vec3(0.10, 0.55, 1.0);
-  col += blue * (0.035 + 0.12*uTint) * (0.55*center + 0.15*edge);
+// холодный глянец, а не синяя молочная заливка
+vec3 blue = vec3(0.18, 0.56, 1.0);
+col += blue * (0.010 + 0.040 * uTint) * (0.20 + 0.22 * body + 0.18 * edge);
 
-  // --- Fresnel + specular (живой блик) ---
-  vec2 pr = dir * clamp(rho, 0.0, 1.0);              // граница ~1
-  float rr = clamp(length(pr), 0.0, 1.0);
-  float z = sqrt(max(0.0, 1.0 - rr*rr));
-  vec3 n = normalize(vec3(pr.x, pr.y, z));
-  vec3 V = vec3(0.0, 0.0, 1.0);
+// нормаль для glossy-стекла
+vec2 pr = dir * clamp(rho, 0.0, 1.0);
+float rr = clamp(length(pr), 0.0, 1.0);
+float z = sqrt(max(0.0, 1.0 - rr * rr));
+vec3 n = normalize(vec3(pr.x, pr.y, z));
+vec3 V = vec3(0.0, 0.0, 1.0);
 
-  // "свет" двигаем от pointer (как tilt)
-  vec3 L = normalize(vec3(-0.35 + 0.35*uLight.x, -0.18 + 0.35*uLight.y, 0.92));
-  vec3 H = normalize(L + V);
+// фиксированный холодный свет, без белого блика от курсора
+vec3 L = normalize(vec3(-0.22, -0.12, 0.97));
+vec3 H = normalize(L + V);
 
-  float fres = pow(1.0 - max(dot(n, V), 0.0), 3.8);
+float fres = pow(1.0 - max(dot(n, V), 0.0), 3.2);
 
-  // два лоба: sharp + broad
-  float s1 = pow(max(dot(n, H), 0.0), 140.0);
-  float s2 = pow(max(dot(n, H), 0.0), 26.0);
+float s1 = pow(max(dot(n, H), 0.0), 120.0);
+float s2 = pow(max(dot(n, H), 0.0), 34.0);
 
-  // streak (вытянутый блик)
-  vec2 sd = normalize(vec2(-0.6, 0.8));
-  float along = dot(pr, sd);
-  float across = dot(pr, vec2(sd.y, -sd.x));
-  float streak = exp(- (across*across) / (0.08)) * smoothstep(-0.2, 0.6, along);
+vec2 sd = normalize(vec2(-0.72, 0.70));
+float along = dot(pr, sd);
+float across = dot(pr, vec2(sd.y, -sd.x));
+float streak = exp(-(across * across) / 0.10) * smoothstep(-0.15, 0.75, along);
 
-  vec3 rimCol = blue * fres * uRim * (0.20 + 0.80*edge);
-  vec3 specCol = vec3(1.0) * s1 * uSpec * (0.25 + 0.75*streak);
-  vec3 specCol2 = blue * s2 * (0.18*uSpec);
+// никакого чисто белого блика
+vec3 gloss = vec3(0.70, 0.86, 1.0);
+vec3 rimCol = blue * fres * uRim * (0.05 + 0.24 * edge);
+vec3 specCol = gloss * s1 * (0.12 * uSpec) * (0.10 + 0.90 * streak);
+vec3 specCol2 = blue * s2 * (0.07 * uSpec);
 
-  col += rimCol + specCol + specCol2;
+col += rimCol + specCol + specCol2;
 
-  // внутренняя тень для "толщины"
-  col *= 1.0 - (0.10 * edge);
+// почти убираем внутреннюю "грязную" тень
+col *= 1.0 - (0.025 * edge);
 
-  // микрошум (дизеринг)
-  float nse = hash12(gl_FragCoord.xy + uTime*60.0);
-  col += (nse - 0.5) * 0.010;
+// шум сильно тише, чтобы не было ощущения матового пластика
+float nse = hash12(gl_FragCoord.xy + uTime * 60.0);
+col += (nse - 0.5) * 0.0025;
 
   // лёгкая гамма (без агрессивного tonemap)
   col = pow(max(col, 0.0), vec3(1.0/2.2));
@@ -501,8 +505,17 @@ export function LiquidGlassProvider({
             }
 
             const lenses = mapRef.current;
+
+            const orderedLenses = [...lenses.values()]
+                .filter((h) => h.visible && h.enabledRef.current)
+                .sort((a, b) => {
+                    const ao = a.orderRef.current ?? 0;
+                    const bo = b.orderRef.current ?? 0;
+                    return ao - bo;
+                });
+
             let any = false;
-            for (const h of lenses.values()) {
+            for (const h of orderedLenses) {
                 if (h.visible && h.enabledRef.current) { any = true; break; }
             }
 
@@ -889,21 +902,12 @@ export function LiquidGlassProvider({
         uniLens.current.uCenterCss = gl.getUniformLocation(progLens, 'uCenterCss');
         uniLens.current.uShapeMaxRadius = gl.getUniformLocation(progLens, 'uShapeMaxRadius');
 
-        const onMove = (e: PointerEvent) => {
-            const x = (e.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
-            const y = -((e.clientY / Math.max(1, window.innerHeight)) * 2 - 1);
-            lightRef.current.x = x;
-            lightRef.current.y = y;
-        };
-
         resize();
 
         window.addEventListener('resize', resize, { passive: true });
-        window.addEventListener('pointermove', onMove, { passive: true });
 
         return () => {
             window.removeEventListener('resize', resize);
-            window.removeEventListener('pointermove', onMove);
             stop();
 
             for (const v of mapRef.current.values() as any) v.io?.disconnect();
