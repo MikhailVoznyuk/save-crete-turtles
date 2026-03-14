@@ -16,6 +16,7 @@ type StageProps  = {
     duration?: number;
     delay?: number;
     stay?: number;
+    ease?: string;
 }
 
 // 0 - основной пузырь, 1 - вспомогательный (средний) 2 - завершающий
@@ -43,7 +44,7 @@ const BUBBLE_STAGES: StageProps[][] = [
         },
         {
             offsetX: 20,
-            offsetY: 268,
+            offsetY: 300,
             style: {
                 scale: '0'
             },
@@ -58,41 +59,46 @@ const BUBBLE_STAGES: StageProps[][] = [
             }
         },
         {
-            offsetX: 40,
-            offsetY: 40,
-            style: {
-                scale: '1'
-            },
-            delay: 5500,
-            duration: 1000,
-            stay: 0,
-        },
-        {
-            offsetX: 60,
-            offsetY: 60,
-            style: {
-                scale: '0'
-            },
-
-            duration: 200,
-            stay: 3300 // 10000 - 3300
-        },
-        {
-            offsetX: 40,
+            offsetX: 30,
             offsetY: 20,
             style: {
                 scale: '1'
             },
-            duration: 200,
+            delay: 5500,
+            stay: 0,
+            duration: 500,
+            ease: 'linear',
         },
         {
-            offsetX: 10,
-            offsetY: 300,
+            offsetX: 60,
+            offsetY: 50,
+            style: {
+                scale: '0',
+            },
+
+            duration: 400,
+            stay: 3600, // 10000 - 3600
+            ease: 'linear',
+        },
+        {
+            offsetX: 30,
+            offsetY: 200,
+            style: {
+                scale: '1',
+                opacity: '1',
+            },
+            duration: 600,
+            ease: 'linear',
+        },
+        {
+            offsetX: 30,
+            offsetY: 340,
             style: {
                 scale: '0'
             },
-            duration: 1000, // 11200 - 100
-            stay: 300
+            duration: 600, // 11200 - 100
+            stay: 300,
+            ease: 'linear',
         }
     ],
     [
@@ -102,43 +108,49 @@ const BUBBLE_STAGES: StageProps[][] = [
             }
         },
         {
-            offsetX: 40,
-            offsetY: 170,
+            offsetX: 100,
+            offsetY: 20,
             style: {
                 scale: '1'
             },
-            delay: 5500,
-            duration: 1000,
+            delay: 5800,
             stay: 0,
+            duration: 500,
+            ease: 'linear',
         },
         {
-            offsetX: 60,
-            offsetY: 200,
+            offsetX: 160,
+            offsetY: 40,
             style: {
-                scale: '0'
+                scale: '0',
             },
 
-            duration: 200,
-            stay: 3300 // 10000 - 3300
+            duration: 400,
+            stay: 3300, // 10000 - 3600
+            ease: 'linear',
         },
         {
-            offsetX: 40,
-            offsetY: 240,
+            offsetX: 200,
+            offsetY: 200,
             style: {
-                scale: '1'
+                scale: '1',
+                opacity: '1',
             },
-            duration: 200,
+            duration: 600,
+            delay: 200,
+            ease: 'linear',
         },
         {
-            offsetX: 10,
-            offsetY: 300,
+            offsetX: 200,
+            offsetY: 340,
             style: {
                 scale: '0'
             },
-            duration: 1000, // 11200 - 100
-            stay: 300
+            duration: 600, // 11200 - 100
+            stay: 100,
+            ease: 'linear',
         }
-    ]
+    ],
 ];
 
 type Cords = {x: number, y: number};
@@ -150,9 +162,14 @@ export function Bubbles() {
 
     const bubblesRef = useRef<(HTMLElement | null)[]>([]);
     const timelinesRef = useRef<Timeline[]>([]);
-    const [bubbleSizes, setBubbleSizes] = useState<Sizes[]>([{width: 256, height: 160}]);
+    const [bubbleSizes, setBubbleSizes] = useState<Sizes[]>([{width: 256, height: 160}, {width: 56, height: 56}, {width: 56, height: 56}]);
+    /*
     const scopeRef = useRef<HTMLDivElement | null>(null);
+    /*
+
+     */
     const [anchor, setAnchor] = useState<Cords | null>(null);
+
     useEffect(() => {
         if (bubblesRef.current.length === 0) return;
         const updateSteps= () => {
@@ -170,9 +187,10 @@ export function Bubbles() {
 
             setAnchor(pos);
 
-            for (let i = 0; i < 1; i++) {
+            for (let i = 0; i < BUBBLE_STAGES.length; i++) {
                 const el = bubblesRef.current[i];
                 if (el === null) {
+                    console.log('ye')
                     continue;
                 }
 
@@ -215,6 +233,7 @@ export function Bubbles() {
                         duration: stage.duration,
                         stay: stage.stay,
                         delay: stage.delay,
+                        ease: stage.ease ?? 'ease',
                     })
                 }
 
@@ -234,20 +253,160 @@ export function Bubbles() {
 
     return (
         <>
-            <div className='fixed size-2 rounded-full bg-red-600'
+            {/*<div className='fixed size-2 rounded-full bg-red-600'
                  ref={scopeRef}
                  style={{
                      left: `${anchor?.x ?? 0}px`,
                      top: `${anchor?.y ?? 0}px`,
                  }}
-            ></div>
-            <div className='fixed rounded-full animate-turbulence'
+            ></div>*/}
+            <div className='fixed transition-all rounded-full size-12 animate-turbulence  z-10'
+                 ref={el => {bubblesRef.current[1] = el}}
+                 style={
+                     {
+                         width: `${bubbleSizes[1].width}px`,
+                         height: `${bubbleSizes[1].height}px`
+                     }
+                 }
+            >
+                <JellyContainer
+                    className="rounded-full"
+                    innerClassName="size-14"
+                    outlineClassName="stroke-cyan-200/20"
+                    outline
+                    boundaryPoints={72}
+                    bendK={1000}
+                    smoothK={0.44}
+                    smoothIters={2}
+                    pathTension={0.6}
+                    pressureK={20000}
+                    shapeK={85}
+                    damping={9.2}
+                    hoverIndent={2.0}
+                    hoverRadius={140}
+                    hoverIndentMul={1.35}
+                    hoverEnterMul={1.25}
+                    hoverIndentSigmaFactor={0.30}
+                    hoverEnterSigmaFactor={0.30}
+                    hoverIndentWeightPow={1.55}
+                    hoverEnterWeightPow={1.25}
+                    hoverPressureBoost={0.0}
+                    hoverRingStrength={720}
+                    hoverRingMul={1.15}
+                    hoverRingLengthFactor={0}
+                    hoverConeMul={1.2}
+                    hoverConeWidthBaseFactor={0.26}
+                    hoverConeWidthSlopeFactor={0.46}
+                    hoverConeLengthFactor={2.3}
+                    hoverConeNormalSpeedGain={1200}
+                    clickIndent={0.01}
+                    clickWave={0.9}
+                    pointerSpeedMax={10000}
+                    hoverFastBoost={10}
+                    idle
+                    idleStrength={600}
+                    idleFreq={0.28}
+                    idleWaves={1.3}
+                    idleTurbulence={0.6}
+                    idleTangential={0.20}
+                    idleInteractMul={0.15}
+
+                >
+                    <LiquidGlass
+                        intensity={1.35}
+                        magnify={0.30}
+                        blur={0.18}
+                        chromatic={0.07}
+                        rim={0.24}
+                        spec={0.42}
+                        tint={0.22}
+                        alpha={1}
+                        edgePull={12}
+                        edgePower={5}
+                        edgeSingularity={0.035}
+                        dirMode={0}
+                        order={0}
+                    />
+
+                </JellyContainer>
+            </div>
+            <div className='fixed transition-all rounded-fullanimate-turbulence  z-10'
+                 ref={el => {bubblesRef.current[2] = el}}
+                 style={
+                     {
+                         width: `${bubbleSizes[2].width}px`,
+                         height: `${bubbleSizes[2].height}px`
+                     }
+                 }
+            >
+                <JellyContainer
+                    className="rounded-full"
+                    innerClassName="size-14"
+                    outlineClassName="stroke-cyan-200/20"
+                    outline
+                    boundaryPoints={72}
+                    bendK={1000}
+                    smoothK={0.44}
+                    smoothIters={2}
+                    pathTension={0.6}
+                    pressureK={20000}
+                    shapeK={85}
+                    damping={9.2}
+                    hoverIndent={2.0}
+                    hoverRadius={140}
+                    hoverIndentMul={1.35}
+                    hoverEnterMul={1.25}
+                    hoverIndentSigmaFactor={0.30}
+                    hoverEnterSigmaFactor={0.30}
+                    hoverIndentWeightPow={1.55}
+                    hoverEnterWeightPow={1.25}
+                    hoverPressureBoost={0.0}
+                    hoverRingStrength={720}
+                    hoverRingMul={1.15}
+                    hoverRingLengthFactor={0}
+                    hoverConeMul={1.2}
+                    hoverConeWidthBaseFactor={0.26}
+                    hoverConeWidthSlopeFactor={0.46}
+                    hoverConeLengthFactor={2.3}
+                    hoverConeNormalSpeedGain={1200}
+                    clickIndent={0.01}
+                    clickWave={0.9}
+                    pointerSpeedMax={10000}
+                    hoverFastBoost={10}
+                    idle
+                    idleStrength={600}
+                    idleFreq={0.28}
+                    idleWaves={1.3}
+                    idleTurbulence={0.6}
+                    idleTangential={0.20}
+                    idleInteractMul={0.15}
+
+                >
+                    <LiquidGlass
+                        intensity={1.35}
+                        magnify={0.30}
+                        blur={0.18}
+                        chromatic={0.07}
+                        rim={0.24}
+                        spec={0.42}
+                        tint={0.22}
+                        alpha={1}
+                        edgePull={12}
+                        edgePower={5}
+                        edgeSingularity={0.035}
+                        dirMode={0}
+                        order={1}
+                    />
+
+                </JellyContainer>
+            </div>
+            <div className='fixed rounded-full animate-turbulence z-20'
                  ref={(el) => {bubblesRef.current[0] = el}}
             >
                 <JellyContainer
-                    className="rounded-full "
+                    className="rounded-full z-20"
                     outlineClassName="stroke-cyan-200/20"
-                    innerClassName="w-64 h-40" // p-20
+                    innerClassName="w-64 h-40 z-20" // p-20
                     outline
                     boundaryPoints={72}
                     bendK={200}
@@ -288,26 +447,31 @@ export function Bubbles() {
 
                 >
                     <LiquidGlass
-                        intensity={1.15}
-                        magnify={0.12}
-                        blur={0.42}
-                        chromatic={0.18}
-                        rim={0.55}
-                        spec={0.55}
-                        tint={0.35}
+                        intensity={1.35}
+                        magnify={0.30}
+                        blur={0.18}
+                        chromatic={0.07}
+                        rim={0.24}
+                        spec={0.42}
+                        tint={0.22}
                         alpha={1}
+                        edgePull={12}
+                        edgePower={5}
+                        edgeSingularity={0.035}
                         dirMode={0}
+                        order={2}
                     />
 
                 </JellyContainer>
             </div>
-            <div className='fixed transition-all rounded-full size-12 animate-turbulence'
-                 ref={el => {bubblesRef.current[1] = el}}
+
+            <div className='fixed rounded-full animate-turbulence z-20 top-[80vh] left-[80vw]'
+                 ref={(el) => {bubblesRef.current[0] = el}}
             >
                 <JellyContainer
-                    className="rounded-full"
+                    className="rounded-full z-20"
                     outlineClassName="stroke-cyan-200/20"
-                    innerClassName="p-20"
+                    innerClassName="w-64 h-40 z-20" // p-20
                     outline
                     boundaryPoints={72}
                     bendK={200}
@@ -348,79 +512,24 @@ export function Bubbles() {
 
                 >
                     <LiquidGlass
-                        intensity={1.15}
-                        magnify={0.12}
-                        blur={0.42}
-                        chromatic={0.18}
-                        rim={0.55}
-                        spec={0.55}
-                        tint={0.35}
+                        intensity={1.35}
+                        magnify={0.30}
+                        blur={0.18}
+                        chromatic={0.07}
+                        rim={0.24}
+                        spec={0.42}
+                        tint={0.22}
                         alpha={1}
+                        edgePull={12}
+                        edgePower={5}
+                        edgeSingularity={0.035}
                         dirMode={0}
+                        order={2}
                     />
 
                 </JellyContainer>
             </div>
-            <div className='fixed transition-all rounded-full size-12 animate-turbulence'
-                 ref={el => {bubblesRef.current[2] = el}}
-            >
-                <JellyContainer
-                    className="rounded-full"
-                    outlineClassName="stroke-cyan-200/20"
-                    innerClassName="p-20"
-                    outline
-                    boundaryPoints={72}
-                    bendK={200}
-                    smoothK={0.44}
-                    smoothIters={2}
-                    pathTension={0.6}
-                    pressureK={20000}
-                    shapeK={85}
-                    damping={7.2}
-                    hoverIndent={2.0}
-                    hoverRadius={140}
-                    hoverIndentMul={1.35}
-                    hoverEnterMul={1.25}
-                    hoverIndentSigmaFactor={0.30}
-                    hoverEnterSigmaFactor={0.30}
-                    hoverIndentWeightPow={1.55}
-                    hoverEnterWeightPow={1.25}
-                    hoverPressureBoost={0.0}
-                    hoverRingStrength={720}
-                    hoverRingMul={1.15}
-                    hoverRingLengthFactor={0}
-                    hoverConeMul={1.2}
-                    hoverConeWidthBaseFactor={0.26}
-                    hoverConeWidthSlopeFactor={0.46}
-                    hoverConeLengthFactor={2.3}
-                    hoverConeNormalSpeedGain={1200}
-                    clickIndent={0.01}
-                    clickWave={0.9}
-                    pointerSpeedMax={10000}
-                    hoverFastBoost={10}
-                    idle
-                    idleStrength={1000}
-                    idleFreq={0.28}
-                    idleWaves={1.3}
-                    idleTurbulence={0.7}
-                    idleTangential={0.20}
-                    idleInteractMul={0.15}
 
-                >
-                    <LiquidGlass
-                        intensity={1.15}
-                        magnify={0.12}
-                        blur={0.42}
-                        chromatic={0.18}
-                        rim={0.55}
-                        spec={0.55}
-                        tint={0.35}
-                        alpha={1}
-                        dirMode={0}
-                    />
-
-                </JellyContainer>
-            </div>
         </>
 
 
