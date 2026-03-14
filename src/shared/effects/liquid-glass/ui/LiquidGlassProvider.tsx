@@ -380,8 +380,7 @@ float nse = hash12(gl_FragCoord.xy + uTime * 60.0);
 col += (nse - 0.5) * 0.0025;
 
   // лёгкая гамма (без агрессивного tonemap)
-  col = pow(max(col, 0.0), vec3(1.0/2.2));
-
+  col = max(col, 0.0);
   o = vec4(col, clamp(uAlpha, 0.0, 1.0));
 }
 `;
