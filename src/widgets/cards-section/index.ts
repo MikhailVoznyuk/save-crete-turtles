@@ -1,0 +1,1 @@
+export {FactCardsSection} from "@/widgets/cards-section/ui/FactCardsSection";
