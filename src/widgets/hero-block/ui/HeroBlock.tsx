@@ -7,6 +7,7 @@ import {WaveButton} from "@/shared/ui/buttons/wave-button";
 import {JellyContainer} from "@/shared/ui/containers";
 import {LiquidGlass} from "@/shared/effects/liquid-glass";
 import {Bubbles} from "@/widgets/hero-block/ui/Bubbles";
+import {ArrowButton} from "@/shared/ui/buttons/arrow-button";
 
 export function HeroBlock() {
     return (
@@ -27,10 +28,13 @@ export function HeroBlock() {
                 </div>
             </div>
 
-                <Bubbles />
-
-
-
+            <Bubbles />
+            <ArrowButton
+                onClick={() => {}}
+                direction='down'
+                containerVisible={false}
+                className='absolute left-1/2 bottom-2 -translate-1/2 animate-bounce-slow'
+            />
 
         </section>
     )
