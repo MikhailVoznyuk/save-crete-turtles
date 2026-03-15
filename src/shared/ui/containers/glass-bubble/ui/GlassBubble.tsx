@@ -6,12 +6,51 @@ type GlassBubbleProps = {
     className?: string;
     innerClassName?: string;
     idle?: boolean,
-    effectStrength?: 'sm' | 'md',
+    effectStrength?: 'xs' | 'sm' | 'md',
     glassOrder?: number;
     children?: React.ReactNode;
 }
 
 const JELLY_CONTAINER_PARAMS = {
+    xs: {
+        outline: true,
+        boundaryPoints: 72,
+        bendK: 200,
+        smoothK: 0.44,
+        smoothIters: 2,
+        pathTension: 0.6,
+        pressureK: 20000,
+        shapeK: 85,
+        damping: 9.2,
+        hoverIndent: 1,
+        hoverRadius: 140,
+        hoverIndentMul: 1.35,
+        hoverEnterMul: 1.25,
+        hoverIndentSigmaFactor: 0.30,
+        hoverEnterSigmaFactor: 0.30,
+        hoverIndentWeightPow: 1.55,
+        hoverEnterWeightPow: 1.25,
+        hoverPressureBoost: 0.0,
+        hoverRingStrength: 720,
+        hoverRingMul: 1.1,
+        hoverRingLengthFactor: 0,
+        hoverConeMul: 1.1,
+        hoverConeWidthBaseFactor: 0.26,
+        hoverConeWidthSlopeFactor: 0.46,
+        hoverConeLengthFactor: 2.3,
+        hoverConeNormalSpeedGain: 1200,
+        clickIndent: 0.01,
+        clickWave: 0.16,
+        pointerSpeedMax: 10000,
+        hoverFastBoost: 1.16,
+        idle: true,
+        idleStrength: 500,
+        idleFreq: 0.28,
+        idleWaves: 1.3,
+        idleTurbulence: 0.6,
+        idleTangential: 0.20,
+        idleInteractMul: 0.15,
+    },
     sm: {
         outline: true,
         boundaryPoints: 72,
