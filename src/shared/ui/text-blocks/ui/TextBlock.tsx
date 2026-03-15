@@ -24,7 +24,7 @@ export function TextBlock({
     className}: TextBlockProps) {
     return (
         <p className={twMerge(
-            `font-dongle font-light text-white ${s[size]}`, className, uppercase && 'uppercase')}
+            `font-dongle font-light text-white ${s[size]}`, className, (uppercase) ? 'uppercase' : '')}
         >{children}</p>
     )
 }
