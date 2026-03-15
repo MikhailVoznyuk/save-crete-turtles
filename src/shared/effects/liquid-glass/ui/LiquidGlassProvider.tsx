@@ -150,6 +150,63 @@ float boundaryRadius(vec2 dir){
   return max(1.0, texture(uShapePolar, vec2(fract(u), 0.5)).r * uShapeMaxRadius);
 }
 
+float hash21(vec2 p){
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
+}
+
+float noise2(vec2 p){
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+
+  float a = hash21(i);
+  float b = hash21(i + vec2(1.0, 0.0));
+  float c = hash21(i + vec2(0.0, 1.0));
+  float d = hash21(i + vec2(1.0, 1.0));
+
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+float fbm4(vec2 p){
+  float v = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 4; i++) {
+    v += a * noise2(p);
+    p = p * 2.02 + vec2(17.1, 9.2);
+    a *= 0.5;
+  }
+  return v;
+}
+
+float filmPhase(float lambdaNm, float thicknessNm, float cosTheta){
+  return 4.0 * 3.141592653589793 * 1.33 * thicknessNm * cosTheta / lambdaNm + 3.141592653589793;
+}
+
+vec3 thinFilmSpectrum(float thicknessNm, float cosTheta){
+  // несколько спектральных линий вместо тупого RGB-cos.
+  // это всё ещё аппроксимация, но выглядит заметно правдоподобнее.
+  float i650 = 0.5 + 0.5 * cos(filmPhase(650.0, thicknessNm, cosTheta));
+  float i580 = 0.5 + 0.5 * cos(filmPhase(580.0, thicknessNm, cosTheta));
+  float i530 = 0.5 + 0.5 * cos(filmPhase(530.0, thicknessNm, cosTheta));
+  float i490 = 0.5 + 0.5 * cos(filmPhase(490.0, thicknessNm, cosTheta));
+  float i440 = 0.5 + 0.5 * cos(filmPhase(440.0, thicknessNm, cosTheta));
+
+  vec3 rgb = vec3(0.0);
+  rgb += i650 * vec3(1.00, 0.08, 0.00);
+  rgb += i580 * vec3(1.00, 0.58, 0.00);
+  rgb += i530 * vec3(0.20, 1.00, 0.16);
+  rgb += i490 * vec3(0.00, 0.76, 1.00);
+  rgb += i440 * vec3(0.24, 0.12, 1.00);
+
+  rgb /= 2.55;
+  rgb = clamp(rgb, 0.0, 1.0);
+  rgb = pow(rgb, vec3(0.92));
+
+  return rgb;
+}
+
 void main(){
   float cssX = gl_FragCoord.x / uScale;
   float cssY = ((uViewportCss.y*uScale) - gl_FragCoord.y) / uScale;
@@ -210,9 +267,22 @@ float frost = clamp(uBlurAmt, 0.0, 1.0);
 float mixW = frost * (0.10 + 0.12 * body + 0.04 * edge);
 vec3 col = mix(sharp, blur, mixW);
 
+float bgLum = dot(sharp, vec3(0.2126, 0.7152, 0.0722));
+
+// На ярком фоне стекло должно чуть плотнеть и меньше "светиться".
+// На тёмном можно позволить больше блика.
+float brightBg = smoothstep(0.45, 0.82, bgLum);
+float darkBg = 1.0 - brightBg;
+
+// Лёгкая адаптивная плотность материала.
+// Это не грязная серость, а мягкое удержание формы на ярком видео.
+col *= mix(1.0, 0.88, brightBg * (0.35 + 0.65 * body));
+
 // холодный глянец, а не синяя молочная заливка
 vec3 blue = vec3(0.18, 0.56, 1.0);
-col += blue * (0.010 + 0.040 * uTint) * (0.20 + 0.22 * body + 0.18 * edge);
+float tintAmt = (0.008 + 0.028 * uTint) * (0.16 + 0.18 * body + 0.16 * edge);
+tintAmt *= mix(1.0, 0.55, brightBg);
+col += blue * tintAmt;
 
 // нормаль для glossy-стекла
 vec2 pr = dir * clamp(rho, 0.0, 1.0);
@@ -225,7 +295,8 @@ vec3 V = vec3(0.0, 0.0, 1.0);
 vec3 L = normalize(vec3(-0.22, -0.12, 0.97));
 vec3 H = normalize(L + V);
 
-float fres = pow(1.0 - max(dot(n, V), 0.0), 3.2);
+float NoV = max(dot(n, V), 0.0);
+float fres = pow(1.0 - NoV, 3.2);
 
 float s1 = pow(max(dot(n, H), 0.0), 120.0);
 float s2 = pow(max(dot(n, H), 0.0), 34.0);
@@ -235,24 +306,109 @@ float along = dot(pr, sd);
 float across = dot(pr, vec2(sd.y, -sd.x));
 float streak = exp(-(across * across) / 0.10) * smoothstep(-0.15, 0.75, along);
 
-// никакого чисто белого блика
+// основной glossy-стеклянный слой НЕ ТРОГАЕМ по сути
 vec3 gloss = vec3(0.70, 0.86, 1.0);
 vec3 rimCol = blue * fres * uRim * (0.05 + 0.24 * edge);
 vec3 specCol = gloss * s1 * (0.12 * uSpec) * (0.10 + 0.90 * streak);
 vec3 specCol2 = blue * s2 * (0.07 * uSpec);
 
-col += rimCol + specCol + specCol2;
+// --------------------------------------------------
+// отдельная внутренняя thin-film оболочка
+// она живёт не как наклейка на rim, а как своя пленка
+// --------------------------------------------------
+
+// немного сдвинутая и чуть отличающаяся оболочка,
+// чтобы блик не выглядел пришитым к основной границе
+vec2 prFilm = pr * vec2(0.96, 1.03) + vec2(0.0, -0.035);
+
+float rrF = clamp(length(prFilm), 0.0, 1.0);
+float zF = sqrt(max(0.0, 1.0 - rrF * rrF));
+vec3 nFilm = normalize(vec3(prFilm.x, prFilm.y, zF));
+
+float NoVf = max(dot(nFilm, V), 0.0);
+float NoHf = max(dot(nFilm, H), 0.0);
+
+// собственное поле толщины пленки.
+// это и есть главное: не рисованная дуга, а живая толщина,
+// которая медленно "стекает" как у мыльного пузыря.
+vec2 flowUv = prFilm * vec2(1.12, 1.84);
+float t = uTime * 0.036;
+
+float d1 = fbm4(vec2(flowUv.x * 0.85 + 0.04 * t, flowUv.y * 1.18 - t));
+float d2 = fbm4(vec2(flowUv.x * 2.10 - 0.03 * t, flowUv.y * 2.75 - 1.55 * t));
+
+float topness = clamp(0.5 - 0.5 * prFilm.y, 0.0, 1.0);
+
+// пленка заметнее в плечевой зоне и ближе к краю, но не на самой кромке
+float filmZone =
+    smoothstep(0.58, 0.90, rrF) *
+    (1.0 - smoothstep(0.97, 1.04, rrF));
+
+// физически-похожий drainage:
+// сверху пленка тоньше, снизу толще, плюс медленная неоднородность
+float thicknessNm =
+    mix(760.0, 250.0, topness)
+  - 120.0 * filmZone
+  + 150.0 * (d1 - 0.5)
+  + 55.0  * (d2 - 0.5);
+
+thicknessNm = clamp(thicknessNm, 170.0, 900.0);
+
+// угол для интерференции
+float cosFilm = clamp(0.55 * NoVf + 0.45 * NoHf, 0.05, 1.0);
+
+// спектральный цвет пленки
+vec3 film = thinFilmSpectrum(thicknessNm, cosFilm);
+
+// насыщенность интерференции.
+// если chroma низкая, блик не надо насильно тащить наружу.
+float chroma =
+    max(max(film.r, film.g), film.b) -
+    min(min(film.r, film.g), film.b);
+
+// маска thin-film слоя:
+// в верхней части и на скользящих углах он сильнее,
+// поэтому получаются те самые живые дуги
+float filmMask =
+    smoothstep(0.46, 0.92, rrF) *
+    (1.0 - smoothstep(0.985, 1.03, rrF)) *
+    (0.50 + 0.50 * topness) *
+    (0.35 + 0.65 * sqrt(fres + 1e-4)) *
+    smoothstep(0.02, 0.10, chroma);
+
+float filmBroad = pow(NoHf, 8.0);
+float filmSharp = pow(NoHf, 20.0);
+
+vec3 filmRim    = film * (0.09 + 0.1 * uSpec) * filmMask;
+vec3 filmSheen  = film * (0.14 + 0.18 * uSpec) * filmBroad * filmMask;
+vec3 filmAccent = film * (0.1 + 0.13 * uSpec) * filmSharp * filmMask * (0.45 + 0.55 * streak);
+
+float glareCut = mix(1.0, 0.58, brightBg);
+float filmCut  = mix(1.0, 0.64, brightBg);
+
+rimCol     *= glareCut;
+specCol    *= glareCut;
+specCol2   *= glareCut;
+filmRim    *= filmCut;
+filmSheen  *= filmCut;
+filmAccent *= filmCut;
+
+vec3 glassAdd = rimCol + specCol + specCol2;
+vec3 filmAdd = filmRim + filmSheen + filmAccent;
+
+col += glassAdd;
+col = mix(col, col + filmAdd, 0.72);
 
 // почти убираем внутреннюю "грязную" тень
-col *= 1.0 - (0.025 * edge);
+float formHold = 0.018 * shoulder + 0.030 * edge;
+col *= 1.0 - formHold * (0.55 + 0.45 * brightBg);
 
 // шум сильно тише, чтобы не было ощущения матового пластика
 float nse = hash12(gl_FragCoord.xy + uTime * 60.0);
 col += (nse - 0.5) * 0.0025;
 
   // лёгкая гамма (без агрессивного tonemap)
-  col = pow(max(col, 0.0), vec3(1.0/2.2));
-
+  col = max(col, 0.0);
   o = vec4(col, clamp(uAlpha, 0.0, 1.0));
 }
 `;

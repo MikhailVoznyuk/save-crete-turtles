@@ -5,7 +5,7 @@ import {LiquidGlass} from "@/shared/effects/liquid-glass";
 import {TextBlock} from "@/shared/ui/text-blocks";
 import {Timeline} from "@/shared/utils/animations";
 import {VideoPointAnchor} from "@/shared/utils/position";
-
+import {GlassBubble} from "@/shared/ui/containers/glass-bubble";
 
 // засторить позицию элементов для каждого состояния
 type Stage = 'enter' | 'show' | 'out'
@@ -22,7 +22,7 @@ type StageProps  = {
 // 0 - основной пузырь, 1 - вспомогательный (средний) 2 - завершающий
 
 // Задать смещение относительно изначального якоря, не позиционирование стилями
-// TODO: задать offset
+// TODO: В перспективе сделать чтобы текст появлялся когда пузырь статичен, и исчезал когда он начианет всплывать
 // 11500мс - длинна видео
 
 const BUBBLE_STAGES: StageProps[][] = [
@@ -269,66 +269,11 @@ export function Bubbles() {
                      }
                  }
             >
-                <JellyContainer
+                <GlassBubble
                     className="rounded-full"
                     innerClassName="size-14"
-                    outlineClassName="stroke-cyan-200/20"
-                    outline
-                    boundaryPoints={72}
-                    bendK={1000}
-                    smoothK={0.44}
-                    smoothIters={2}
-                    pathTension={0.6}
-                    pressureK={20000}
-                    shapeK={85}
-                    damping={9.2}
-                    hoverIndent={2.0}
-                    hoverRadius={140}
-                    hoverIndentMul={1.35}
-                    hoverEnterMul={1.25}
-                    hoverIndentSigmaFactor={0.30}
-                    hoverEnterSigmaFactor={0.30}
-                    hoverIndentWeightPow={1.55}
-                    hoverEnterWeightPow={1.25}
-                    hoverPressureBoost={0.0}
-                    hoverRingStrength={720}
-                    hoverRingMul={1.15}
-                    hoverRingLengthFactor={0}
-                    hoverConeMul={1.2}
-                    hoverConeWidthBaseFactor={0.26}
-                    hoverConeWidthSlopeFactor={0.46}
-                    hoverConeLengthFactor={2.3}
-                    hoverConeNormalSpeedGain={1200}
-                    clickIndent={0.01}
-                    clickWave={0.9}
-                    pointerSpeedMax={10000}
-                    hoverFastBoost={10}
-                    idle
-                    idleStrength={600}
-                    idleFreq={0.28}
-                    idleWaves={1.3}
-                    idleTurbulence={0.6}
-                    idleTangential={0.20}
-                    idleInteractMul={0.15}
-
-                >
-                    <LiquidGlass
-                        intensity={1.35}
-                        magnify={0.30}
-                        blur={0.18}
-                        chromatic={0.07}
-                        rim={0.24}
-                        spec={0.42}
-                        tint={0.22}
-                        alpha={1}
-                        edgePull={12}
-                        edgePower={5}
-                        edgeSingularity={0.035}
-                        dirMode={0}
-                        order={0}
-                    />
-
-                </JellyContainer>
+                    effectStrength='sm'
+                />
             </div>
             <div className='fixed transition-all rounded-fullanimate-turbulence  z-10'
                  ref={el => {bubblesRef.current[2] = el}}
@@ -339,199 +284,31 @@ export function Bubbles() {
                      }
                  }
             >
-                <JellyContainer
+                <GlassBubble
                     className="rounded-full"
                     innerClassName="size-14"
-                    outlineClassName="stroke-cyan-200/20"
-                    outline
-                    boundaryPoints={72}
-                    bendK={1000}
-                    smoothK={0.44}
-                    smoothIters={2}
-                    pathTension={0.6}
-                    pressureK={20000}
-                    shapeK={85}
-                    damping={9.2}
-                    hoverIndent={2.0}
-                    hoverRadius={140}
-                    hoverIndentMul={1.35}
-                    hoverEnterMul={1.25}
-                    hoverIndentSigmaFactor={0.30}
-                    hoverEnterSigmaFactor={0.30}
-                    hoverIndentWeightPow={1.55}
-                    hoverEnterWeightPow={1.25}
-                    hoverPressureBoost={0.0}
-                    hoverRingStrength={720}
-                    hoverRingMul={1.15}
-                    hoverRingLengthFactor={0}
-                    hoverConeMul={1.2}
-                    hoverConeWidthBaseFactor={0.26}
-                    hoverConeWidthSlopeFactor={0.46}
-                    hoverConeLengthFactor={2.3}
-                    hoverConeNormalSpeedGain={1200}
-                    clickIndent={0.01}
-                    clickWave={0.9}
-                    pointerSpeedMax={10000}
-                    hoverFastBoost={10}
-                    idle
-                    idleStrength={600}
-                    idleFreq={0.28}
-                    idleWaves={1.3}
-                    idleTurbulence={0.6}
-                    idleTangential={0.20}
-                    idleInteractMul={0.15}
-
-                >
-                    <LiquidGlass
-                        intensity={1.35}
-                        magnify={0.30}
-                        blur={0.18}
-                        chromatic={0.07}
-                        rim={0.24}
-                        spec={0.42}
-                        tint={0.22}
-                        alpha={1}
-                        edgePull={12}
-                        edgePower={5}
-                        edgeSingularity={0.035}
-                        dirMode={0}
-                        order={1}
-                    />
-
-                </JellyContainer>
+                    effectStrength='sm'
+                />
             </div>
             <div className='fixed rounded-full animate-turbulence z-20'
                  ref={(el) => {bubblesRef.current[0] = el}}
             >
-                <JellyContainer
-                    className="rounded-full z-20"
-                    outlineClassName="stroke-cyan-200/20"
-                    innerClassName="w-64 h-40 z-20" // p-20
-                    outline
-                    boundaryPoints={72}
-                    bendK={200}
-                    smoothK={0.44}
-                    smoothIters={2}
-                    pathTension={0.6}
-                    pressureK={20000}
-                    shapeK={85}
-                    damping={7.2}
-                    hoverIndent={2.0}
-                    hoverRadius={140}
-                    hoverIndentMul={1.35}
-                    hoverEnterMul={1.25}
-                    hoverIndentSigmaFactor={0.30}
-                    hoverEnterSigmaFactor={0.30}
-                    hoverIndentWeightPow={1.55}
-                    hoverEnterWeightPow={1.25}
-                    hoverPressureBoost={0.0}
-                    hoverRingStrength={720}
-                    hoverRingMul={1.15}
-                    hoverRingLengthFactor={0}
-                    hoverConeMul={1.2}
-                    hoverConeWidthBaseFactor={0.26}
-                    hoverConeWidthSlopeFactor={0.46}
-                    hoverConeLengthFactor={2.3}
-                    hoverConeNormalSpeedGain={1200}
-                    clickIndent={0.01}
-                    clickWave={0.9}
-                    pointerSpeedMax={10000}
-                    hoverFastBoost={10}
-                    idle
-                    idleStrength={1000}
-                    idleFreq={0.28}
-                    idleWaves={1.3}
-                    idleTurbulence={0.7}
-                    idleTangential={0.20}
-                    idleInteractMul={0.15}
-
+                <GlassBubble
+                    className="rounded-full"
+                    innerClassName="w-64 h-40 z-20 p-10 flex justify-center items-center"
+                    effectStrength='md'
                 >
-                    <LiquidGlass
-                        intensity={1.35}
-                        magnify={0.30}
-                        blur={0.18}
-                        chromatic={0.07}
-                        rim={0.24}
-                        spec={0.42}
-                        tint={0.22}
-                        alpha={1}
-                        edgePull={12}
-                        edgePower={5}
-                        edgeSingularity={0.035}
-                        dirMode={0}
-                        order={2}
-                    />
-
-                </JellyContainer>
+                    <div className='w-64 h-32 rounded-full flex items-center justify-center'
+                         style={{background: 'radial-gradient(rgba(0, 238, 255, 0.26) 0, transparent 70%)'}}
+                    >
+                        <TextBlock
+                            size='lg'
+                            className=' text-cold-white/95 text-center text-6xl leading-[0.7] text-shadow-[0_4px_4px_rgba(0,0,0,0.25)]'>
+                            Help me survive!
+                        </TextBlock>
+                    </div>
+                </GlassBubble>
             </div>
-
-            <div className='fixed rounded-full animate-turbulence z-20 top-[80vh] left-[80vw]'
-                 ref={(el) => {bubblesRef.current[0] = el}}
-            >
-                <JellyContainer
-                    className="rounded-full z-20"
-                    outlineClassName="stroke-cyan-200/20"
-                    innerClassName="w-64 h-40 z-20" // p-20
-                    outline
-                    boundaryPoints={72}
-                    bendK={200}
-                    smoothK={0.44}
-                    smoothIters={2}
-                    pathTension={0.6}
-                    pressureK={20000}
-                    shapeK={85}
-                    damping={7.2}
-                    hoverIndent={2.0}
-                    hoverRadius={140}
-                    hoverIndentMul={1.35}
-                    hoverEnterMul={1.25}
-                    hoverIndentSigmaFactor={0.30}
-                    hoverEnterSigmaFactor={0.30}
-                    hoverIndentWeightPow={1.55}
-                    hoverEnterWeightPow={1.25}
-                    hoverPressureBoost={0.0}
-                    hoverRingStrength={720}
-                    hoverRingMul={1.15}
-                    hoverRingLengthFactor={0}
-                    hoverConeMul={1.2}
-                    hoverConeWidthBaseFactor={0.26}
-                    hoverConeWidthSlopeFactor={0.46}
-                    hoverConeLengthFactor={2.3}
-                    hoverConeNormalSpeedGain={1200}
-                    clickIndent={0.01}
-                    clickWave={0.9}
-                    pointerSpeedMax={10000}
-                    hoverFastBoost={10}
-                    idle
-                    idleStrength={1000}
-                    idleFreq={0.28}
-                    idleWaves={1.3}
-                    idleTurbulence={0.7}
-                    idleTangential={0.20}
-                    idleInteractMul={0.15}
-
-                >
-                    <LiquidGlass
-                        intensity={1.35}
-                        magnify={0.30}
-                        blur={0.18}
-                        chromatic={0.07}
-                        rim={0.24}
-                        spec={0.42}
-                        tint={0.22}
-                        alpha={1}
-                        edgePull={12}
-                        edgePower={5}
-                        edgeSingularity={0.035}
-                        dirMode={0}
-                        order={2}
-                    />
-
-                </JellyContainer>
-            </div>
-
         </>
-
-
     )
 }
