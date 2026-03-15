@@ -7,13 +7,14 @@ type TextBlockProps = {
     size?: TextSize;
     uppercase?: boolean;
     className?: string;
+    centered?: boolean;
 }
 
 const s: Record<TextSize, string> = {
-    sm: 'text-lg',
-    md: 'text-2xl',
-    lg: 'text-3xl',
-    xl: 'text-5xl leading-[0.7]',
+    sm: 'text-xl',
+    md: 'text-3xl leading-[0.9]',
+    lg: 'text-4xl leading-[0.9]',
+    xl: 'text-6xl leading-[0.7]',
 }
 
 
@@ -21,10 +22,15 @@ export function TextBlock({
     children,
     size='md',
     uppercase,
+    centered,
     className}: TextBlockProps) {
     return (
         <p className={twMerge(
-            `font-dongle font-light text-white ${s[size]}`, className, (uppercase) ? 'uppercase' : '')}
+            `font-dongle font-light text-white ${s[size]}`,
+            className,
+            (uppercase) ? 'uppercase' : '',
+            (centered) ? 'text-center' : '',
+        )}
         >{children}</p>
     )
 }
