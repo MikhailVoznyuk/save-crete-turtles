@@ -252,7 +252,7 @@ export function Bubbles() {
 
 
     return (
-        <section className='relative'>
+        <>
             {/*<div className='fixed size-2 rounded-full bg-red-600'
                  ref={scopeRef}
                  style={{
@@ -309,6 +309,6 @@ export function Bubbles() {
                     </div>
                 </GlassBubble>
             </div>
-        </section>
+        </>
     )
 }
