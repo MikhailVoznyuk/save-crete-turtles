@@ -10,6 +10,7 @@ type Base = {
     as?: HeaderAs;
     variant?: Variant;
     size?: TextSize;
+    centered?: boolean;
     titleClassName?: string;
     containerClassName?: string;
 }
@@ -29,8 +30,8 @@ type TitleProps = LinedOn | LinedOff;
 // Потом дописать адаптив для шрифтов
 const s: Record<TextSize, string> = {
     sm: 'text-2xl leading-[0.7]',
-    md: 'text-3xl leading-[0.7]',
-    lg: 'text-4xl leading-[0.7]',
+    md: 'text-5xl leading-[0.7]',
+    lg: 'text-7xl leading-[0.7]',
     xl: 'text-8xl leading-[0.7]',
 }
 
@@ -46,11 +47,15 @@ export function Title({
     size='lg',
     titleClassName,
     containerClassName,
+    centered,
     lined,
     lineClassName}: TitleProps) {
 
     return (
-        <div className={twMerge(lined && 'flex flex-col gap-1', containerClassName)}>
+        <div className={twMerge(
+            (lined) ? 'flex flex-col gap-1' : '',
+            (centered) ? 'text-center items-center' : '',
+            containerClassName)}>
             <Tag
                 className={twMerge(`font-dongle font-light ${t[variant]} ${s[size]}`, titleClassName)}
             >{children}</Tag>
