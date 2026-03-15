@@ -5,6 +5,7 @@ import Image from "next/image";
 import React from "react";
 
 export type FactCardProps = {
+    id: string,
     icon: string,
     title: string | React.ReactNode,
     description: string,
@@ -14,13 +15,13 @@ export type FactCardProps = {
 export function FactCard({ icon, title, description, iconAlt }: FactCardProps) {
     return (
         <GlassBubble
-            idle={false}
+            effectStrength={'xs'}
             className='rounded-4xl'
             innerClassName='p-5'
         >
             <div className='flex flex-col gap-4 w-72 items-center'>
-                <div className='size-20 rounded-full bg-white/20 flex items-center justify-center'>
-                    <Image src={icon} width={56} height={56} alt={iconAlt ?? 'icon of fact about turtles'} />
+                <div className='size-20 rounded-full bg-white/10 border border-white/40 flex items-center justify-center'>
+                    <Image src={icon} width={50} height={50} alt={iconAlt ?? 'icon of fact about turtles'} />
                 </div>
                 <Title
                     size={'md'}
