@@ -1,0 +1,1 @@
+export {ArrowButton} from "@/shared/ui/buttons/arrow-button/ui/ArrowButton";
