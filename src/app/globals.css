@@ -17,6 +17,7 @@
   --font-inter: var(--font-inter);
   --font-dongle: var(--font-dongle);
   --animate-turbulence: turbulence 8s ease-in-out infinite;
+  --animate-bounce-slow: bounce-slow 2s ease-in-out infinite;
 }
 
 @keyframes turbulence {
@@ -40,6 +41,17 @@
   }
 }
 
+@keyframes bounce-slow {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(20%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
