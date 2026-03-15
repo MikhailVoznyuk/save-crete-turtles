@@ -316,13 +316,13 @@ export function Bubbles() {
                         intensity={1.35}
                         magnify={0.30}
                         blur={0.18}
-                        chromatic={0.07}
+                        chromatic={0.03}
                         rim={0.24}
                         spec={0.42}
                         tint={0.22}
                         alpha={1}
-                        edgePull={12}
-                        edgePower={5}
+                        edgePull={22}
+                        edgePower={10}
                         edgeSingularity={0.035}
                         dirMode={0}
                         order={0}
@@ -386,13 +386,13 @@ export function Bubbles() {
                         intensity={1.35}
                         magnify={0.30}
                         blur={0.18}
-                        chromatic={0.07}
+                        chromatic={0.03}
                         rim={0.24}
                         spec={0.42}
                         tint={0.22}
                         alpha={1}
-                        edgePull={12}
-                        edgePower={5}
+                        edgePull={22}
+                        edgePower={10}
                         edgeSingularity={0.035}
                         dirMode={0}
                         order={1}
@@ -406,7 +406,7 @@ export function Bubbles() {
                 <JellyContainer
                     className="rounded-full z-20"
                     outlineClassName="stroke-cyan-200/20"
-                    innerClassName="w-64 h-40 z-20" // p-20
+                    innerClassName="w-64 h-40 z-20 p-10 flex justify-center items-center" // p-20
                     outline
                     boundaryPoints={72}
                     bendK={200}
@@ -450,23 +450,31 @@ export function Bubbles() {
                         intensity={1.35}
                         magnify={0.30}
                         blur={0.18}
-                        chromatic={0.07}
+                        chromatic={0.03}
                         rim={0.24}
                         spec={0.42}
                         tint={0.22}
                         alpha={1}
-                        edgePull={12}
-                        edgePower={5}
+                        edgePull={22}
+                        edgePower={10}
                         edgeSingularity={0.035}
                         dirMode={0}
                         order={2}
                     />
+                    <div className='w-64 h-32 rounded-full flex items-center justify-center'
+                         style={{background: 'radial-gradient(rgba(0, 238, 255, 0.26) 0, transparent 70%)'}}
+                       >
+                        <TextBlock
+                            size='lg'
+                            className=' text-cold-white/95 text-center text-6xl leading-[0.7] text-shadow-[0_4px_4px_rgba(0,0,0,0.25)]'>
+                            Help me survive!
+                        </TextBlock>
+                    </div>
 
                 </JellyContainer>
             </div>
 
-            <div className='fixed rounded-full animate-turbulence z-20 top-[80vh] left-[80vw]'
-                 ref={(el) => {bubblesRef.current[0] = el}}
+            <div className='fixed rounded-full animate-turbulence z-20 top-[70vh] left-[70vw]'
             >
                 <JellyContainer
                     className="rounded-full z-20"
@@ -515,13 +523,13 @@ export function Bubbles() {
                         intensity={1.35}
                         magnify={0.30}
                         blur={0.18}
-                        chromatic={0.07}
+                        chromatic={0.03}
                         rim={0.24}
                         spec={0.42}
                         tint={0.22}
                         alpha={1}
-                        edgePull={12}
-                        edgePower={5}
+                        edgePull={22} // 12
+                        edgePower={10} // 5
                         edgeSingularity={0.035}
                         dirMode={0}
                         order={2}
