@@ -5,6 +5,7 @@ import {LiquidGlass} from "@/shared/effects/liquid-glass";
 type GlassBubbleProps = {
     className?: string;
     innerClassName?: string;
+    idle?: boolean,
     effectStrength?: 'sm' | 'md',
     glassOrder?: number;
     children?: React.ReactNode;
@@ -99,6 +100,7 @@ export function GlassBubble({
     className,
     innerClassName,
     glassOrder,
+    idle= true,
     effectStrength = 'md',
     children,}: GlassBubbleProps
 ) {
@@ -109,6 +111,7 @@ export function GlassBubble({
             innerClassName={innerClassName}
             outlineClassName="stroke-cyan-200/20"
             {...JELLY_CONTAINER_PARAMS[effectStrength ?? 'sm']}
+            idle={idle}
         >
             <LiquidGlass
                 intensity={1.35}
