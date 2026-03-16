@@ -163,13 +163,10 @@ export function Bubbles() {
     const bubblesRef = useRef<(HTMLElement | null)[]>([]);
     const timelinesRef = useRef<Timeline[]>([]);
     const [bubbleSizes, setBubbleSizes] = useState<Sizes[]>([{width: 256, height: 160}, {width: 56, height: 56}, {width: 56, height: 56}]);
-    /*
-    const scopeRef = useRef<HTMLDivElement | null>(null);
-    /*
-
-     */
+    const [visible, setVisible] = useState<boolean>(true);
     const [anchor, setAnchor] = useState<Cords | null>(null);
-
+    const rafId = useRef<number | null>(null);
+    const ticking = useRef<boolean>(false);
     useEffect(() => {
         if (bubblesRef.current.length === 0) return;
         const updateSteps= () => {
@@ -248,6 +245,36 @@ export function Bubbles() {
 
         return () => removeEventListener('resize', updateSteps);
     }, []);
+    useEffect(() => {
+        const onScroll = () => {
+            if (ticking.current) return;
+
+            ticking.current = true;
+
+            rafId.current = requestAnimationFrame(() => {
+
+                const nextVisible = window.scrollY < 100;
+
+                setVisible((prev) => (prev === nextVisible) ? prev : nextVisible);
+
+                ticking.current = false;
+                rafId.current = null;
+            })
+        }
+
+        window.addEventListener('scroll', onScroll, {passive: true});
+        onScroll();
+
+        return () => {
+            window.removeEventListener('scroll', onScroll);
+            if (rafId.current !== null) {
+                cancelAnimationFrame(rafId.current);
+                rafId.current = null;
+            }
+            ticking.current = false;
+        }
+    }
+    , []);
 
 
 
@@ -272,6 +299,7 @@ export function Bubbles() {
                 <GlassBubble
                     className="rounded-full"
                     innerClassName="size-14"
+                    visible={visible}
                     effectStrength='sm'
                 />
             </div>
@@ -287,6 +315,7 @@ export function Bubbles() {
                 <GlassBubble
                     className="rounded-full"
                     innerClassName="size-14"
+                    visible={visible}
                     effectStrength='sm'
                 />
             </div>
@@ -296,6 +325,7 @@ export function Bubbles() {
                 <GlassBubble
                     className="rounded-full"
                     innerClassName="w-64 h-40 z-20 p-10 flex justify-center items-center"
+                    visible={visible}
                     effectStrength='md'
                 >
                     <div className='w-64 h-32 rounded-full flex items-center justify-center'
