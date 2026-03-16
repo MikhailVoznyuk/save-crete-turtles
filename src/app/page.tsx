@@ -11,7 +11,7 @@ export default function Home() {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     return (
         <div className='min-w-screen'>
-            <main className='w-full'>
+            <main className='w-full flex flex-col gap-24'>
                 <Background videoRef={videoRef} videoSrc='/media/video/bg/bg_1.mp4' fixed />
                 <LiquidGlassProvider videoRef={videoRef}>
                     <HeroBlock />

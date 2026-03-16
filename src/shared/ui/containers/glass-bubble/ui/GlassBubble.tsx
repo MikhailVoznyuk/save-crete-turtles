@@ -1,3 +1,4 @@
+import {twMerge} from "tailwind-merge";
 import React from "react";
 import {JellyContainer} from "@/shared/ui/containers";
 import {LiquidGlass} from "@/shared/effects/liquid-glass";
@@ -5,6 +6,8 @@ import {LiquidGlass} from "@/shared/effects/liquid-glass";
 type GlassBubbleProps = {
     className?: string;
     innerClassName?: string;
+    containerClassName?: string;
+    visible?: boolean;
     idle?: boolean,
     effectStrength?: 'xs' | 'sm' | 'md',
     glassOrder?: number;
@@ -138,21 +141,29 @@ const JELLY_CONTAINER_PARAMS = {
 export function GlassBubble({
     className,
     innerClassName,
+    containerClassName,
     glassOrder,
+    visible = true,
     idle= true,
     effectStrength = 'md',
     children,}: GlassBubbleProps
 ) {
 
     return (
-        <JellyContainer
-            className={className}
-            innerClassName={innerClassName}
-            outlineClassName="stroke-cyan-200/20"
-            {...JELLY_CONTAINER_PARAMS[effectStrength ?? 'sm']}
-            idle={idle}
+        <div className={twMerge(
+                `relative transition-all duration-500 ${visible ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`,
+                containerClassName
+            )}
         >
+            <JellyContainer
+                className={className}
+                innerClassName={innerClassName}
+                outlineClassName='stroke-cyan-200/20'
+                {...JELLY_CONTAINER_PARAMS[effectStrength ?? 'sm']}
+                idle={idle}
+                >
             <LiquidGlass
+                enabled={visible}
                 intensity={1.35}
                 magnify={0.30}
                 blur={0.18}
@@ -166,8 +177,10 @@ export function GlassBubble({
                 edgeSingularity={0.035}
                 dirMode={0}
                 order={glassOrder}
-        />
-            {children}
+            />
+                {children}
         </JellyContainer>
+        </div>
+
     )
 }
