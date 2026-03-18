@@ -23,13 +23,15 @@ const CARD_DATA: FactCardProps[] = [
     }
 ]
 
+//TODO: сделать мобильную версию - слайдер
+
 export function FactCardsSection() {
     return (
-        <section className='flex flex-col items-center gap-12'>
+        <section className='flex flex-col items-center gap-12 w-full'>
             <Title variant='primary' size='lg' lined centered>
                 Why it is important?
             </Title>
-            <div className='flex gap-8'>
+            <div className='flex gap-8 flex-wrap justify-center max-w-[1200px]'>
                 {CARD_DATA.map((card: FactCardProps) => <FactCard key={card.id} {...card} />)}
             </div>
         </section>

@@ -16,7 +16,7 @@ type CSSVars = CSSProperties & {
     ['--wave-color']: string;
 }
 
-const base = 'relative rounded-full font-dongle text-abyss font-light hover:text-white duration-300 ease-out';
+const base = 'relative rounded-full cursor-pointer font-dongle text-abyss font-light hover:text-white pointer duration-300 ease-out';
 
 const v: Record<Variant, string> = {
     primary: 'bg-turk px-5 py-1.5 text-5xl',

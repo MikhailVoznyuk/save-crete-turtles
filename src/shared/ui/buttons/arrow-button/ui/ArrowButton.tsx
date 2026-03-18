@@ -25,7 +25,7 @@ export function ArrowButton({onClick, direction, containerVisible=true, classNam
         <button
             onClick={onClick}
             className={twMerge(
-                'size-14 rounded-full group/arrows duration-300',
+                'size-14 rounded-full cursor-pointer group/arrows duration-300',
                 (containerVisible) ? 'bg-cold-white hover:bg-turk' : '',
                 className)}
             style={{transform: `rotate${DIR_ANGLES[direction]}deg`}}

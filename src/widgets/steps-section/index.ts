@@ -1,0 +1,1 @@
+export {StepsSection} from "@/widgets/steps-section/ui/StepsSection";

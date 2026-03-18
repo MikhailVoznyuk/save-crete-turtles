@@ -1,0 +1,1 @@
+export {MediaModal} from "@/shared/ui/media-modal/MediaModal";
