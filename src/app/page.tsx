@@ -13,10 +13,10 @@ export default function Home() {
         <div className='min-w-screen'>
             <main className='w-full flex flex-col gap-24'>
                 <Background videoRef={videoRef} videoSrc='/media/video/bg/bg_1.mp4' fixed />
-                {/* <LiquidGlassProvider videoRef={videoRef}> */}
+                {/* <LiquidGlassProvider videoRef={videoRef}>
                     <HeroBlock />
                     <FactCardsSection />
-                {/* </LiquidGlassProvider> */}
+                </LiquidGlassProvider> */}
 
             </main>
         </div>
