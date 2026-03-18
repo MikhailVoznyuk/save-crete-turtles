@@ -19,7 +19,6 @@ export default function Home() {
                     <FactCardsSection />
                     <StepsSection />
                 </LiquidGlassProvider>
-
             </main>
         </div>
     );
