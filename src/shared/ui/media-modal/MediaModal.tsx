@@ -37,39 +37,42 @@ export function MediaModal({preview, content}: Props) {
     return (
         <>
             {preview({open: () => setOpened(true), layoutId})}
-            {typeof(window) !== undefined  &&
-                createPortal(opened &&
-                    (
+            {typeof(window) !== 'undefined'  &&
+                createPortal(
                         <AnimatePresence>
-                            <motion.div
-                                className='fixed inset-0 z-40 bg-black/60 backdrop-blur-sm'
-                                initial={{opacity: 0}}
-                                animate={{opacity: 1}}
-                                exit={{opacity: 0}}
-                                onClick={() => setOpened(false)}
-
-                            />
-                            <div className='fixed inset-0 z-50 flex items-center justify-center p-4'>
+                            {opened && (
                                 <motion.div
-                                    className='relative w-full max-w-5xl'
+                                    className='fixed inset-0 flex justify-center items-center p-4'
                                     initial={{opacity: 0}}
                                     animate={{opacity: 1}}
                                     exit={{opacity: 0}}
+                                    onClick={() => setOpened(false)}
                                 >
-                                    {/* кнопочка */}
-                                    <motion.div
-                                        layoutId={layoutId}
-                                        className='overflow-hidden rounded-2xl'
-                                        onClick={(e) => e.stopPropagation()}
+                                    <div
+                                        className='absolute inset-0 bg-black/60 backdrop-blur-sm'
+                                    />
+                                    <div className='relative inset-0 z-10 flex items-center justify-center p-4'
+                                         onClick={() => setOpened(false)}
                                     >
-                                        {content({close: () => setOpened(false), layoutId})}
-                                    </motion.div>
+                                        <div
+                                            className='relative w-full max-w-5xl'
+                                        >
+                                            {/* кнопочка */}
+                                            <motion.div
+                                                layoutId={layoutId}
+                                                className='overflow-hidden rounded-2xl'
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                {content({close: () => setOpened(false), layoutId})}
+                                            </motion.div>
 
+                                        </div>
+                                    </div>
                                 </motion.div>
-                            </div>
+                            )}
 
                         </AnimatePresence>
-                    ),
+                    ,
                     document.body
                 )
             }
