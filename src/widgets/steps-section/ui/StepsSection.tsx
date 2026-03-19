@@ -34,7 +34,7 @@ export function StepsSection() {
             <Title variant='primary' size='lg' lined centered>
                 What can we do?
             </Title>
-            <div className='flex flex-col items-center gap-36 max-w-[1000px]'>
+            <div className='flex flex-col items-center gap-36 max-w-[1200px]'>
                 {STEPS_ROWS.map(({id, ...step}) => (
                     <TextMediaRow key={id} {...step} />
                 ))}
