@@ -16,8 +16,17 @@ export function MediaModal({preview, content}: Props) {
 
     useEffect(() => {
         if (!opened) return;
-        const prev = document.body.style.overflow;
+
+        const prevOverflow = document.body.style.overflow;
+        const prevPaddingRight = document.body.style.paddingRight;
+
+        const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+
         document.body.style.overflow = 'hidden';
+        if (scrollBarWidth > 0) {
+            document.body.style.paddingRight = `${scrollBarWidth}px`;
+        }
+
 
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -29,7 +38,8 @@ export function MediaModal({preview, content}: Props) {
 
         return () => {
             window.removeEventListener('keydown', onKeyDown)
-            document.body.style.overflow = prev;
+            document.body.style.overflow = prevOverflow;
+            document.body.style.paddingRight = prevPaddingRight;
         };
 
     }, [opened]);
@@ -40,19 +50,25 @@ export function MediaModal({preview, content}: Props) {
             {typeof(window) !== 'undefined'  &&
                 createPortal(
                         <AnimatePresence>
-                            {opened && (
+                            {opened ? (
                                 <motion.div
+                                    layoutRoot
                                     className='fixed inset-0 flex justify-center items-center p-4'
-                                    initial={{opacity: 0}}
-                                    animate={{opacity: 1}}
-                                    exit={{opacity: 0}}
+
                                     onClick={() => setOpened(false)}
                                 >
-                                    <div
-                                        className='absolute inset-0 bg-black/60 backdrop-blur-sm'
+                                    <motion.div
+                                        className='absolute inset-0 bg-black/60'
+                                        initial={{opacity: 0,  backdropFilter: 'blur(0px)'}}
+                                        animate={{opacity: 1,  backdropFilter: 'blur(4px)'}}
+                                        exit={{opacity: 0,  backdropFilter: 'blur(0px)'}}
                                     />
-                                    <div className='relative inset-0 z-10 flex items-center justify-center p-4'
-                                         onClick={() => setOpened(false)}
+                                    <motion.div
+                                        className='relative inset-0 z-10 flex items-center justify-center p-4'
+                                        initial={{opacity: 0}}
+                                        animate={{opacity: 1}}
+                                        exit={{opacity: 0}}
+                                        onClick={() => setOpened(false)}
                                     >
                                         <div
                                             className='relative w-full max-w-5xl'
@@ -60,6 +76,7 @@ export function MediaModal({preview, content}: Props) {
                                             {/* кнопочка */}
                                             <motion.div
                                                 layoutId={layoutId}
+
                                                 className='overflow-hidden rounded-2xl'
                                                 onClick={(e) => e.stopPropagation()}
                                             >
@@ -67,9 +84,9 @@ export function MediaModal({preview, content}: Props) {
                                             </motion.div>
 
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 </motion.div>
-                            )}
+                            ) : null}
 
                         </AnimatePresence>
                     ,

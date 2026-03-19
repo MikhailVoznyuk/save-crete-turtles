@@ -24,7 +24,7 @@ export function ModalImage({src, className, imageClassName, alt, width=1920, hei
                 <motion.div
                     layoutId={layoutId}
                     className={twMerge(
-                    'relative rounded-2xl shadow-xl border-2 cursor-pointer border-cold-white/50 hover:border-turk/80 overflow-hidden',
+                    'relative rounded-2xl shadow-xl border-2 cursor-pointer border-cold-white/50 hover:border-turk/80 overflow-hidden duration-300',
                     className
                 )}>
                     <img
@@ -36,15 +36,12 @@ export function ModalImage({src, className, imageClassName, alt, width=1920, hei
                         alt={alt ?? 'Side photo of text block'}
                     />
                     {btnNeeded && (
-                        <ModalToggleButton
-                            onClick={open}
-                            className={twMerge('absolute bottom-4 right-4')}
-                        />
+                        <ModalToggleButton onClick={open}  className='absolute bottom-4 right-4' />
                     )}
                 </motion.div>
             )}
             content={() => (
-                <Image
+                <img
                     className='w-full max-h-[85vh] object-cover'
                     src={src}
                     alt={alt ?? 'fullscreen side photo of text block'}
