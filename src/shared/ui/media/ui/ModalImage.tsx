@@ -36,10 +36,7 @@ export function ModalImage({src, className, imageClassName, alt, width=1920, hei
                         alt={alt ?? 'Side photo of text block'}
                     />
                     {btnNeeded && (
-                        <ModalToggleButton
-                            onClick={open}
-                            className={twMerge('absolute bottom-4 right-4')}
-                        />
+                        <ModalToggleButton onClick={open}  className='absolute bottom-4 right-4' />
                     )}
                 </motion.div>
             )}
