@@ -15,8 +15,8 @@ const STEPS_ROWS: Step[] = [
         id: '2',
         header: 'Step title',
         content: 'Why we do this and spend our time and money, our logic is simple and clear: we live in Crete in Almyrida, we have children here, we want our beach to be clean, so that the ecology and ecosystems will be preserved for a very, very long time, unfortunately, the pollution of our planet is going crazy, and Crete is one of the few islands with clean ecology, air and water, because by helping sea turtles, we first of all help ourselves. And it is clear: all people want to live long and be healthy, and only a clean environment can help us with this, well, and we believe that you can’t always just take and take from nature, you need to give something in return',
-        mediaType: 'image',
-        mediaSrc: '/media/img/steps-section/sand_turtle.png',
+        mediaType: 'video',
+        mediaSrc: '/media/video/bg/bg_2.mp4',
         reversed: true,
     },
     {
