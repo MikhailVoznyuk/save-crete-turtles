@@ -17,7 +17,7 @@ export function ModalVideo({src, className, videoClassName, btnNeeded=true}: Mod
                 <motion.div
                     layoutId={layoutId}
                     className={twMerge(
-                        'relative max-w-[500px] rounded-2xl  border-2 border-cold-white/50 cursor-pointer hover:border-turk/80 overflow-hidden',
+                        'relative max-w-[500px] rounded-2xl  border-2 border-cold-white/50 cursor-pointer hover:border-turk/80 overflow-hidden duration-300',
                         className
                     )}
                     onClick={open}
