@@ -7,8 +7,11 @@ type GlassBubbleProps = {
     className?: string;
     innerClassName?: string;
     containerClassName?: string;
+    innerStyle?: React.CSSProperties;
+    outline?: boolean;
     visible?: boolean;
     idle?: boolean,
+    interactive?: boolean,
     effectStrength?: 'xs' | 'sm' | 'md',
     glassOrder?: number;
     children?: React.ReactNode;
@@ -16,7 +19,6 @@ type GlassBubbleProps = {
 
 const JELLY_CONTAINER_PARAMS = {
     xs: {
-        outline: true,
         boundaryPoints: 72,
         bendK: 200,
         smoothK: 0.44,
@@ -55,7 +57,6 @@ const JELLY_CONTAINER_PARAMS = {
         idleInteractMul: 0.15,
     },
     sm: {
-        outline: true,
         boundaryPoints: 72,
         bendK: 1000,
         smoothK: 0.44,
@@ -94,7 +95,6 @@ const JELLY_CONTAINER_PARAMS = {
         idleInteractMul: 0.15,
     },
     md: {
-        outline: true,
         boundaryPoints: 72,
         bendK: 200,
         smoothK: 0.44,
@@ -142,12 +142,22 @@ export function GlassBubble({
     className,
     innerClassName,
     containerClassName,
+    innerStyle={},
     glassOrder,
     visible = true,
+    outline = true,
     idle= true,
+    interactive = true,
     effectStrength = 'md',
     children,}: GlassBubbleProps
 ) {
+
+    const interactiveParams = {
+        hoverIndent: interactive ? JELLY_CONTAINER_PARAMS[effectStrength].hoverIndent : 0,
+        clickIndent: interactive ? JELLY_CONTAINER_PARAMS[effectStrength].clickIndent : 0,
+        clickWave: interactive ? JELLY_CONTAINER_PARAMS[effectStrength].clickWave : 0,
+        idleInteractMul: interactive ? JELLY_CONTAINER_PARAMS[effectStrength].idleInteractMul : 1
+    }
 
     return (
         <div className={twMerge(
@@ -158,10 +168,15 @@ export function GlassBubble({
             <JellyContainer
                 className={className}
                 innerClassName={innerClassName}
+                innerStyle={innerStyle}
                 outlineClassName='stroke-cyan-200/20'
-                {...JELLY_CONTAINER_PARAMS[effectStrength ?? 'sm']}
+                {...{
+                    ...JELLY_CONTAINER_PARAMS[effectStrength ?? 'sm'],
+                    ...interactiveParams
+                }}
+                outline={outline}
                 idle={idle}
-                >
+            >
             <LiquidGlass
                 enabled={visible}
                 intensity={1.35}

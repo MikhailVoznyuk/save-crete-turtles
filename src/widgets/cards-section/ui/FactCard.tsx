@@ -20,7 +20,7 @@ export function FactCard({ icon, title, description, iconAlt }: FactCardProps) {
             innerClassName='p-5'
         >
             <div className='flex flex-col gap-4 w-72 items-center'>
-                <div className='size-20 rounded-full bg-white/10 border border-white/40 flex items-center justify-center'>
+                <div className='size-20 rounded-full bg-white/10 border border-cold-white/40 flex items-center justify-center'>
                     <Image src={icon} width={50} height={50} alt={iconAlt ?? 'icon of fact about turtles'} />
                 </div>
                 <Title

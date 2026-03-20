@@ -29,7 +29,7 @@ type TitleProps = LinedOn | LinedOff;
 
 // Потом дописать адаптив для шрифтов
 const s: Record<TextSize, string> = {
-    sm: 'text-2xl leading-[0.7]',
+    sm: 'text-4xl leading-[0.7]',
     md: 'text-5xl leading-[0.7]',
     lg: 'text-7xl leading-[0.7]',
     xl: 'text-8xl leading-[0.7]',

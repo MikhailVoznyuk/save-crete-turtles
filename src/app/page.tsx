@@ -4,6 +4,7 @@ import {useRef} from 'react'
 import {HeroBlock} from "@/widgets/hero-block";
 import {FactCardsSection} from "@/widgets/cards-section";
 import {StepsSection} from "@/widgets/steps-section";
+import {QuestionsSection} from "@/widgets/questions-section";
 import {LiquidGlassProvider} from "@/shared/effects/liquid-glass/ui/LiquidGlassProvider";
 import {Background} from "@/shared/ui/background";
 import React from "react";
@@ -18,6 +19,7 @@ export default function Home() {
                     <HeroBlock />
                     <FactCardsSection />
                     <StepsSection />
+                    <QuestionsSection />
                 </LiquidGlassProvider>
             </main>
         </div>

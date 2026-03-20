@@ -10,6 +10,7 @@ type Node = { p: V2; v: V2; b: V2 };
 type JellyContainerProps = {
     className?: string;        
     innerClassName?: string;
+    innerStyle?: React.CSSProperties;
     outline?: boolean;
     outlineClassName?: string; 
 
@@ -316,6 +317,7 @@ function fillMaskFromCatmullRom(
 export function JellyContainer({
                                    className,
                                    innerClassName,
+                                   innerStyle={},
                                    outline = true,
                                    outlineClassName = 'stroke-white/25',
                                    boundaryPoints = 44,
@@ -1026,7 +1028,10 @@ export function JellyContainer({
                     </svg>
                 )}
 
-                <div className={['relative z-10', innerClassName].filter(Boolean).join(' ')}>
+                <div
+                    className={['relative z-10', innerClassName].filter(Boolean).join(' ')}
+                    style={innerStyle}
+                >
                     {children}
                 </div>
             </div>
