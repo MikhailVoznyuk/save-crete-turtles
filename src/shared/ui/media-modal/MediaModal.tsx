@@ -54,7 +54,9 @@ export function MediaModal({preview, content}: Props) {
                                 <motion.div
                                     layoutRoot
                                     className='fixed inset-0 flex justify-center items-center p-4'
-
+                                    initial={{opacity: 0}}
+                                    animate={{opacity: 1}}
+                                    exit={{opacity: 0}}
                                     onClick={() => setOpened(false)}
                                 >
                                     <motion.div
@@ -65,9 +67,6 @@ export function MediaModal({preview, content}: Props) {
                                     />
                                     <motion.div
                                         className='relative inset-0 z-10 flex items-center justify-center p-4'
-                                        initial={{opacity: 0}}
-                                        animate={{opacity: 1}}
-                                        exit={{opacity: 0}}
                                         onClick={() => setOpened(false)}
                                     >
                                         <div
@@ -76,7 +75,6 @@ export function MediaModal({preview, content}: Props) {
                                             {/* кнопочка */}
                                             <motion.div
                                                 layoutId={layoutId}
-
                                                 className='overflow-hidden rounded-2xl'
                                                 onClick={(e) => e.stopPropagation()}
                                             >
