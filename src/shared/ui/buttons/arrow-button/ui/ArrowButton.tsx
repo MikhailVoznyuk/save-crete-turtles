@@ -1,8 +1,11 @@
+import {useState} from 'react';
 import {twMerge} from "tailwind-merge";
 
 type ArrowButtonProps = {
     onClick: () => void;
     direction: 'up' | 'down' | 'left' | 'right';
+    variant?: 'primary' | 'secondary';
+    toggling?: boolean;
     containerVisible?: boolean;
     className?: string;
 }
@@ -16,27 +19,47 @@ const DIR_ANGLES = {
 
 // TODO: Добавить вариант primary / secondary
 
-export function ArrowButton({onClick, direction, containerVisible=true, className}: ArrowButtonProps) {
-    const arrowColorStyle = (containerVisible) ?
-        'bg-bg-turk group-hover/arrows:bg-cold-white' :
-        'bg-cold-white group-hover/arrows:bg-turk';
+export function ArrowButton({onClick, direction, containerVisible=true, variant='primary', toggling=false, className}: ArrowButtonProps) {
+    const [reversed, setReversed] = useState<boolean>(false);
+
+    const angle = (toggling) ?
+        (reversed) ? (DIR_ANGLES[direction] + 180) % 360 : DIR_ANGLES[direction] :
+        DIR_ANGLES[direction];
+
+    const containerStyle =  (variant === 'primary') ?
+        'bg-cold-white hover:bg-turk' :
+        'bg-cold-white/10 border border-cold-white/40 backdrop-blur-sm hover:border-turk/80 border-2'
+    const arrowStyle = (containerVisible) ?
+        (variant === 'primary') ?
+            'bg-cold-white group-hover/arrows:bg-turk w-8 h-1' :
+            'bg-cold-white group-hover/arrows:bg-turk w-6 h-[3px]' :
+        'bg-cold-white group-hover/arrows:bg-turk w-10 h-1'
+
+    ;
 
     return (
         <button
-            onClick={onClick}
-            className={twMerge(
-                'size-14 rounded-full cursor-pointer group/arrows duration-300',
-                (containerVisible) ? 'bg-cold-white hover:bg-turk' : '',
-                className)}
-            style={{transform: `rotate${DIR_ANGLES[direction]}deg`}}
+            onClick={() => {
+                if (toggling) {
+                    setReversed((prev) => !prev);
+                }
 
+                onClick();
+            }}
+            className={twMerge(
+                'relative z-index-10 size-14 rounded-full cursor-pointer group/arrows duration-300',
+                (containerVisible) ? containerStyle : null,
+                className)}
+            style={{
+                transform: `rotate(${angle}deg)`
+            }}
         >
             <div className='relative size-full'>
-                 <span className={`absolute w-10 h-1 -translate-1/2 rotate-45 top-1/2 left-1/2 rounded-full duration-300 ${arrowColorStyle}`}
-                       style={{left: `calc(50% - 13px)`}}
+                 <span className={`absolute -translate-1/2 rotate-45 top-1/2 left-1/2 rounded-full duration-300 ${arrowStyle}`}
+                       style={{left: (containerVisible) ? 'calc(50% - 7.5px)' : 'calc(50% - 13px)'}}
                  />
-                <span className={`absolute w-10 h-1 -translate-1/2 -rotate-45 top-1/2 left-1/2 rounded-full duration-300  ${arrowColorStyle}`}
-                      style={{left: `calc(50% + 13px)`}}
+                <span className={`absolute -translate-1/2 -rotate-45 top-1/2 left-1/2 rounded-full duration-300  ${arrowStyle}`}
+                      style={{left: (containerVisible) ? 'calc(50% + 7.5px)' : 'calc(50% + 13px)' }}
                 />
             </div>
 
