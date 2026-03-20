@@ -1,4 +1,3 @@
-import {ReactNode} from "react";
 import {TextBlock, Title} from "@/shared/ui/text-blocks";
 import {ModalImage, ModalVideo} from "@/shared/ui/media";
 import type {TextMediaRowProps} from "@/shared/ui/media/types/types";
@@ -22,7 +21,6 @@ export function TextMediaRow({header, content, mediaType, mediaSrc, reversed=fal
                     <ModalImage src={mediaSrc} className='w-1/2 max-h-96' /> :
                     <ModalVideo src={mediaSrc} className='w-1/2 max-h-96' />
                 }
-
             </div>
         </div>
     )
