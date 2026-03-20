@@ -1,0 +1,1 @@
+export {QuestionsSection} from "@/widgets/questions-section/ui/QuestionsSection";
