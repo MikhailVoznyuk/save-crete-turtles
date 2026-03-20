@@ -1,0 +1,1 @@
+export {GlassPanel} from "@/shared/ui/containers/glass-panel/ui/GlassPanel";
