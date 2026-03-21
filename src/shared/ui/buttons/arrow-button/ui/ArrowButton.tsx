@@ -1,5 +1,6 @@
 import {useState} from 'react';
 import {twMerge} from "tailwind-merge";
+import {useIsMobile} from "@/shared/hooks/adaptive";
 
 type ArrowButtonProps = {
     onClick: () => void;
@@ -21,6 +22,7 @@ const DIR_ANGLES = {
 
 export function ArrowButton({onClick, direction, containerVisible=true, variant='primary', toggling=false, className}: ArrowButtonProps) {
     const [reversed, setReversed] = useState<boolean>(false);
+    const isMobile = useIsMobile();
 
     const angle = (toggling) ?
         (reversed) ? (DIR_ANGLES[direction] + 180) % 360 : DIR_ANGLES[direction] :
@@ -33,7 +35,7 @@ export function ArrowButton({onClick, direction, containerVisible=true, variant=
         (variant === 'primary') ?
             'bg-cold-white group-hover/arrows:bg-turk w-8 h-1' :
             'bg-cold-white group-hover/arrows:bg-turk w-6 h-[3px]' :
-        'bg-cold-white group-hover/arrows:bg-turk w-10 h-1';
+        'bg-cold-white group-hover/arrows:bg-turk w-8 sm:w-10 h-[3px] sm:h-1';
 
     return (
         <button
@@ -53,10 +55,20 @@ export function ArrowButton({onClick, direction, containerVisible=true, variant=
         >
             <div className='relative size-full'>
                  <span className={`absolute -translate-1/2 rotate-45 top-1/2 left-1/2 rounded-full duration-300 ${arrowStyle}`}
-                       style={{left: (containerVisible) ? 'calc(50% - 7.5px)' : 'calc(50% - 13px)'}}
+                       style={{left: (containerVisible) ?
+                               'calc(50% - 7.5px)' :
+                               (isMobile) ?
+                                   'calc(50% - 10.5px)' :
+                                   'calc(50% - 13px)'
+                        }}
                  />
                 <span className={`absolute -translate-1/2 -rotate-45 top-1/2 left-1/2 rounded-full duration-300  ${arrowStyle}`}
-                      style={{left: (containerVisible) ? 'calc(50% + 7.5px)' : 'calc(50% + 13px)' }}
+                      style={{left: (containerVisible) ?
+                              'calc(50% + 7.5px)' :
+                              (isMobile) ?
+                                  'calc(50% + 10.5px)' :
+                                  'calc(50% + 13px)'
+                      }}
                 />
             </div>
 
