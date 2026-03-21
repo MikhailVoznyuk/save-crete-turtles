@@ -19,8 +19,8 @@ type CSSVars = CSSProperties & {
 const base = 'relative rounded-full cursor-pointer font-dongle text-abyss font-light hover:text-white pointer duration-300 ease-out';
 
 const v: Record<Variant, string> = {
-    primary: 'bg-turk px-5 py-1.5 text-5xl',
-    secondary: 'bg-cloud px-3 py-0.5 text-5xl',
+    primary: 'bg-turk px-5 py-1.5 text-4xl sm:text-5xl',
+    secondary: 'bg-cloud px-3 py-0.5 text-4xl sm:text-5xl',
 }
 
 export function WaveButton({onClick, children, variant='primary', className}: WaveButtonProps) {
