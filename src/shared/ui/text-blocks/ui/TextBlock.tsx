@@ -1,5 +1,5 @@
 import {twMerge} from "tailwind-merge";
-import type {ReactNode} from 'react'
+import type {CSSProperties, ReactNode} from 'react'
 import type {TextSize, Variant} from "@/shared/ui/typography/types";
 
 type TextBlockProps = {
@@ -8,6 +8,7 @@ type TextBlockProps = {
     uppercase?: boolean;
     className?: string;
     centered?: boolean;
+    style?: CSSProperties;
 }
 
 const s: Record<TextSize, string> = {
@@ -23,7 +24,8 @@ export function TextBlock({
     size='md',
     uppercase,
     centered,
-    className}: TextBlockProps) {
+    className,
+    style}: TextBlockProps) {
     return (
         <p className={twMerge(
             `font-dongle font-light text-white ${s[size]}`,
@@ -31,6 +33,7 @@ export function TextBlock({
             (uppercase) ? 'uppercase' : '',
             (centered) ? 'text-center' : '',
         )}
+            style={style}
         >{children}</p>
     )
 }
