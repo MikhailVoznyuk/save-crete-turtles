@@ -33,9 +33,7 @@ export function ArrowButton({onClick, direction, containerVisible=true, variant=
         (variant === 'primary') ?
             'bg-cold-white group-hover/arrows:bg-turk w-8 h-1' :
             'bg-cold-white group-hover/arrows:bg-turk w-6 h-[3px]' :
-        'bg-cold-white group-hover/arrows:bg-turk w-10 h-1'
-
-    ;
+        'bg-cold-white group-hover/arrows:bg-turk w-10 h-1';
 
     return (
         <button
@@ -43,7 +41,6 @@ export function ArrowButton({onClick, direction, containerVisible=true, variant=
                 if (toggling) {
                     setReversed((prev) => !prev);
                 }
-
                 onClick();
             }}
             className={twMerge(
