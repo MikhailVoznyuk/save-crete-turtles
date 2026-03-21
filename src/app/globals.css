@@ -3,6 +3,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --bounce-amplitude: 20%;
 }
 @theme {
   --color-turk: #00EEFF;
@@ -46,7 +47,7 @@
     transform: translateY(0);
   }
   50% {
-    transform: translateY(20%);
+    transform: translateY(var(--bounce-amplitude));
   }
   100% {
     transform: translateY(0);
@@ -56,6 +57,12 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+  }
+}
+
+@media (max-width: 639px) {
+  :root {
+    --bounce-amplitude: 10%;
   }
 }
 

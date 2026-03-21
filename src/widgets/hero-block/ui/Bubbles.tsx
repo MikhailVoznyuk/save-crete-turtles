@@ -165,14 +165,18 @@ export function Bubbles() {
     const [bubbleSizes, setBubbleSizes] = useState<Sizes[]>([{width: 256, height: 160}, {width: 56, height: 56}, {width: 56, height: 56}]);
     const [visible, setVisible] = useState<boolean>(true);
     const [anchor, setAnchor] = useState<Cords | null>(null);
+    const [isMobile, setIsMobile] = useState<boolean>(false);
     const rafId = useRef<number | null>(null);
     const ticking = useRef<boolean>(false);
+    const resizeRafRef = useRef<number | null>(null);
+
     useEffect(() => {
         if (bubblesRef.current.length === 0) return;
         const updateSteps= () => {
+            if (anchor === null) return;
             const pointAnchor = new VideoPointAnchor(
                 {
-                    anchor: TURTLE_ANCHOR,
+                    anchor: anchor,
                     containerW: window.innerWidth,
                     containerH: window.innerHeight,
                     videoW: 1920,
@@ -182,7 +186,7 @@ export function Bubbles() {
 
             const pos = pointAnchor.getAnchorPos();
 
-            setAnchor(pos);
+
 
             for (let i = 0; i < BUBBLE_STAGES.length; i++) {
                 const el = bubblesRef.current[i];
@@ -240,11 +244,14 @@ export function Bubbles() {
         }
 
         updateSteps();
-
         window.addEventListener('resize', updateSteps);
 
-        return () => removeEventListener('resize', updateSteps);
-    }, []);
+        return () => {
+            removeEventListener('resize', updateSteps);
+
+        };
+    }, [anchor]);
+
     useEffect(() => {
         const onScroll = () => {
             if (ticking.current) return;
@@ -276,7 +283,36 @@ export function Bubbles() {
     }
     , []);
 
+    useEffect(() => {
+        const update = () => {
+            const windowWidth = window.innerWidth;
+            if (windowWidth < 640) {
+                setIsMobile(prev => prev ? prev : true);
+                setBubbleSizes([{width: 200, height: 125}, {width: 40, height: 40}, {width: 40, height: 40}])
+                setAnchor({x: 860, y: 508})
+            } else {
+                setIsMobile(prev => prev ? false : prev);
+                setBubbleSizes([{width: 256, height: 160}, {width: 56, height: 56}, {width: 56, height: 56}]);
+                setAnchor({x: 1100, y: 548})
+            }
+            resizeRafRef.current = null;
+        }
 
+        const onResize = () => {
+            if (resizeRafRef.current !== null) return;
+            resizeRafRef.current = requestAnimationFrame(update);
+        }
+
+        update();
+        window.addEventListener('resize', onResize);
+
+        return () => {
+            window.removeEventListener('resize', onResize);
+            if (resizeRafRef.current !== null) {
+                cancelAnimationFrame(resizeRafRef.current);
+            }
+        }
+    }, []);
 
     return (
         <>
@@ -289,16 +325,14 @@ export function Bubbles() {
             ></div>*/}
             <div className='fixed transition-all rounded-full size-12 animate-turbulence  z-10'
                  ref={el => {bubblesRef.current[1] = el}}
-                 style={
-                     {
-                         width: `${bubbleSizes[1].width}px`,
-                         height: `${bubbleSizes[1].height}px`
-                     }
-                 }
+
             >
                 <GlassBubble
                     className="rounded-full"
-                    innerClassName="size-14"
+                    innerStyle={   {
+                        width: `${bubbleSizes[1].width}px`,
+                        height: `${bubbleSizes[1].height}px`
+                    }}
                     visible={visible}
                     effectStrength='sm'
                 />
@@ -324,16 +358,24 @@ export function Bubbles() {
             >
                 <GlassBubble
                     className="rounded-full"
-                    innerClassName="w-64 h-40 z-20 p-10 flex justify-center items-center"
+                    innerClassName="z-20 sm:p-10 flex justify-center items-center"
+                    innerStyle={   {
+                        width: `${bubbleSizes[0].width}px`,
+                        height: `${bubbleSizes[0].height}px`
+                    }}
                     visible={visible}
                     effectStrength='md'
                 >
-                    <div className='w-64 h-32 rounded-full flex items-center justify-center'
-                         style={{background: 'radial-gradient(rgba(0, 238, 255, 0.26) 0, transparent 70%)'}}
+                    <div className='rounded-full flex items-center justify-center'
+                         style={{
+                             background: 'radial-gradient(rgba(0, 238, 255, 0.26) 0, transparent 70%)',
+                             width: `${bubbleSizes[0].width}px`,
+                             height: `${bubbleSizes[0].height}px`,
+                        }}
                     >
                         <TextBlock
                             size='lg'
-                            className=' text-cold-white/95 text-center text-6xl leading-[0.7] text-shadow-[0_4px_4px_rgba(0,0,0,0.25)]'>
+                            className=' text-cold-white/95 text-center text-4xl sm:text-6xl leading-[0.7] text-shadow-[0_4px_4px_rgba(0,0,0,0.25)]'>
                             Help me survive!
                         </TextBlock>
                     </div>
