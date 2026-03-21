@@ -15,7 +15,7 @@ const s: Record<TextSize, string> = {
     sm: 'text-xl',
     md: 'text-3xl leading-[0.9]',
     lg: 'text-4xl leading-[0.9]',
-    xl: 'text-6xl leading-[0.7]',
+    xl: 'text-3xl sm:text-6xl leading-[0.7]',
 }
 
 
