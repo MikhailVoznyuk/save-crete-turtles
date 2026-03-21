@@ -611,7 +611,16 @@ export function JellyContainer({
             }
         };
 
+        const isInteractiveTarget = (target: EventTarget | null) => {
+            return target instanceof HTMLElement &&
+                !!target.closest(
+                    'button, a, input, textarea, select, option, label, summary, [role="button"], [data-no-jelly]'
+                );
+        };
+
         const onDown = (e: PointerEvent) => {
+            if (isInteractiveTarget(e.target)) return;
+
             const pr = pointerRef.current;
             pr.down = true;
             pr.prev = pr.p;
