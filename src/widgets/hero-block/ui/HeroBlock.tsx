@@ -15,7 +15,7 @@ export function HeroBlock() {
 
     return (
         <section className='relative w-full h-screen'>
-            <div className='flex flex-col size-full p-4 pb-32 justify-end sm:justify-start sm:p-10 text-9'>
+            <div className='flex flex-col size-full p-4 pb-20 justify-end sm:justify-start sm:p-10 text-9'>
                 <div className='flex flex-col gap-4 pt-[20vh] max-w-[740px] items-center sm:items-start'>
                     <Title as={'h1'} size={'xl'} lined centered={isMobile}>
                         Help us save the Cretan turtles in Almyrida
@@ -36,7 +36,7 @@ export function HeroBlock() {
                 onClick={() => {}}
                 direction='down'
                 containerVisible={false}
-                className='absolute left-1/2 bottom-2 -translate-1/2 animate-bounce-slow'
+                className='absolute left-1/2 -bottom-6 sm:bottom-2 -translate-1/2 animate-bounce-slow'
             />
 
         </section>
