@@ -161,7 +161,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             }
         },
         {
-            offsetX: -30,
+            offsetX: -80,
             offsetY: 50,
             style: {
                 scale: '1',
@@ -171,7 +171,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             stay: 3700 // 3700 default
         },
         {
-            offsetX: 20,
+            offsetX: -20,
             offsetY: 300,
             style: {
                 scale: '0'
@@ -187,7 +187,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             }
         },
         {
-            offsetX: 10,
+            offsetX: -20,
             offsetY: 20,
             style: {
                 scale: '1'
@@ -198,7 +198,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             ease: 'linear',
         },
         {
-            offsetX: 20,
+            offsetX: -20,
             offsetY: 50,
             style: {
                 scale: '0',
@@ -209,7 +209,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             ease: 'linear',
         },
         {
-            offsetX: 10,
+            offsetX: -20,
             offsetY: 200,
             style: {
                 scale: '1',
@@ -219,7 +219,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             ease: 'linear',
         },
         {
-            offsetX: 10,
+            offsetX: -20,
             offsetY: 340,
             style: {
                 scale: '0'
@@ -236,7 +236,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             }
         },
         {
-            offsetX: 80,
+            offsetX: 60,
             offsetY: 20,
             style: {
                 scale: '1'
@@ -247,7 +247,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             ease: 'linear',
         },
         {
-            offsetX: 140,
+            offsetX: 120,
             offsetY: 40,
             style: {
                 scale: '0',
@@ -258,7 +258,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             ease: 'linear',
         },
         {
-            offsetX: 160,
+            offsetX: 140,
             offsetY: 200,
             style: {
                 scale: '1',
@@ -269,7 +269,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             ease: 'linear',
         },
         {
-            offsetX: 160,
+            offsetX: 140,
             offsetY: 340,
             style: {
                 scale: '0'
@@ -318,7 +318,6 @@ export function Bubbles() {
             for (let i = 0; i < adaptiveStages.length; i++) {
                 const el = bubblesRef.current[i];
                 if (el === null) {
-                    console.log('ye')
                     continue;
                 }
 
@@ -415,7 +414,7 @@ export function Bubbles() {
             const windowWidth = window.innerWidth;
             if (windowWidth < 640) {
                 setIsMobile(prev => prev ? prev : true);
-                setBubbleSizes([{width: 200, height: 125}, {width: 40, height: 40}, {width: 40, height: 40}])
+                setBubbleSizes([{width: 224, height: 140}, {width: 40, height: 40}, {width: 40, height: 40}])
                 setAnchor({x: 920, y: 508})
             } else {
                 setIsMobile(prev => prev ? false : prev);
@@ -503,7 +502,7 @@ export function Bubbles() {
                         <Title
                             variant='secondary'
                             size='lg'
-                            titleClassName=' text-cold-white/95 text-center text-4xl sm:text-6xl leading-[0.7] text-shadow-[0_4px_4px_rgba(0,0,0,0.25)]'
+                            titleClassName={`text-turk sm:text-cold-white/95 text-center text-6xl sm:text-6xl leading-[0.7] text-shadow-[0_4px_4px_rgba(0,0,0,0.25)]`}
 
                             centered
                         >
