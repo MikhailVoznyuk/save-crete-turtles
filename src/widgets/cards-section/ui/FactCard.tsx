@@ -13,11 +13,13 @@ export type FactCardProps = {
     title: string | React.ReactNode,
     description: string,
     iconAlt?: string,
+    cardOpened?: boolean,
+    cardToggler?: () => void
 }
 
 
-export function FactCard({ icon, title, description, iconAlt }: FactCardProps) {
-    const [opened, setOpened] = useState(false);
+export function FactCard({ icon, title, description, iconAlt, cardOpened, cardToggler }: FactCardProps) {
+    const [opened, setOpened] = useState(cardOpened ?? false);
     const [contentHeight, setContentHeight] = useState<number>(0);
     const isMobile = useIsMobile();
 
@@ -26,10 +28,16 @@ export function FactCard({ icon, title, description, iconAlt }: FactCardProps) {
         setContentHeight(el.scrollHeight);
     }
 
+    const toggleCard = () => {
+        if (cardToggler) {
+            cardToggler();
+        }
+        setOpened(prev => !prev);
+    }
+
     const visibleHeight = (isMobile) ? 390 : 422;
     const iconSize = (isMobile ? 42 : 50);
     const needDropDown = contentHeight > visibleHeight;
-    console.log(needDropDown);
 
     return (
         <GlassBubble
@@ -41,7 +49,7 @@ export function FactCard({ icon, title, description, iconAlt }: FactCardProps) {
                  style={{height: (opened) ? 'auto' : `${visibleHeight - ((needDropDown) ? 72 : 0)}px`}}
             >
                 <div ref={setHeight}
-                     className={`flex flex-col gap-4 w-64 sm:w-72 items-center`}
+                     className={`flex flex-col gap-4 w-64 sm:w-72 items-center ${isMobile ? 'select-none cursor-grab' : ''}`}
                 >
                     <div className='flex flex-col items-center gap-4 w-full'>
                         <div className='size-[72px] sm:size-20 rounded-full bg-white/10 border border-cold-white/40 flex items-center justify-center shrink-0 shadow-xl sm:shadow-2xl'>
@@ -67,7 +75,7 @@ export function FactCard({ icon, title, description, iconAlt }: FactCardProps) {
             </div>
             {needDropDown && (
                 <ArrowButton
-                    onClick={() => setOpened(prev => !prev)}
+                    onClick={toggleCard}
                     direction='down'
                     variant='secondary'
                     toggling
