@@ -1,0 +1,1 @@
+export {MobileSlider} from "@/shared/ui/mobile-slider/MobileSlider";
