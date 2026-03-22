@@ -15,20 +15,23 @@ export default function Home() {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const isMobile = useIsMobile();
     return (
-        <div className='min-w-screen'>
-            <main className='w-full flex flex-col gap-24'>
+        <div className='min-w-screen w-screen'>
+            <main className='w-full'>
                 <Background
                     videoRef={videoRef}
                     videoSrc='/media/video/bg/bg_1.mp4'
                     objectPos={(isMobile) ? {x: 1200, y: 200} : null}
                     fixed
                 />
-                <LiquidGlassProvider videoRef={videoRef}>
-                    <HeroBlock />
-                    <FactCardsSection />
-                    <StepsSection />
-                    <QuestionsSection />
-                </LiquidGlassProvider>
+                <div className='relative flex flex-col gap-24 p-3 sm:p-6'>
+                    <LiquidGlassProvider videoRef={videoRef}>
+                        <HeroBlock />
+                        <FactCardsSection />
+                        <StepsSection />
+                        <QuestionsSection />
+                    </LiquidGlassProvider>
+                </div>
+
             </main>
         </div>
     );
