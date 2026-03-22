@@ -1,6 +1,9 @@
+import {useState} from 'react'
 import {Title} from "@/shared/ui/text-blocks";
 import {FactCard} from "@/widgets/cards-section/ui/FactCard";
+import {MobileSlider} from "@/shared/ui/mobile-slider";
 import type {FactCardProps} from "@/widgets/cards-section/ui/FactCard";
+import {useIsMobile} from "@/shared/hooks/adaptive";
 
 const CARD_DATA: FactCardProps[] = [
     {
@@ -38,14 +41,30 @@ const CARD_DATA: FactCardProps[] = [
 //TODO: сделать мобильную версию - слайдер
 
 export function FactCardsSection() {
+    const [isCardOpen, setIsCardOpen] = useState<boolean>(false);
+    const isMobile = useIsMobile();
+
+    const toggleCard = () => {
+        setIsCardOpen(prev => !prev);
+    }
+
+    console.log(isCardOpen);
+
     return (
         <section className='flex flex-col items-center gap-12 w-full'>
             <Title variant='primary' size='lg' lined centered>
                 Why it is important?
             </Title>
-            <div className='flex gap-8 flex-wrap justify-center max-w-[1200px]'>
-                {CARD_DATA.map((card: FactCardProps) => <FactCard key={card.id} {...card} />)}
-            </div>
+            {isMobile ?
+                (<MobileSlider
+                    isCardOpen={isCardOpen}
+                    slides={
+                        CARD_DATA.map((card: FactCardProps) => <FactCard key={card.id} cardToggler={toggleCard} {...card} />)}
+                />) :
+                <div className='flex gap-8 flex-wrap justify-center max-w-[1200px]'>
+                    {CARD_DATA.map((card: FactCardProps) => <FactCard key={card.id} {...card} />)}
+                </div>
+            }
         </section>
     )
 }

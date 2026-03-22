@@ -2,7 +2,7 @@ import React from 'react';
 import {useEffect, useState, useRef} from 'react'
 import {JellyContainer} from "@/shared/ui/containers";
 import {LiquidGlass} from "@/shared/effects/liquid-glass";
-import {TextBlock} from "@/shared/ui/text-blocks";
+import {Title} from "@/shared/ui/text-blocks";
 import {Timeline} from "@/shared/utils/animations";
 import {VideoPointAnchor} from "@/shared/utils/position";
 import {GlassBubble} from "@/shared/ui/containers/glass-bubble";
@@ -153,6 +153,134 @@ const BUBBLE_STAGES: StageProps[][] = [
     ],
 ];
 
+const BUBBLE_STAGES_MOB: StageProps[][] = [
+    [
+        {
+            style: {
+                scale: '0',
+            }
+        },
+        {
+            offsetX: -30,
+            offsetY: 50,
+            style: {
+                scale: '1',
+            },
+            delay: 5300,
+            duration: 1000,
+            stay: 3700 // 3700 default
+        },
+        {
+            offsetX: 20,
+            offsetY: 300,
+            style: {
+                scale: '0'
+            },
+            duration: 1000,
+            stay: 500
+        },
+    ],
+    [
+        {
+            style: {
+                scale: '0'
+            }
+        },
+        {
+            offsetX: 10,
+            offsetY: 20,
+            style: {
+                scale: '1'
+            },
+            delay: 5500,
+            stay: 0,
+            duration: 500,
+            ease: 'linear',
+        },
+        {
+            offsetX: 20,
+            offsetY: 50,
+            style: {
+                scale: '0',
+            },
+
+            duration: 400,
+            stay: 3600, // 10000 - 3600
+            ease: 'linear',
+        },
+        {
+            offsetX: 10,
+            offsetY: 200,
+            style: {
+                scale: '1',
+                opacity: '1',
+            },
+            duration: 600,
+            ease: 'linear',
+        },
+        {
+            offsetX: 10,
+            offsetY: 340,
+            style: {
+                scale: '0'
+            },
+            duration: 600, // 11200 - 100
+            stay: 300,
+            ease: 'linear',
+        }
+    ],
+    [
+        {
+            style: {
+                scale: '0'
+            }
+        },
+        {
+            offsetX: 80,
+            offsetY: 20,
+            style: {
+                scale: '1'
+            },
+            delay: 5800,
+            stay: 0,
+            duration: 500,
+            ease: 'linear',
+        },
+        {
+            offsetX: 140,
+            offsetY: 40,
+            style: {
+                scale: '0',
+            },
+
+            duration: 400,
+            stay: 3300, // 10000 - 3600
+            ease: 'linear',
+        },
+        {
+            offsetX: 160,
+            offsetY: 200,
+            style: {
+                scale: '1',
+                opacity: '1',
+            },
+            duration: 600,
+            delay: 200,
+            ease: 'linear',
+        },
+        {
+            offsetX: 160,
+            offsetY: 340,
+            style: {
+                scale: '0'
+            },
+            duration: 600, // 11200 - 100
+            stay: 100,
+            ease: 'linear',
+        }
+    ],
+];
+
 type Cords = {x: number, y: number};
 type Sizes = {width: number, height: number};
 
@@ -185,17 +313,16 @@ export function Bubbles() {
             );
 
             const pos = pointAnchor.getAnchorPos();
+            const adaptiveStages = (isMobile ? BUBBLE_STAGES_MOB : BUBBLE_STAGES);
 
-
-
-            for (let i = 0; i < BUBBLE_STAGES.length; i++) {
+            for (let i = 0; i < adaptiveStages.length; i++) {
                 const el = bubblesRef.current[i];
                 if (el === null) {
                     console.log('ye')
                     continue;
                 }
 
-                const stages = BUBBLE_STAGES[i];
+                const stages = adaptiveStages[i];
 
                 let tl;
                 if (timelinesRef.current[i]) {
@@ -289,7 +416,7 @@ export function Bubbles() {
             if (windowWidth < 640) {
                 setIsMobile(prev => prev ? prev : true);
                 setBubbleSizes([{width: 200, height: 125}, {width: 40, height: 40}, {width: 40, height: 40}])
-                setAnchor({x: 860, y: 508})
+                setAnchor({x: 920, y: 508})
             } else {
                 setIsMobile(prev => prev ? false : prev);
                 setBubbleSizes([{width: 256, height: 160}, {width: 56, height: 56}, {width: 56, height: 56}]);
@@ -373,11 +500,15 @@ export function Bubbles() {
                              height: `${bubbleSizes[0].height}px`,
                         }}
                     >
-                        <TextBlock
+                        <Title
+                            variant='secondary'
                             size='lg'
-                            className=' text-cold-white/95 text-center text-4xl sm:text-6xl leading-[0.7] text-shadow-[0_4px_4px_rgba(0,0,0,0.25)]'>
-                            Help me survive!
-                        </TextBlock>
+                            titleClassName=' text-cold-white/95 text-center text-4xl sm:text-6xl leading-[0.7] text-shadow-[0_4px_4px_rgba(0,0,0,0.25)]'
+
+                            centered
+                        >
+                            Help me <span className='text-turk underline underline-offset-4 decoration-1'>survive</span>!
+                        </Title>
                     </div>
                 </GlassBubble>
             </div>
