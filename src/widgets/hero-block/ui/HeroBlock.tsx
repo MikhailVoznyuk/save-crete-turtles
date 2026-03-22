@@ -15,13 +15,13 @@ export function HeroBlock() {
 
     return (
         <section className='relative w-full h-screen'>
-            <div className='flex flex-col size-full p-4 pb-12 justify-end sm:justify-start sm:p-10 text-9'>
+            <div className='flex flex-col size-full p-4 sm:pb-12 justify-start sm:justify-start sm:p-10 text-9'>
                 <div className='flex flex-col gap-4 pt-[20vh] max-w-[740px] items-center sm:items-start'>
                     <Title as={'h1'} size={'xl'} lined centered={isMobile}>
-                        Help us save the Cretan turtles in Almyrida
+                        Help us save the Cretan sea turtles in Almyrida
                     </Title>
                     <TextBlock className='w-11/12' size={'xl'} uppercase centered={isMobile}>
-                        {"Contribute to improving the turtles' living conditions and survival. It's not difficult, but it will help save their lives."}
+                        {"Contribute to improving the loggerhead sea turtles (Caretta caretta)' living conditions and survival. It's not difficult, but it will help save their lives."}
                     </TextBlock>
                     <div className='flex flex-col sm:flex-row gap-4 items-center sm:items-center '>
                         <WaveButton onClick={() => {}}>Read More</WaveButton>
@@ -31,14 +31,13 @@ export function HeroBlock() {
                 </div>
             </div>
             <Bubbles />
-            {!isMobile && (
-                <ArrowButton
-                    onClick={() => {}}
-                    direction='down'
-                    containerVisible={false}
-                    className='absolute left-1/2 -bottom-6 sm:bottom-2 -translate-1/2 animate-bounce-slow'
-                />
-            )}
+
+            <ArrowButton
+                onClick={() => {}}
+                direction='down'
+                containerVisible={false}
+                className='absolute left-1/2 -bottom-6 sm:bottom-2 -translate-1/2 animate-bounce-slow'
+            />
         </section>
     )
 }
