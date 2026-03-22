@@ -15,11 +15,11 @@ export function TextMediaRow({header, content, mediaType, mediaSrc, reversed=fal
                     containerClassName={reversed ? 'items-end' : 'items-start'}
                 >{header}</Title>
             </div>
-            <div className={`flex gap-14 ${(reversed) ? 'flex-row-reverse' : 'flex-row'}`}>
-                <TextBlock className='max-w-1/2' size='md'>{content}</TextBlock>
+            <div className={`flex gap-14 flex-col ${(reversed) ? 'md:flex-row-reverse' : 'md:flex-row'}`}>
+                <TextBlock className='md:max-w-1/2' size='md'>{content}</TextBlock>
                 {mediaType === 'image' ?
-                    <ModalImage src={mediaSrc} className='w-1/2 max-h-96' /> :
-                    <ModalVideo src={mediaSrc} className='w-1/2 max-h-96' />
+                    <ModalImage src={mediaSrc} className='w-full md:w-1/2 max-h-96' /> :
+                    <ModalVideo src={mediaSrc} className='w-full md:w-1/2 max-h-96' />
                 }
             </div>
         </div>
