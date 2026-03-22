@@ -13,8 +13,8 @@ type ArrowButtonProps = {
 
 const DIR_ANGLES = {
     up: 180,
-    left: -90,
-    right: 90,
+    left: 90,
+    right: -90,
     down: 0
 }
 
@@ -29,11 +29,11 @@ export function ArrowButton({onClick, direction, containerVisible=true, variant=
         DIR_ANGLES[direction];
 
     const containerStyle =  (variant === 'primary') ?
-        'bg-cold-white hover:bg-turk' :
+        'bg-turk/50 backdrop-blur-xs   hover:bg-cold-white/40' :
         'bg-cold-white/10 border border-cold-white/40 backdrop-blur-sm hover:border-turk/80 border-2'
     const arrowStyle = (containerVisible) ?
         (variant === 'primary') ?
-            'bg-cold-white group-hover/arrows:bg-turk w-8 h-1' :
+            'bg-cold-white group-hover/arrows:bg-turk w-6 h-[3px]' :
             'bg-cold-white group-hover/arrows:bg-turk w-6 h-[3px]' :
         'bg-cold-white group-hover/arrows:bg-turk w-8 sm:w-10 h-[3px] sm:h-1';
 
@@ -56,6 +56,7 @@ export function ArrowButton({onClick, direction, containerVisible=true, variant=
             <div className='relative size-full'>
                  <span className={`absolute -translate-1/2 rotate-45 top-1/2 left-1/2 rounded-full duration-300 ${arrowStyle}`}
                        style={{left: (containerVisible) ?
+
                                'calc(50% - 7.5px)' :
                                (isMobile) ?
                                    'calc(50% - 10.5px)' :
