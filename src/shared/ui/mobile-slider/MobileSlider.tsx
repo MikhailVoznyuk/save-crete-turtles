@@ -16,6 +16,7 @@ export function MobileSlider({slides, isCardOpen, autoDelay=8000 }: MobileSlider
     const slidesRef = useRef<(HTMLDivElement | null)[]>([]);
     const touchStartX = useRef<number | null>(null);
     const touchCurrentX = useRef<number | null>(null);
+    const timerRef = useRef<number | null>(null);
 
     const gap = 10;
     const swipeThreshold = 40;
@@ -46,14 +47,25 @@ export function MobileSlider({slides, isCardOpen, autoDelay=8000 }: MobileSlider
     useEffect(() => {
         if (slides.length <= 1 || isTouching) return;
 
-        const timer = window.setTimeout(() => {
+        timerRef.current = window.setTimeout(() => {
             goNext();
         }, autoDelay)
 
         return () => {
-            window.clearTimeout(timer);
+            if (timerRef.current !== null) {
+                window.clearTimeout(timerRef.current);
+                timerRef.current = null;
+            }
         }
-    }, [idx]);
+    }, [idx, isCardOpen]);
+
+    useEffect(() => {
+        if (isCardOpen && timerRef.current !== null) {
+            window.clearTimeout(timerRef.current);
+            timerRef.current = null;
+        }
+
+    }, [isCardOpen]);
 
     const clamp = useCallback((v: number, len: number) => {
         if (v < 0) return len - 1;
