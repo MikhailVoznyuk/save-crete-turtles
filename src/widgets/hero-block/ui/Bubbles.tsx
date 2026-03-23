@@ -151,17 +151,17 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             }
         },
         {
-            offsetX: -80,
+            offsetX: -30,
             offsetY: 50,
             style: {
                 scale: '1',
             },
             delay: 5300,
             duration: 1000,
-            stay: 3700
+            stay: 3700 // 3700 default
         },
         {
-            offsetX: -20,
+            offsetX: 20,
             offsetY: 300,
             style: {
                 scale: '0'
@@ -177,7 +177,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             }
         },
         {
-            offsetX: -20,
+            offsetX: 10,
             offsetY: 20,
             style: {
                 scale: '1'
@@ -188,18 +188,18 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             ease: 'linear',
         },
         {
-            offsetX: -20,
+            offsetX: 20,
             offsetY: 50,
             style: {
                 scale: '0',
             },
 
             duration: 400,
-            stay: 3600,
+            stay: 3600, // 10000 - 3600
             ease: 'linear',
         },
         {
-            offsetX: -20,
+            offsetX: 10,
             offsetY: 200,
             style: {
                 scale: '1',
@@ -209,12 +209,12 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             ease: 'linear',
         },
         {
-            offsetX: -20,
+            offsetX: 10,
             offsetY: 340,
             style: {
                 scale: '0'
             },
-            duration: 600,
+            duration: 600, // 11200 - 100
             stay: 300,
             ease: 'linear',
         }
@@ -226,7 +226,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             }
         },
         {
-            offsetX: 60,
+            offsetX: 80,
             offsetY: 20,
             style: {
                 scale: '1'
@@ -237,18 +237,18 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             ease: 'linear',
         },
         {
-            offsetX: 120,
+            offsetX: 140,
             offsetY: 40,
             style: {
                 scale: '0',
             },
 
             duration: 400,
-            stay: 3300,
+            stay: 3300, // 10000 - 3600
             ease: 'linear',
         },
         {
-            offsetX: 140,
+            offsetX: 160,
             offsetY: 200,
             style: {
                 scale: '1',
@@ -259,12 +259,12 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             ease: 'linear',
         },
         {
-            offsetX: 140,
+            offsetX: 160,
             offsetY: 340,
             style: {
                 scale: '0'
             },
-            duration: 600,
+            duration: 600, // 11200 - 100
             stay: 100,
             ease: 'linear',
         }
@@ -398,7 +398,7 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
             const windowWidth = window.innerWidth;
             if (windowWidth < 640) {
                 setIsMobile(prev => prev ? prev : true);
-                setBubbleSizes([{width: 224, height: 140}, {width: 40, height: 40}, {width: 40, height: 40}])
+                setBubbleSizes([{width: 200, height: 125}, {width: 40, height: 40}, {width: 40, height: 40}])
                 setAnchor({x: 920, y: 508})
             } else {
                 setIsMobile(prev => prev ? false : prev);
@@ -511,7 +511,7 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
                         <Title
                             variant='secondary'
                             size='lg'
-                            titleClassName='text-turk sm:text-cold-white/95 text-center text-6xl sm:text-6xl leading-[0.7] text-shadow-[0_4px_4px_rgba(0,0,0,0.25)]'
+                            titleClassName='text-cold-white/95 text-center text-5xl sm:text-6xl leading-[0.7] text-shadow-[0_4px_4px_rgba(0,0,0,0.25)]'
                             centered
                         >
                             Help me <span className='text-turk underline underline-offset-4 decoration-1'>survive</span>!

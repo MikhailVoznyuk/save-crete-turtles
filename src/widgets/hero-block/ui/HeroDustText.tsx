@@ -44,6 +44,10 @@ type LocalRepulsor = {
     speed: number;
 };
 
+const SAFE_BUBBLE_GAP_PX = 10;
+const COLLISION_EPSILON_PX = 0.75;
+const RENDER_PADDING_PX = 520;
+
 function makePointTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 64;
@@ -251,7 +255,7 @@ function toLocalRepulsors(repulsors: BubbleRepulsor[], rect: DOMRect, width: num
             const ry = Math.max(1, repulsor.ry ?? repulsor.r ?? 1);
             const localX = repulsor.x - rect.left;
             const localY = repulsor.y - rect.top;
-            const maxRadius = Math.max(rx, ry);
+            const maxRadius = Math.max(rx, ry) + SAFE_BUBBLE_GAP_PX;
 
             if (
                 localX < -maxRadius ||
@@ -314,9 +318,9 @@ export function HeroDustText({
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.setClearColor(0x000000, 0);
-        renderer.domElement.style.width = '100%';
-        renderer.domElement.style.height = '100%';
+        renderer.domElement.style.position = 'absolute';
         renderer.domElement.style.display = 'block';
+        renderer.domElement.style.pointerEvents = 'none';
         mount.appendChild(renderer.domElement);
 
         const scene = new THREE.Scene();
@@ -424,16 +428,29 @@ export function HeroDustText({
 
             material.uniforms.uSize.value = nextSnapshot.width < 640 ? 1.35 : 1.15;
 
-            camera.left = -nextSnapshot.width / 2;
-            camera.right = nextSnapshot.width / 2;
-            camera.top = nextSnapshot.height / 2;
-            camera.bottom = -nextSnapshot.height / 2;
+            const mountRect = mount.getBoundingClientRect();
+            const padLeft = Math.min(RENDER_PADDING_PX, Math.max(0, mountRect.left));
+            const padTop = Math.min(RENDER_PADDING_PX, Math.max(0, mountRect.top));
+            const padRight = Math.min(RENDER_PADDING_PX, Math.max(0, window.innerWidth - mountRect.right));
+            const padBottom = Math.min(RENDER_PADDING_PX, Math.max(0, window.innerHeight - mountRect.bottom));
+
+            const renderWidth = nextSnapshot.width + padLeft + padRight;
+            const renderHeight = nextSnapshot.height + padTop + padBottom;
+
+            camera.left = -nextSnapshot.width / 2 - padLeft;
+            camera.right = nextSnapshot.width / 2 + padRight;
+            camera.top = nextSnapshot.height / 2 + padTop;
+            camera.bottom = -nextSnapshot.height / 2 - padBottom;
             camera.near = -100;
             camera.far = 100;
             camera.position.z = 10;
             camera.updateProjectionMatrix();
 
-            renderer.setSize(nextSnapshot.width, nextSnapshot.height, false);
+            renderer.setSize(renderWidth, renderHeight, false);
+            renderer.domElement.style.left = `${-padLeft}px`;
+            renderer.domElement.style.top = `${-padTop}px`;
+            renderer.domElement.style.width = `${renderWidth}px`;
+            renderer.domElement.style.height = `${renderHeight}px`;
         };
 
         const scheduleRebuild = () => {
@@ -522,11 +539,13 @@ export function HeroDustText({
 
                 for (let j = 0; j < repulsors.length; j++) {
                     const repulsor = repulsors[j];
+                    const safeRx = repulsor.rx + SAFE_BUBBLE_GAP_PX;
+                    const safeRy = repulsor.ry + SAFE_BUBBLE_GAP_PX;
                     const baseMetric = ellipseMetric(
                         baseX - repulsor.x,
                         baseY - repulsor.y,
-                        repulsor.rx,
-                        repulsor.ry,
+                        safeRx,
+                        safeRy,
                     );
 
                     if (baseMetric < 1) {
@@ -552,10 +571,12 @@ export function HeroDustText({
                     const repulsor = repulsors[j];
                     const rx = repulsor.rx;
                     const ry = repulsor.ry;
+                    const safeRx = rx + SAFE_BUBBLE_GAP_PX;
+                    const safeRy = ry + SAFE_BUBBLE_GAP_PX;
 
                     const dx = nextX - repulsor.x;
                     const dy = nextY - repulsor.y;
-                    const metric = ellipseMetric(dx, dy, rx, ry);
+                    const metric = ellipseMetric(dx, dy, safeRx, safeRy);
 
                     if (metric >= 1) continue;
 
@@ -563,16 +584,16 @@ export function HeroDustText({
                     const scale = 1 / Math.sqrt(safeMetric);
                     const boundaryDx = dx * scale;
                     const boundaryDy = dy * scale;
-                    const normal = ellipseNormal(boundaryDx, boundaryDy, rx, ry, baseAngle);
+                    const normal = ellipseNormal(boundaryDx, boundaryDy, safeRx, safeRy, baseAngle);
                     const tangentX = -normal.y;
                     const tangentY = normal.x;
 
                     const penetration = 1 - Math.sqrt(safeMetric);
-                    const moveBoost = Math.min(1.8, repulsor.speed / Math.max(1, Math.min(rx, ry) * 0.12));
+                    const moveBoost = Math.min(1.8, repulsor.speed / Math.max(1, Math.min(safeRx, safeRy) * 0.12));
                     const chaosSign = Math.sin(phase * 7.13 + j * 11.31) >= 0 ? 1 : -1;
 
-                    nextX = repulsor.x + boundaryDx + normal.x * 1.6;
-                    nextY = repulsor.y + boundaryDy + normal.y * 1.6;
+                    nextX = repulsor.x + boundaryDx + normal.x * COLLISION_EPSILON_PX;
+                    nextY = repulsor.y + boundaryDy + normal.y * COLLISION_EPSILON_PX;
 
                     const relVx = vx - repulsor.dx;
                     const relVy = vy - repulsor.dy;
@@ -664,7 +685,7 @@ export function HeroDustText({
         <div
             ref={mountRef}
             aria-hidden
-            className={twMerge('pointer-events-none absolute inset-0', className)}
+            className={twMerge('pointer-events-none absolute inset-0 overflow-visible', className)}
         />
     );
 }
