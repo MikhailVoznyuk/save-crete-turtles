@@ -10,6 +10,7 @@ type GlassBubbleProps = {
     innerStyle?: React.CSSProperties;
     outline?: boolean;
     visible?: boolean;
+    active?: boolean;
     idle?: boolean,
     interactive?: boolean,
     effectStrength?: 'xs' | 'sm' | 'md',
@@ -145,6 +146,7 @@ export function GlassBubble({
     innerStyle={},
     glassOrder,
     visible = true,
+    active = true,
     outline = true,
     idle= true,
     interactive = true,
@@ -176,6 +178,7 @@ export function GlassBubble({
                 }}
                 outline={outline}
                 idle={idle}
+                active={active}
             >
             <LiquidGlass
                 enabled={visible}
