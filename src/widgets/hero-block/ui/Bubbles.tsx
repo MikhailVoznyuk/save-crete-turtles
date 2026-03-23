@@ -1,14 +1,10 @@
-import React from 'react';
-import {useEffect, useState, useRef} from 'react'
-import {JellyContainer} from "@/shared/ui/containers";
-import {LiquidGlass} from "@/shared/effects/liquid-glass";
-import {Title} from "@/shared/ui/text-blocks";
-import {Timeline} from "@/shared/utils/animations";
-import {VideoPointAnchor} from "@/shared/utils/position";
-import {GlassBubble} from "@/shared/ui/containers/glass-bubble";
+import {useEffect, useState, useRef, type MutableRefObject} from 'react'
+import {Title} from '@/shared/ui/text-blocks';
+import {Timeline} from '@/shared/utils/animations';
+import {VideoPointAnchor} from '@/shared/utils/position';
+import {GlassBubble} from '@/shared/ui/containers/glass-bubble';
+import type {BubbleRepulsor} from '@/widgets/hero-block/model/types';
 
-// засторить позицию элементов для каждого состояния
-type Stage = 'enter' | 'show' | 'out'
 type StageProps  = {
     style?: Record<string, string>,
     offsetX?: number,
@@ -18,12 +14,6 @@ type StageProps  = {
     stay?: number;
     ease?: string;
 }
-
-// 0 - основной пузырь, 1 - вспомогательный (средний) 2 - завершающий
-
-// Задать смещение относительно изначального якоря, не позиционирование стилями
-// TODO: В перспективе сделать чтобы текст появлялся когда пузырь статичен, и исчезал когда он начианет всплывать
-// 11500мс - длинна видео
 
 const BUBBLE_STAGES: StageProps[][] = [
     [
@@ -40,7 +30,7 @@ const BUBBLE_STAGES: StageProps[][] = [
             },
             delay: 5300,
             duration: 1000,
-            stay: 3700 // 3700 default
+            stay: 3700
         },
         {
             offsetX: 20,
@@ -77,7 +67,7 @@ const BUBBLE_STAGES: StageProps[][] = [
             },
 
             duration: 400,
-            stay: 3600, // 10000 - 3600
+            stay: 3600,
             ease: 'linear',
         },
         {
@@ -96,7 +86,7 @@ const BUBBLE_STAGES: StageProps[][] = [
             style: {
                 scale: '0'
             },
-            duration: 600, // 11200 - 100
+            duration: 600,
             stay: 300,
             ease: 'linear',
         }
@@ -126,7 +116,7 @@ const BUBBLE_STAGES: StageProps[][] = [
             },
 
             duration: 400,
-            stay: 3300, // 10000 - 3600
+            stay: 3300,
             ease: 'linear',
         },
         {
@@ -146,7 +136,7 @@ const BUBBLE_STAGES: StageProps[][] = [
             style: {
                 scale: '0'
             },
-            duration: 600, // 11200 - 100
+            duration: 600,
             stay: 100,
             ease: 'linear',
         }
@@ -168,7 +158,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             },
             delay: 5300,
             duration: 1000,
-            stay: 3700 // 3700 default
+            stay: 3700
         },
         {
             offsetX: -20,
@@ -205,7 +195,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             },
 
             duration: 400,
-            stay: 3600, // 10000 - 3600
+            stay: 3600,
             ease: 'linear',
         },
         {
@@ -224,7 +214,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             style: {
                 scale: '0'
             },
-            duration: 600, // 11200 - 100
+            duration: 600,
             stay: 300,
             ease: 'linear',
         }
@@ -254,7 +244,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             },
 
             duration: 400,
-            stay: 3300, // 10000 - 3600
+            stay: 3300,
             ease: 'linear',
         },
         {
@@ -274,7 +264,7 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
             style: {
                 scale: '0'
             },
-            duration: 600, // 11200 - 100
+            duration: 600,
             stay: 100,
             ease: 'linear',
         }
@@ -284,10 +274,11 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
 type Cords = {x: number, y: number};
 type Sizes = {width: number, height: number};
 
-const TURTLE_ANCHOR: Cords = {x: 1100, y: 548};
+type BubblesProps = {
+    repulsorsRef?: MutableRefObject<BubbleRepulsor[]>;
+}
 
-export function Bubbles() {
-
+export function Bubbles({repulsorsRef}: BubblesProps) {
     const bubblesRef = useRef<(HTMLElement | null)[]>([]);
     const timelinesRef = useRef<Timeline[]>([]);
     const [bubbleSizes, setBubbleSizes] = useState<Sizes[]>([{width: 256, height: 160}, {width: 56, height: 56}, {width: 56, height: 56}]);
@@ -299,12 +290,12 @@ export function Bubbles() {
     const resizeRafRef = useRef<number | null>(null);
 
     useEffect(() => {
-        if (bubblesRef.current.length === 0) return;
+        if (bubblesRef.current.length === 0 || anchor === null) return;
+
         const updateSteps= () => {
-            if (anchor === null) return;
             const pointAnchor = new VideoPointAnchor(
                 {
-                    anchor: anchor,
+                    anchor,
                     containerW: window.innerWidth,
                     containerH: window.innerHeight,
                     videoW: 1920,
@@ -312,12 +303,11 @@ export function Bubbles() {
                 }
             );
 
-            const pos = pointAnchor.getAnchorPos();
-            const adaptiveStages = (isMobile ? BUBBLE_STAGES_MOB : BUBBLE_STAGES);
+            const adaptiveStages = isMobile ? BUBBLE_STAGES_MOB : BUBBLE_STAGES;
 
             for (let i = 0; i < adaptiveStages.length; i++) {
                 const el = bubblesRef.current[i];
-                if (el === null) {
+                if (!el) {
                     continue;
                 }
 
@@ -329,18 +319,18 @@ export function Bubbles() {
                     tl.clear(false);
                 } else {
                     const initStage = stages[0];
-                    const initCords = pointAnchor.getAnchorPos({
+                    const initCoords = pointAnchor.getAnchorPos({
                         x: initStage.offsetX ?? 0,
                         y: -(initStage.offsetY ?? 0),
                     })
 
                     const initStyle = {
-                        left: `${initCords.x - bubbleSizes[i].width / 2}px`,
-                        top: `${initCords.y - bubbleSizes[i].height / 2}px`,
+                        left: `${initCoords.x - bubbleSizes[i].width / 2}px`,
+                        top: `${initCoords.y - bubbleSizes[i].height / 2}px`,
                         ...initStage.style
                     }
 
-                    tl = new Timeline({el, loop: true, initStyle: initStyle});
+                    tl = new Timeline({el, loop: true, initStyle});
                 }
 
                 for (let j = 1; j < stages.length; j++) {
@@ -365,7 +355,6 @@ export function Bubbles() {
                 }
 
                 timelinesRef.current[i] = tl;
-
             }
         }
 
@@ -373,10 +362,9 @@ export function Bubbles() {
         window.addEventListener('resize', updateSteps);
 
         return () => {
-            removeEventListener('resize', updateSteps);
-
+            window.removeEventListener('resize', updateSteps);
         };
-    }, [anchor]);
+    }, [anchor, bubbleSizes, isMobile]);
 
     useEffect(() => {
         const onScroll = () => {
@@ -385,11 +373,8 @@ export function Bubbles() {
             ticking.current = true;
 
             rafId.current = requestAnimationFrame(() => {
-
                 const nextVisible = window.scrollY < 100;
-
                 setVisible((prev) => (prev === nextVisible) ? prev : nextVisible);
-
                 ticking.current = false;
                 rafId.current = null;
             })
@@ -406,8 +391,7 @@ export function Bubbles() {
             }
             ticking.current = false;
         }
-    }
-    , []);
+    }, []);
 
     useEffect(() => {
         const update = () => {
@@ -440,22 +424,49 @@ export function Bubbles() {
         }
     }, []);
 
+    useEffect(() => {
+        if (!repulsorsRef) return;
+
+        let frame = 0;
+
+        const updateRepulsors = () => {
+            const nextRepulsors: BubbleRepulsor[] = [];
+
+            bubblesRef.current.forEach((el, index) => {
+                if (!el) return;
+
+                const rect = el.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) return;
+
+                nextRepulsors.push({
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2,
+                    rx: rect.width * 0.47,
+                    ry: rect.height * 0.47,
+                    strength: index === 0 ? 1.15 : 0.9,
+                });
+            });
+
+            repulsorsRef.current = nextRepulsors;
+            frame = requestAnimationFrame(updateRepulsors);
+        }
+
+        updateRepulsors();
+
+        return () => {
+            cancelAnimationFrame(frame);
+            repulsorsRef.current = [];
+        }
+    }, [repulsorsRef]);
+
     return (
         <>
-            {/*<div className='fixed size-2 rounded-full bg-red-600'
-                 ref={scopeRef}
-                 style={{
-                     left: `${anchor?.x ?? 0}px`,
-                     top: `${anchor?.y ?? 0}px`,
-                 }}
-            ></div>*/}
-            <div className='fixed transition-all rounded-full size-12 animate-turbulence  z-10'
+            <div className='fixed transition-all rounded-full size-12 animate-turbulence z-10'
                  ref={el => {bubblesRef.current[1] = el}}
-
             >
                 <GlassBubble
-                    className="rounded-full"
-                    innerStyle={   {
+                    className='rounded-full'
+                    innerStyle={{
                         width: `${bubbleSizes[1].width}px`,
                         height: `${bubbleSizes[1].height}px`
                     }}
@@ -463,18 +474,16 @@ export function Bubbles() {
                     effectStrength='sm'
                 />
             </div>
-            <div className='fixed transition-all rounded-fullanimate-turbulence  z-10'
+            <div className='fixed transition-all rounded-full animate-turbulence z-10'
                  ref={el => {bubblesRef.current[2] = el}}
-                 style={
-                     {
-                         width: `${bubbleSizes[2].width}px`,
-                         height: `${bubbleSizes[2].height}px`
-                     }
-                 }
+                 style={{
+                     width: `${bubbleSizes[2].width}px`,
+                     height: `${bubbleSizes[2].height}px`
+                 }}
             >
                 <GlassBubble
-                    className="rounded-full"
-                    innerClassName="size-14"
+                    className='rounded-full'
+                    innerClassName='size-14'
                     visible={visible}
                     effectStrength='sm'
                 />
@@ -483,9 +492,9 @@ export function Bubbles() {
                  ref={(el) => {bubblesRef.current[0] = el}}
             >
                 <GlassBubble
-                    className="rounded-full"
-                    innerClassName="z-20 sm:p-10 flex justify-center items-center"
-                    innerStyle={   {
+                    className='rounded-full'
+                    innerClassName='z-20 sm:p-10 flex justify-center items-center'
+                    innerStyle={{
                         width: `${bubbleSizes[0].width}px`,
                         height: `${bubbleSizes[0].height}px`
                     }}
@@ -502,8 +511,7 @@ export function Bubbles() {
                         <Title
                             variant='secondary'
                             size='lg'
-                            titleClassName={`text-turk sm:text-cold-white/95 text-center text-6xl sm:text-6xl leading-[0.7] text-shadow-[0_4px_4px_rgba(0,0,0,0.25)]`}
-
+                            titleClassName='text-turk sm:text-cold-white/95 text-center text-6xl sm:text-6xl leading-[0.7] text-shadow-[0_4px_4px_rgba(0,0,0,0.25)]'
                             centered
                         >
                             Help me <span className='text-turk underline underline-offset-4 decoration-1'>survive</span>!

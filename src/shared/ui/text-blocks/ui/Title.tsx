@@ -11,8 +11,8 @@ type Base = {
     variant?: Variant;
     size?: TextSize;
     centered?: boolean;
-    titleClassName?: string;
-    containerClassName?: string;
+    titleClassName?: string | null;
+    containerClassName?: string | null;
 }
 
 type LinedOn = Base & {
