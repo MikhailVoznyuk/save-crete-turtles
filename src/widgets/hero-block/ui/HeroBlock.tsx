@@ -22,17 +22,17 @@ export function HeroBlock() {
 
     return (
         <section className='relative w-full h-screen'>
-            <div className='flex flex-col size-full p-4 sm:pb-12 justify-start sm:justify-start sm:p-10 text-9'>
-                <div className='flex flex-col gap-4 pt-[20vh] max-w-[740px] items-center sm:items-start'>
+            <div className='flex flex-col size-full p-4 justify-center  sm:p-10 text-9'>
+                <div className='flex flex-col gap-4  max-w-[740px] items-center sm:items-start'>
                     <div ref={textParticleRootRef} className='relative w-full'>
-                        <div className='opacity-0 select-none'>
+                        <div className='opacity-0 select-none flex flex-col items-cemter gap-4'>
                             <div ref={titleRef}>
                                 <Title as='h1' size='xl' lined centered={isMobile}>
                                     {HERO_TITLE}
                                 </Title>
                             </div>
                             <div ref={textRef}>
-                                <TextBlock className='w-11/12' size='xl' uppercase centered={isMobile}>
+                                <TextBlock size='xl' uppercase centered={isMobile}>
                                     {HERO_TEXT}
                                 </TextBlock>
                             </div>
@@ -56,7 +56,7 @@ export function HeroBlock() {
                 onClick={() => {}}
                 direction='down'
                 containerVisible={false}
-                className='absolute left-1/2 -bottom-6 sm:bottom-2 -translate-1/2 animate-bounce-slow'
+                className='absolute left-1/2 bottom-2 -translate-1/2 animate-bounce-slow'
             />
         </section>
     )
