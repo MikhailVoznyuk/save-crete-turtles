@@ -517,7 +517,7 @@ export function HeroDustText({
                 const phase = phases[i];
                 const baseAngle = angles[i];
 
-                let scatterValue = Math.max(0, scatter[i] - dt * 1.45);
+                let scatterValue = Math.max(0, scatter[i] - dt * 1.05);
                 let baseBlocked = false;
 
                 for (let j = 0; j < repulsors.length; j++) {
@@ -535,12 +535,12 @@ export function HeroDustText({
                     }
                 }
 
-                const driftMix = baseBlocked ? 0 : Math.max(0.15, 1 - scatterValue * 0.55);
+                const driftMix = baseBlocked ? 0 : Math.max(0.08, 1 - scatterValue * 0.72);
                 const targetX = baseX + Math.sin(elapsed * 0.82 + phase) * drifts[i2] * driftMix;
                 const targetY = baseY + Math.cos(elapsed * 1.07 + phase * 1.31) * drifts[i2 + 1] * driftMix;
                 const spring = baseBlocked
                     ? 0
-                    : 0.018 + (1 - scatterValue) * 0.058;
+                    : 0.006 + (1 - scatterValue) * 0.022;
 
                 vx += (targetX - x) * spring * dtFrames;
                 vy += (targetY - y) * spring * dtFrames;
@@ -571,15 +571,15 @@ export function HeroDustText({
                     const moveBoost = Math.min(1.8, repulsor.speed / Math.max(1, Math.min(rx, ry) * 0.12));
                     const chaosSign = Math.sin(phase * 7.13 + j * 11.31) >= 0 ? 1 : -1;
 
-                    nextX = repulsor.x + boundaryDx + normal.x * 0.28;
-                    nextY = repulsor.y + boundaryDy + normal.y * 0.28;
+                    nextX = repulsor.x + boundaryDx + normal.x * 1.6;
+                    nextY = repulsor.y + boundaryDy + normal.y * 1.6;
 
                     const relVx = vx - repulsor.dx;
                     const relVy = vy - repulsor.dy;
                     const inwardSpeed = relVx * normal.x + relVy * normal.y;
 
                     if (inwardSpeed < 0) {
-                        const bounce = -(1.08 + penetration * 0.45) * inwardSpeed;
+                        const bounce = -(0.82 + penetration * 0.22) * inwardSpeed;
                         vx += normal.x * bounce;
                         vy += normal.y * bounce;
                     }
@@ -613,9 +613,15 @@ export function HeroDustText({
                     );
                 }
 
+                if (!baseBlocked && scatterValue > 0.02) {
+                    const releaseDrag = Math.max(0.82, 1 - scatterValue * 0.12 * dtFrames);
+                    vx *= releaseDrag;
+                    vy *= releaseDrag;
+                }
+
                 const damping = baseBlocked
-                    ? 0.965
-                    : 0.882 + Math.min(0.08, scatterValue * 0.08);
+                    ? 0.972
+                    : 0.9 + Math.min(0.025, scatterValue * 0.02);
 
                 vx *= Math.pow(damping, dtFrames);
                 vy *= Math.pow(damping, dtFrames);
