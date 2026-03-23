@@ -13,15 +13,15 @@ const TOURIST_ACTIONS_DATA: Step[] = [
         header: 'Leave No Trash Behind',
         content: 'A clean beach is not just more beautiful. It is safer for turtles at every stage of life. Plastic bags, wrappers, bottle caps, cigarette butts, leftover food, and fishing line can all become a threat once the wind or tide carries them into the water. Turtles may swallow plastic by mistake, become tangled in debris, or struggle to cross littered sand. The rule is simple: take everything with you when you leave, and if you notice trash that is not yours, pick up a little extra. For us it is a few seconds. For a turtle, it can mean one less deadly obstacle.',
         mediaType: 'image',
-        mediaSrc: '/media/img/steps-section/sand_turtle.png',
+        mediaSrc: '/media/img/steps-section/tourists/plastic_on_beach.png',
         reversed: false,
     },
     {
         id: 'ac-plastic',
         header: 'Choose Reusables Over Single-Use Plastic',
         content: 'Many of the items people use for a few minutes stay in the environment for years. Plastic straws, takeaway containers, shopping bags, disposable cutlery, and balloon releases often end up in the sea, where they break into smaller pieces but do not truly disappear. Turtles can mistake drifting plastic for prey, especially when it moves like jellyfish in the water. Carry a reusable bottle, say no to unnecessary plastic, and choose products you can use again. It is one of the easiest ways to reduce the slow flood of waste that turns the ocean into a trap.',
-        mediaType: 'image',
-        mediaSrc: '/media/img/steps-section/sand_turtle.png',
+        mediaType: 'video',
+        mediaSrc: '/media/video/steps-section/tourists/turtle_eats_plastic_pocket.mp4',
         reversed: true,
     },
     {
