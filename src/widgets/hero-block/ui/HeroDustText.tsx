@@ -44,6 +44,28 @@ type LocalRepulsor = {
     speed: number;
 };
 
+function getViewportSize() {
+    const vv = window.visualViewport;
+    const docEl = document.documentElement;
+
+    const widthCandidates = [
+        vv?.width,
+        docEl.clientWidth,
+        window.innerWidth,
+    ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
+
+    const heightCandidates = [
+        vv?.height,
+        docEl.clientHeight,
+        window.innerHeight,
+    ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
+
+    return {
+        width: Math.min(...widthCandidates),
+        height: Math.min(...heightCandidates),
+    };
+}
+
 const SAFE_BUBBLE_GAP_PX = 10;
 const COLLISION_EPSILON_PX = 0.75;
 const RENDER_PADDING_PX = 520;
@@ -428,14 +450,22 @@ export function HeroDustText({
 
             material.uniforms.uSize.value = nextSnapshot.width < 640 ? 1.35 : 1.15;
 
-            const mountRect = mount.getBoundingClientRect();
-            const padLeft = Math.min(RENDER_PADDING_PX, Math.max(0, mountRect.left));
-            const padTop = Math.min(RENDER_PADDING_PX, Math.max(0, mountRect.top));
-            const padRight = Math.min(RENDER_PADDING_PX, Math.max(0, window.innerWidth - mountRect.right));
-            const padBottom = Math.min(RENDER_PADDING_PX, Math.max(0, window.innerHeight - mountRect.bottom));
+            const rootRect = root.getBoundingClientRect();
+            const viewport = getViewportSize();
+
+            const padLeft = Math.min(RENDER_PADDING_PX, Math.max(0, rootRect.left));
+            const padTop = Math.min(RENDER_PADDING_PX, Math.max(0, rootRect.top));
+            const padRight = Math.min(RENDER_PADDING_PX, Math.max(0, viewport.width - rootRect.right));
+            const padBottom = Math.min(RENDER_PADDING_PX, Math.max(0, viewport.height - rootRect.bottom));
 
             const renderWidth = nextSnapshot.width + padLeft + padRight;
             const renderHeight = nextSnapshot.height + padTop + padBottom;
+
+            mount.style.left = `${-padLeft}px`;
+            mount.style.top = `${-padTop}px`;
+            mount.style.width = `${renderWidth}px`;
+            mount.style.height = `${renderHeight}px`;
+            mount.style.overflow = 'hidden';
 
             camera.left = -nextSnapshot.width / 2 - padLeft;
             camera.right = nextSnapshot.width / 2 + padRight;
@@ -447,8 +477,8 @@ export function HeroDustText({
             camera.updateProjectionMatrix();
 
             renderer.setSize(renderWidth, renderHeight, false);
-            renderer.domElement.style.left = `${-padLeft}px`;
-            renderer.domElement.style.top = `${-padTop}px`;
+            renderer.domElement.style.left = `0px`;
+            renderer.domElement.style.top = `0px`;
             renderer.domElement.style.width = `${renderWidth}px`;
             renderer.domElement.style.height = `${renderHeight}px`;
         };
@@ -685,7 +715,7 @@ export function HeroDustText({
         <div
             ref={mountRef}
             aria-hidden
-            className={twMerge('pointer-events-none absolute inset-0 overflow-visible', className)}
+            className={twMerge('pointer-events-none absolute overflow-hidden', className)}
         />
     );
 }
