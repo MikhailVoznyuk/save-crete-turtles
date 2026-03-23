@@ -45,57 +45,23 @@ type LocalRepulsor = {
 };
 
 function getViewportSize() {
-    const vv = window.visualViewport;
     const docEl = document.documentElement;
 
-    const widthCandidates = [
-        vv?.width,
-        docEl.clientWidth,
-        window.innerWidth,
-    ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
-
-    const heightCandidates = [
-        vv?.height,
-        docEl.clientHeight,
-        window.innerHeight,
-    ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
-
     return {
-        width: Math.min(...widthCandidates),
-        height: Math.min(...heightCandidates),
+        width: Math.max(1, docEl.clientWidth || window.innerWidth),
+        height: Math.max(1, docEl.clientHeight || window.innerHeight),
     };
 }
 
 const SAFE_BUBBLE_GAP_PX = 10;
 const COLLISION_EPSILON_PX = 0.75;
 const RENDER_PADDING_PX = 520;
-
-function makePointTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-
-    ctx.clearRect(0, 0, 64, 64);
-
-    const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    gradient.addColorStop(0.62, 'rgba(255, 255, 255, 1)');
-    gradient.addColorStop(0.82, 'rgba(255, 255, 255, 0.78)');
-    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(32, 32, 32, 0, Math.PI * 2);
-    ctx.fill();
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-    texture.colorSpace = THREE.SRGBColorSpace;
-    return texture;
-}
+const EDGE_ALPHA_THRESHOLD = 10;
+const ALPHA_BOOST_EXPONENT = 0.72;
+const ALPHA_BOOST_MULTIPLIER = 1.08;
+const MOBILE_POINT_SIZE = 1.9;
+const DESKTOP_POINT_SIZE = 1.75;
+const POINT_EDGE_SOFTNESS = 0.16;
 
 function parseLineHeight(style: CSSStyleDeclaration, fontSize: number) {
     const raw = style.lineHeight;
@@ -242,7 +208,7 @@ function createSnapshot(
             const index = (y * canvas.width + x) * 4;
             const alpha = image[index + 3];
 
-            if (alpha < 12) continue;
+            if (alpha < EDGE_ALPHA_THRESHOLD) continue;
 
             positions.push(
                 x / dpr - width / 2,
@@ -256,7 +222,10 @@ function createSnapshot(
                 image[index + 2] / 255,
             );
 
-            alphas.push(alpha / 255);
+            const normalizedAlpha = alpha / 255;
+            const boostedAlpha = Math.min(1, Math.pow(normalizedAlpha, ALPHA_BOOST_EXPONENT) * ALPHA_BOOST_MULTIPLIER);
+
+            alphas.push(boostedAlpha);
         }
     }
 
@@ -336,27 +305,33 @@ export function HeroDustText({
 
         if (!mount || !root || !titleRoot || !textRoot) return;
 
-        const renderer = new THREE.WebGLRenderer({alpha: true, antialias: true});
+        const renderer = new THREE.WebGLRenderer({
+            alpha: true,
+            antialias: true,
+            powerPreference: 'high-performance',
+            premultipliedAlpha: false,
+        });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.setClearColor(0x000000, 0);
         renderer.domElement.style.position = 'absolute';
         renderer.domElement.style.display = 'block';
         renderer.domElement.style.pointerEvents = 'none';
+        renderer.domElement.style.transform = 'translateZ(0)';
+        renderer.domElement.style.backfaceVisibility = 'hidden';
+        renderer.domElement.style.webkitBackfaceVisibility = 'hidden';
         mount.appendChild(renderer.domElement);
 
         const scene = new THREE.Scene();
         const camera = new THREE.OrthographicCamera();
-        const texture = makePointTexture();
-
         const material = new THREE.ShaderMaterial({
             transparent: true,
             depthWrite: false,
             vertexColors: true,
             uniforms: {
-                uMap: {value: texture},
-                uSize: {value: 1.15},
+                uSize: {value: DESKTOP_POINT_SIZE},
                 uOpacity: {value: 1.0},
+                uEdgeSoftness: {value: POINT_EDGE_SOFTNESS},
             },
             vertexShader: `
                 attribute float alpha;
@@ -372,15 +347,19 @@ export function HeroDustText({
                 }
             `,
             fragmentShader: `
-                uniform sampler2D uMap;
                 uniform float uOpacity;
+                uniform float uEdgeSoftness;
                 varying vec3 vColor;
                 varying float vAlpha;
 
                 void main() {
-                    vec4 tex = texture2D(uMap, gl_PointCoord);
-                    float alpha = tex.a * vAlpha * uOpacity;
-                    if (alpha <= 0.01) discard;
+                    vec2 pointUv = gl_PointCoord - vec2(0.5);
+                    float dist = length(pointUv) * 2.0;
+                    float disc = 1.0 - smoothstep(1.0 - uEdgeSoftness, 1.0, dist);
+                    float alpha = pow(disc, 0.9) * vAlpha * uOpacity;
+
+                    if (alpha <= 0.025) discard;
+
                     gl_FragColor = vec4(vColor, alpha);
                 }
             `,
@@ -412,15 +391,18 @@ export function HeroDustText({
         let animationFrame = 0;
         let initFrame1 = 0;
         let initFrame2 = 0;
+        let rebuildToken = 0;
 
         const rebuild = async () => {
             if (disposed) return;
+
+            const currentToken = ++rebuildToken;
 
             if ('fonts' in document) {
                 await document.fonts.ready;
             }
 
-            if (disposed) return;
+            if (disposed || currentToken !== rebuildToken) return;
 
             const nextSnapshot = createSnapshot(root, titleRoot, textRoot);
             if (!nextSnapshot || nextSnapshot.count === 0) return;
@@ -450,7 +432,7 @@ export function HeroDustText({
             geometry.setAttribute('alpha', new THREE.BufferAttribute(nextSnapshot.alphas, 1));
             geometry.computeBoundingSphere();
 
-            material.uniforms.uSize.value = nextSnapshot.width < 640 ? 1.35 : 1.15;
+            material.uniforms.uSize.value = nextSnapshot.width < 640 ? MOBILE_POINT_SIZE : DESKTOP_POINT_SIZE;
 
             const rootRect = root.getBoundingClientRect();
             const viewport = getViewportSize();
@@ -507,7 +489,6 @@ export function HeroDustText({
 
         const visualViewport = window.visualViewport;
         visualViewport?.addEventListener('resize', scheduleRebuild);
-        visualViewport?.addEventListener('scroll', scheduleRebuild);
 
         initFrame1 = window.requestAnimationFrame(() => {
             initFrame2 = window.requestAnimationFrame(() => {
@@ -716,7 +697,6 @@ export function HeroDustText({
             window.removeEventListener('resize', scheduleRebuild);
             window.removeEventListener('orientationchange', scheduleRebuild);
             visualViewport?.removeEventListener('resize', scheduleRebuild);
-            visualViewport?.removeEventListener('scroll', scheduleRebuild);
             resizeObserver.disconnect();
             window.cancelAnimationFrame(animationFrame);
             window.cancelAnimationFrame(resizeFrame);
@@ -724,7 +704,6 @@ export function HeroDustText({
             window.cancelAnimationFrame(initFrame2);
             geometry.dispose();
             material.dispose();
-            texture?.dispose();
             renderer.dispose();
             mount.removeChild(renderer.domElement);
         };
