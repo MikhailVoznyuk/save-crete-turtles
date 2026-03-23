@@ -410,6 +410,8 @@ export function HeroDustText({
         let disposed = false;
         let resizeFrame = 0;
         let animationFrame = 0;
+        let initFrame1 = 0;
+        let initFrame2 = 0;
 
         const rebuild = async () => {
             if (disposed) return;
@@ -452,9 +454,11 @@ export function HeroDustText({
 
             const rootRect = root.getBoundingClientRect();
             const viewport = getViewportSize();
+            const pageLeft = rootRect.left + window.scrollX;
+            const pageTop = rootRect.top + window.scrollY;
 
-            const padLeft = Math.min(RENDER_PADDING_PX, Math.max(0, rootRect.left));
-            const padTop = Math.min(RENDER_PADDING_PX, Math.max(0, rootRect.top));
+            const padLeft = Math.min(RENDER_PADDING_PX, Math.max(0, pageLeft));
+            const padTop = Math.min(RENDER_PADDING_PX, Math.max(0, pageTop));
             const padRight = Math.min(RENDER_PADDING_PX, Math.max(0, viewport.width - rootRect.right));
             const padBottom = Math.min(RENDER_PADDING_PX, Math.max(0, viewport.height - rootRect.bottom));
 
@@ -499,7 +503,17 @@ export function HeroDustText({
         resizeObserver.observe(titleRoot);
         resizeObserver.observe(textRoot);
         window.addEventListener('resize', scheduleRebuild);
-        void rebuild();
+        window.addEventListener('orientationchange', scheduleRebuild);
+
+        const visualViewport = window.visualViewport;
+        visualViewport?.addEventListener('resize', scheduleRebuild);
+        visualViewport?.addEventListener('scroll', scheduleRebuild);
+
+        initFrame1 = window.requestAnimationFrame(() => {
+            initFrame2 = window.requestAnimationFrame(() => {
+                void rebuild();
+            });
+        });
 
         let previousTime = 0;
 
@@ -514,7 +528,7 @@ export function HeroDustText({
             const dtFrames = dt * 60;
             const elapsed = time * 0.001;
 
-            const rootRect = mount.getBoundingClientRect();
+            const rootRect = root.getBoundingClientRect();
             const repulsors = toLocalRepulsors(repulsorsRef.current, rootRect, state.width, state.height).map((repulsor, index) => {
                 const prev = repulsorState.get(index);
                 const dx = prev ? (repulsor.x - prev.x) * 0.76 + prev.dx * 0.24 : 0;
@@ -700,9 +714,14 @@ export function HeroDustText({
         return () => {
             disposed = true;
             window.removeEventListener('resize', scheduleRebuild);
+            window.removeEventListener('orientationchange', scheduleRebuild);
+            visualViewport?.removeEventListener('resize', scheduleRebuild);
+            visualViewport?.removeEventListener('scroll', scheduleRebuild);
             resizeObserver.disconnect();
             window.cancelAnimationFrame(animationFrame);
             window.cancelAnimationFrame(resizeFrame);
+            window.cancelAnimationFrame(initFrame1);
+            window.cancelAnimationFrame(initFrame2);
             geometry.dispose();
             material.dispose();
             texture?.dispose();
