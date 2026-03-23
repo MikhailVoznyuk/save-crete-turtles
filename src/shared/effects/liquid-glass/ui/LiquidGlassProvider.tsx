@@ -15,6 +15,15 @@ type Props = {
     zIndex?: number;
 };
 
+function getViewportCssSize() {
+    const docEl = document.documentElement;
+
+    return {
+        w: Math.max(1, Math.round(docEl.clientWidth || window.innerWidth)),
+        h: Math.max(1, Math.round(docEl.clientHeight || window.innerHeight)),
+    };
+}
+
 function compile(gl: WebGL2RenderingContext, type: number, src: string) {
     const sh = gl.createShader(type);
     if (!sh) throw new Error('shader alloc failed');
@@ -598,8 +607,7 @@ export function LiquidGlassProvider({
         const q = Math.max(0.6, Math.min(1, quality));
         const scale = dpr * q;
 
-        const wCss = Math.max(1, window.innerWidth);
-        const hCss = Math.max(1, window.innerHeight);
+        const {w: wCss, h: hCss} = getViewportCssSize();
 
         vpCssRef.current = { w: wCss, h: hCss };
         fbScaleRef.current = scale;
@@ -610,6 +618,9 @@ export function LiquidGlassProvider({
         canvas.style.height = '100%';
         canvas.style.pointerEvents = 'none';
         canvas.style.zIndex = String(zIndex);
+        canvas.style.transform = 'translateZ(0)';
+        canvas.style.backfaceVisibility = 'hidden';
+        canvas.style.webkitBackfaceVisibility = 'hidden';
 
         const w = Math.max(1, Math.floor(wCss * scale));
         const h = Math.max(1, Math.floor(hCss * scale));
@@ -679,7 +690,7 @@ export function LiquidGlassProvider({
             gl.clearStencil(0);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
 
-            if (!any) {
+            if (!any || document.hidden) {
                 rafRef.current = requestAnimationFrame(loop);
                 return;
             }
@@ -750,10 +761,11 @@ export function LiquidGlassProvider({
 
             let ref = 1;
 
-            for (const h of lenses.values()) {
+            for (const h of orderedLenses) {
                 if (!h.visible || !h.enabledRef.current) continue;
 
                 const rect = h.el.getBoundingClientRect();
+                if (rect.width < 1 || rect.height < 1) continue;
 
                 const pad = h.padRef.current || 0;
 
@@ -784,10 +796,12 @@ export function LiquidGlassProvider({
                 const shape = buildPolarShape(pts, N, rect, scaleX, scaleY);
 
                 // scissor (fb coords)
-                const sx = Math.floor(shape.minX * scale) - 2;
-                const sy = Math.floor((vp.h - shape.maxY) * scale) - 2;
-                const sw = Math.ceil((shape.maxX - shape.minX) * scale) + 4;
-                const sh = Math.ceil((shape.maxY - shape.minY) * scale) + 4;
+                const sx = Math.max(0, Math.floor(shape.minX * scale) - 2);
+                const sy = Math.max(0, Math.floor((vp.h - shape.maxY) * scale) - 2);
+                const sw = Math.min(canvas.width - sx, Math.ceil((shape.maxX - shape.minX) * scale) + 4);
+                const sh = Math.min(canvas.height - sy, Math.ceil((shape.maxY - shape.minY) * scale) + 4);
+
+                if (sw <= 0 || sh <= 0) continue;
 
                 gl.enable(gl.SCISSOR_TEST);
                 gl.scissor(sx, sy, sw, sh);
@@ -1061,9 +1075,13 @@ export function LiquidGlassProvider({
         resize();
 
         window.addEventListener('resize', resize, { passive: true });
+        window.addEventListener('orientationchange', resize);
+        window.addEventListener('pageshow', resize);
 
         return () => {
             window.removeEventListener('resize', resize);
+            window.removeEventListener('orientationchange', resize);
+            window.removeEventListener('pageshow', resize);
             stop();
 
             for (const v of mapRef.current.values() as any) v.io?.disconnect();
