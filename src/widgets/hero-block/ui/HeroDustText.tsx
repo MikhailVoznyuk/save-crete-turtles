@@ -33,6 +33,17 @@ type TextDrawTarget = {
     color: string;
 }
 
+type LocalRepulsor = {
+    x: number;
+    y: number;
+    rx: number;
+    ry: number;
+    strength: number;
+    dx: number;
+    dy: number;
+    speed: number;
+};
+
 function makePointTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 64;
@@ -236,15 +247,17 @@ function createSnapshot(
 function toLocalRepulsors(repulsors: BubbleRepulsor[], rect: DOMRect, width: number, height: number) {
     return repulsors
         .map((repulsor) => {
+            const rx = Math.max(1, repulsor.rx ?? repulsor.r ?? 1);
+            const ry = Math.max(1, repulsor.ry ?? repulsor.r ?? 1);
             const localX = repulsor.x - rect.left;
             const localY = repulsor.y - rect.top;
-            const radius = repulsor.r;
+            const maxRadius = Math.max(rx, ry);
 
             if (
-                localX < -radius ||
-                localX > width + radius ||
-                localY < -radius ||
-                localY > height + radius
+                localX < -maxRadius ||
+                localX > width + maxRadius ||
+                localY < -maxRadius ||
+                localY > height + maxRadius
             ) {
                 return null;
             }
@@ -252,11 +265,32 @@ function toLocalRepulsors(repulsors: BubbleRepulsor[], rect: DOMRect, width: num
             return {
                 x: localX - width / 2,
                 y: height / 2 - localY,
-                r: radius,
+                rx,
+                ry,
                 strength: repulsor.strength ?? 1,
             };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
+}
+
+function ellipseMetric(dx: number, dy: number, rx: number, ry: number) {
+    return (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry);
+}
+
+function ellipseNormal(dx: number, dy: number, rx: number, ry: number, fallbackAngle: number) {
+    let nx = dx / (rx * rx);
+    let ny = dy / (ry * ry);
+
+    if (Math.abs(nx) + Math.abs(ny) < 0.000001) {
+        nx = Math.cos(fallbackAngle);
+        ny = Math.sin(fallbackAngle);
+    }
+
+    const len = Math.max(0.000001, Math.hypot(nx, ny));
+    return {
+        x: nx / len,
+        y: ny / len,
+    };
 }
 
 export function HeroDustText({
@@ -337,10 +371,15 @@ export function HeroDustText({
             velocities: new Float32Array(),
             phases: new Float32Array(),
             drifts: new Float32Array(),
+            angles: new Float32Array(),
+            randoms: new Float32Array(),
+            scatter: new Float32Array(),
             count: 0,
             width: 1,
             height: 1,
         };
+
+        const repulsorState = new Map<number, {x: number; y: number; dx: number; dy: number}>();
 
         let disposed = false;
         let resizeFrame = 0;
@@ -363,14 +402,19 @@ export function HeroDustText({
             state.velocities = new Float32Array(nextSnapshot.count * 2);
             state.phases = new Float32Array(nextSnapshot.count);
             state.drifts = new Float32Array(nextSnapshot.count * 2);
+            state.angles = new Float32Array(nextSnapshot.count);
+            state.randoms = new Float32Array(nextSnapshot.count);
+            state.scatter = new Float32Array(nextSnapshot.count);
             state.count = nextSnapshot.count;
             state.width = nextSnapshot.width;
             state.height = nextSnapshot.height;
 
             for (let i = 0; i < nextSnapshot.count; i++) {
                 state.phases[i] = Math.random() * Math.PI * 2;
-                state.drifts[i * 2] = 0.06 + Math.random() * 0.16;
-                state.drifts[i * 2 + 1] = 0.06 + Math.random() * 0.16;
+                state.drifts[i * 2] = 0.05 + Math.random() * 0.1;
+                state.drifts[i * 2 + 1] = 0.05 + Math.random() * 0.1;
+                state.angles[i] = Math.random() * Math.PI * 2;
+                state.randoms[i] = 0.85 + Math.random() * 0.35;
             }
 
             geometry.setAttribute('position', new THREE.BufferAttribute(state.positions, 3));
@@ -410,20 +454,54 @@ export function HeroDustText({
         window.addEventListener('resize', scheduleRebuild);
         void rebuild();
 
+        let previousTime = 0;
+
         const tick = (time: number) => {
             if (disposed) return;
             animationFrame = window.requestAnimationFrame(tick);
 
             if (state.count === 0) return;
 
+            const dt = previousTime === 0 ? 1 / 60 : Math.min((time - previousTime) / 1000, 1 / 20);
+            previousTime = time;
+            const dtFrames = dt * 60;
+            const elapsed = time * 0.001;
+
             const rootRect = mount.getBoundingClientRect();
-            const repulsors = toLocalRepulsors(repulsorsRef.current, rootRect, state.width, state.height);
+            const repulsors = toLocalRepulsors(repulsorsRef.current, rootRect, state.width, state.height).map((repulsor, index) => {
+                const prev = repulsorState.get(index);
+                const dx = prev ? (repulsor.x - prev.x) * 0.76 + prev.dx * 0.24 : 0;
+                const dy = prev ? (repulsor.y - prev.y) * 0.76 + prev.dy * 0.24 : 0;
+
+                repulsorState.set(index, {
+                    x: repulsor.x,
+                    y: repulsor.y,
+                    dx,
+                    dy,
+                });
+
+                return {
+                    ...repulsor,
+                    dx,
+                    dy,
+                    speed: Math.hypot(dx, dy),
+                } satisfies LocalRepulsor;
+            });
+
+            for (const key of Array.from(repulsorState.keys())) {
+                if (key >= repulsors.length) {
+                    repulsorState.delete(key);
+                }
+            }
+
             const positions = state.positions;
             const basePositions = state.basePositions;
             const velocities = state.velocities;
             const phases = state.phases;
             const drifts = state.drifts;
-            const elapsed = time * 0.001;
+            const angles = state.angles;
+            const randoms = state.randoms;
+            const scatter = state.scatter;
 
             for (let i = 0; i < state.count; i++) {
                 const i3 = i * 3;
@@ -437,64 +515,119 @@ export function HeroDustText({
                 const baseX = basePositions[i3];
                 const baseY = basePositions[i3 + 1];
                 const phase = phases[i];
+                const baseAngle = angles[i];
 
-                let targetX = baseX + Math.sin(elapsed * 0.8 + phase) * drifts[i2];
-                let targetY = baseY + Math.cos(elapsed * 1.05 + phase * 1.37) * drifts[i2 + 1];
-                let spring = 0.1;
-                let damping = 0.84;
+                let scatterValue = Math.max(0, scatter[i] - dt * 1.45);
+                let baseBlocked = false;
 
-                let strongestRepulsor: {x: number; y: number; r: number; strength: number} | null = null;
-                let strongestInfluence = 0;
+                for (let j = 0; j < repulsors.length; j++) {
+                    const repulsor = repulsors[j];
+                    const baseMetric = ellipseMetric(
+                        baseX - repulsor.x,
+                        baseY - repulsor.y,
+                        repulsor.rx,
+                        repulsor.ry,
+                    );
 
-                for (const repulsor of repulsors) {
-                    const dxBase = baseX - repulsor.x;
-                    const dyBase = baseY - repulsor.y;
-                    const radius = repulsor.r + 16;
-                    const distanceSq = dxBase * dxBase + dyBase * dyBase;
-
-                    if (distanceSq >= radius * radius) continue;
-
-                    const distance = Math.max(0.001, Math.sqrt(distanceSq));
-                    const influence = (1 - distance / radius) * repulsor.strength;
-
-                    if (influence > strongestInfluence) {
-                        strongestInfluence = influence;
-                        strongestRepulsor = repulsor;
+                    if (baseMetric < 1) {
+                        baseBlocked = true;
+                        break;
                     }
                 }
 
-                if (strongestRepulsor) {
-                    const dxBase = baseX - strongestRepulsor.x;
-                    const dyBase = baseY - strongestRepulsor.y;
-                    const baseDistance = Math.max(0.001, Math.sqrt(dxBase * dxBase + dyBase * dyBase));
-                    const nx = baseDistance < 1
-                        ? Math.cos(phase)
-                        : dxBase / baseDistance;
-                    const ny = baseDistance < 1
-                        ? Math.sin(phase)
-                        : dyBase / baseDistance;
+                const driftMix = baseBlocked ? 0 : Math.max(0.15, 1 - scatterValue * 0.55);
+                const targetX = baseX + Math.sin(elapsed * 0.82 + phase) * drifts[i2] * driftMix;
+                const targetY = baseY + Math.cos(elapsed * 1.07 + phase * 1.31) * drifts[i2 + 1] * driftMix;
+                const spring = baseBlocked
+                    ? 0
+                    : 0.018 + (1 - scatterValue) * 0.058;
 
-                    const holdRadius = strongestRepulsor.r + 10 + strongestInfluence * 34;
-                    const tangent = strongestInfluence * 9;
+                vx += (targetX - x) * spring * dtFrames;
+                vy += (targetY - y) * spring * dtFrames;
 
-                    targetX = strongestRepulsor.x + nx * holdRadius + Math.cos(elapsed * 1.1 + phase * 1.7) * tangent;
-                    targetY = strongestRepulsor.y + ny * holdRadius + Math.sin(elapsed * 0.95 + phase * 1.3) * tangent;
-                    spring = 0.14;
-                    damping = 0.8;
+                let nextX = x + vx * dtFrames;
+                let nextY = y + vy * dtFrames;
+
+                for (let j = 0; j < repulsors.length; j++) {
+                    const repulsor = repulsors[j];
+                    const rx = repulsor.rx;
+                    const ry = repulsor.ry;
+
+                    const dx = nextX - repulsor.x;
+                    const dy = nextY - repulsor.y;
+                    const metric = ellipseMetric(dx, dy, rx, ry);
+
+                    if (metric >= 1) continue;
+
+                    const safeMetric = Math.max(metric, 0.000001);
+                    const scale = 1 / Math.sqrt(safeMetric);
+                    const boundaryDx = dx * scale;
+                    const boundaryDy = dy * scale;
+                    const normal = ellipseNormal(boundaryDx, boundaryDy, rx, ry, baseAngle);
+                    const tangentX = -normal.y;
+                    const tangentY = normal.x;
+
+                    const penetration = 1 - Math.sqrt(safeMetric);
+                    const moveBoost = Math.min(1.8, repulsor.speed / Math.max(1, Math.min(rx, ry) * 0.12));
+                    const chaosSign = Math.sin(phase * 7.13 + j * 11.31) >= 0 ? 1 : -1;
+
+                    nextX = repulsor.x + boundaryDx + normal.x * 0.28;
+                    nextY = repulsor.y + boundaryDy + normal.y * 0.28;
+
+                    const relVx = vx - repulsor.dx;
+                    const relVy = vy - repulsor.dy;
+                    const inwardSpeed = relVx * normal.x + relVy * normal.y;
+
+                    if (inwardSpeed < 0) {
+                        const bounce = -(1.08 + penetration * 0.45) * inwardSpeed;
+                        vx += normal.x * bounce;
+                        vy += normal.y * bounce;
+                    }
+
+                    const escapeImpulse =
+                        (0.48 + penetration * 2.9 + moveBoost * 0.34) *
+                        repulsor.strength;
+
+                    vx += normal.x * escapeImpulse;
+                    vy += normal.y * escapeImpulse;
+
+                    const carry =
+                        (0.22 + penetration * 0.26 + moveBoost * 0.12) *
+                        repulsor.strength;
+
+                    vx += repulsor.dx * carry;
+                    vy += repulsor.dy * carry;
+
+                    const sideImpulse =
+                        (0.045 + penetration * 0.22 + moveBoost * 0.06) *
+                        randoms[i] *
+                        chaosSign *
+                        repulsor.strength;
+
+                    vx += tangentX * sideImpulse;
+                    vy += tangentY * sideImpulse;
+
+                    scatterValue = Math.max(
+                        scatterValue,
+                        0.72 + penetration * 0.75 + Math.min(0.28, moveBoost * 0.18),
+                    );
                 }
 
-                vx += (targetX - x) * spring;
-                vy += (targetY - y) * spring;
+                const damping = baseBlocked
+                    ? 0.965
+                    : 0.882 + Math.min(0.08, scatterValue * 0.08);
 
-                vx *= damping;
-                vy *= damping;
-                x += vx;
-                y += vy;
+                vx *= Math.pow(damping, dtFrames);
+                vy *= Math.pow(damping, dtFrames);
+
+                x = nextX;
+                y = nextY;
 
                 positions[i3] = x;
                 positions[i3 + 1] = y;
                 velocities[i2] = vx;
                 velocities[i2 + 1] = vy;
+                scatter[i] = scatterValue;
             }
 
             const positionAttr = geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
