@@ -1,13 +1,59 @@
+import {useEffect, useRef} from 'react';
 import {motion} from 'framer-motion';
 import {twMerge} from "tailwind-merge";
 import {MediaModal} from "@/shared/ui/media-modal";
 import {ModalToggleButton} from "@/shared/ui/buttons/modal-toggle-button";
+import {stabilizeInlineVideo} from "@/shared/utils/media/stabilizeInlineVideo";
 
 type ModalVideoProps = {
     src: string;
     className?: string;
     videoClassName?: string;
     btnNeeded?: boolean;
+}
+
+type InlineVideoProps = {
+    src: string;
+    className?: string;
+    autoPlay?: boolean;
+    loop?: boolean;
+    muted?: boolean;
+    controls?: boolean;
+    keepPlaying?: boolean;
+};
+
+function InlineVideo({
+    src,
+    className,
+    autoPlay = false,
+    loop = false,
+    muted = false,
+    controls = false,
+    keepPlaying = false,
+}: InlineVideoProps) {
+    const ref = useRef<HTMLVideoElement | null>(null);
+
+    useEffect(() => {
+        const video = ref.current;
+        if (!video) return;
+
+        return stabilizeInlineVideo(video, {keepPlaying});
+    }, [keepPlaying, src]);
+
+    return (
+        <video
+            ref={ref}
+            src={src}
+            muted={muted}
+            autoPlay={autoPlay}
+            loop={loop}
+            controls={controls}
+            playsInline
+            preload={keepPlaying ? 'auto' : 'metadata'}
+            disablePictureInPicture
+            className={className}
+        />
+    );
 }
 
 export function ModalVideo({src, className, videoClassName, btnNeeded=true}: ModalVideoProps) {
@@ -17,17 +63,18 @@ export function ModalVideo({src, className, videoClassName, btnNeeded=true}: Mod
                 <motion.div
                     layoutId={layoutId}
                     className={twMerge(
-                        'relative max-w-[500px] rounded-2xl  border-2 border-cold-white/50 cursor-pointer hover:border-turk/80 overflow-hidden duration-300',
+                        'relative max-w-[500px] rounded-2xl border-2 border-cold-white/50 cursor-pointer hover:border-turk/80 overflow-hidden duration-300',
                         className
                     )}
                     onClick={open}
                 >
-                    <video
+                    <InlineVideo
                         src={src}
                         muted
                         autoPlay
                         loop
-                        className={twMerge('w-full', videoClassName)}
+                        keepPlaying
+                        className={twMerge('w-full pointer-events-none select-none', videoClassName)}
                     />
                     {btnNeeded && (
                         <ModalToggleButton onClick={open} className='absolute right-4 bottom-4' />
@@ -36,10 +83,10 @@ export function ModalVideo({src, className, videoClassName, btnNeeded=true}: Mod
 
             )}
             content={() => (
-                <video
+                <InlineVideo
                     src={src}
-                    className='w-full max-h-[85vh]'
                     controls
+                    className='w-full max-h-[85vh]'
                 />
             )}
         />
