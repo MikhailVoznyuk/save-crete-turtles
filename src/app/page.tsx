@@ -15,7 +15,7 @@ export default function Home() {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const isMobile = useIsMobile();
     return (
-        <div className='min-w-screen w-screen'>
+        <div className='w-full min-w-0'>
             <main className='w-full'>
                 <Background
                     videoRef={videoRef}
