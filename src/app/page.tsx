@@ -23,7 +23,6 @@ export default function Home() {
                     objectPos={(isMobile) ? {x: 1200, y: 200} : null}
                     fixed
                 />
-
                     <LiquidGlassProvider videoRef={videoRef}>
                         <HeroBlock />
                         <div className='relative flex flex-col gap-24 p-3 sm:p-6'>
@@ -32,8 +31,6 @@ export default function Home() {
                             <QuestionsSection />
                         </div>
                     </LiquidGlassProvider>
-
-
             </main>
         </div>
     );
