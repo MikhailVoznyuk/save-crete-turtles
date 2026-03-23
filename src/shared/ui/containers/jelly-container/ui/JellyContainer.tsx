@@ -98,6 +98,7 @@ type JellyContainerProps = {
     idleTangential?: number;      // 0..1 tangential component ratio
     idleInteractMul?: number;     // 0..1 idle amount during hover
 
+    active?: boolean;
     children: React.ReactNode;
 };
 
@@ -391,6 +392,7 @@ export function JellyContainer({
                                    idleTangential = 0.22,
                                    idleInteractMul = 0.25,
 
+                                   active = true,
                                    children,
                                }: JellyContainerProps) {
     const id = useId();
@@ -442,7 +444,10 @@ export function JellyContainer({
         const svg = svgRef.current;
         if (!wrap || !blob || !svg) return;
 
-        wrap.style.touchAction = 'none';
+        const interactiveEnabled = hoverIndent !== 0 || clickIndent !== 0 || clickWave !== 0;
+
+        wrap.style.touchAction = interactiveEnabled ? 'none' : 'auto';
+        wrap.style.transform = 'translateZ(0)';
 
         const toLocal = (e: PointerEvent): V2 => {
             const r = wrap.getBoundingClientRect();
@@ -473,8 +478,12 @@ export function JellyContainer({
             blob.style.width = `${bw}px`;
             blob.style.height = `${bh}px`;
             blob.style.pointerEvents = 'none';
+            blob.style.transform = 'translateZ(0)';
+            blob.style.backfaceVisibility = 'hidden';
+            blob.style.webkitBackfaceVisibility = 'hidden';
 
             svg.style.position = 'absolute';
+            svg.style.transform = 'translateZ(0)';
             svg.style.left = `${-pad}px`;
             svg.style.top = `${-pad}px`;
             svg.style.width = `${bw}px`;
@@ -512,7 +521,10 @@ export function JellyContainer({
             fillMaskFromCatmullRom(nodes, pathTension, MASK_STEPS, pointsRef.current);
 
             const d = catmullRomClosedPath(nodes.map((n) => n.p), pathTension);
-            if (supportsPath) blob.style.clipPath = `path("${d}")`;
+            if (supportsPath) {
+                blob.style.clipPath = `path("${d}")`;
+                (blob.style as CSSStyleDeclaration & {webkitClipPath?: string}).webkitClipPath = `path("${d}")`;
+            }
             if (pathRef.current) pathRef.current.setAttribute('d', d);
         };
 
@@ -526,6 +538,10 @@ export function JellyContainer({
         });
 
         ro.observe(wrap);
+
+        if (!interactiveEnabled) {
+            return () => ro.disconnect();
+        }
 
         const onEnter = (e: PointerEvent) => {
             const pr = pointerRef.current;
@@ -662,11 +678,12 @@ export function JellyContainer({
         clickIndent,
         clickWave,
         pathTension,
+        hoverIndent,
     ]);
 
     useEffect(() => {
         const blob = blobRef.current;
-        if (!blob) return;
+        if (!blob || !active) return;
 
         const step = (t: number) => {
             const nodes = nodesRef.current;
@@ -947,7 +964,10 @@ export function JellyContainer({
             fillMaskFromCatmullRom(nodes, pathTension, MASK_STEPS, arr);
 
             const d = catmullRomClosedPath(nodes.map((n) => n.p), pathTension);
-            if (supportsPath) blob.style.clipPath = `path("${d}")`;
+            if (supportsPath) {
+                blob.style.clipPath = `path("${d}")`;
+                (blob.style as CSSStyleDeclaration & {webkitClipPath?: string}).webkitClipPath = `path("${d}")`;
+            }
             if (pathRef.current) pathRef.current.setAttribute('d', d);
 
             rafRef.current = requestAnimationFrame(step);
@@ -1014,10 +1034,14 @@ export function JellyContainer({
         idleTurbulence,
         idleTangential,
         idleInteractMul,
+        active,
         bendK,
         smoothK,
         smoothIters,
         pathTension,
+        hoverIndent,
+        clickIndent,
+        clickWave,
     ]);
 
     return (
