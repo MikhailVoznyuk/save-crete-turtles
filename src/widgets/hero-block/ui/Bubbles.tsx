@@ -441,7 +441,8 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
                 nextRepulsors.push({
                     x: rect.left + rect.width / 2,
                     y: rect.top + rect.height / 2,
-                    r: Math.max(rect.width, rect.height) * (index === 0 ? 0.58 : 0.72),
+                    rx: rect.width * 0.47,
+                    ry: rect.height * 0.47,
                     strength: index === 0 ? 1.15 : 0.9,
                 });
             });
