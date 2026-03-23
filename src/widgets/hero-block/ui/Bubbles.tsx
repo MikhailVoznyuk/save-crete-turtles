@@ -274,6 +274,15 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
 type Cords = {x: number, y: number};
 type Sizes = {width: number, height: number};
 
+function getViewportSize() {
+    const docEl = document.documentElement;
+
+    return {
+        width: Math.max(1, docEl.clientWidth || window.innerWidth),
+        height: Math.max(1, docEl.clientHeight || window.innerHeight),
+    };
+}
+
 type BubblesProps = {
     repulsorsRef?: MutableRefObject<BubbleRepulsor[]>;
 }
@@ -296,8 +305,8 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
             const pointAnchor = new VideoPointAnchor(
                 {
                     anchor,
-                    containerW: window.innerWidth,
-                    containerH: window.innerHeight,
+                    containerW: getViewportSize().width,
+                    containerH: getViewportSize().height,
                     videoW: 1920,
                     videoH: 1080
                 }
@@ -360,9 +369,11 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
 
         updateSteps();
         window.addEventListener('resize', updateSteps);
+        window.addEventListener('orientationchange', updateSteps);
 
         return () => {
             window.removeEventListener('resize', updateSteps);
+            window.removeEventListener('orientationchange', updateSteps);
         };
     }, [anchor, bubbleSizes, isMobile]);
 
@@ -395,7 +406,7 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
 
     useEffect(() => {
         const update = () => {
-            const windowWidth = window.innerWidth;
+            const windowWidth = getViewportSize().width;
             if (windowWidth < 640) {
                 setIsMobile(prev => prev ? prev : true);
                 setBubbleSizes([{width: 200, height: 125}, {width: 40, height: 40}, {width: 40, height: 40}])
@@ -415,9 +426,11 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
 
         update();
         window.addEventListener('resize', onResize);
+        window.addEventListener('orientationchange', onResize);
 
         return () => {
             window.removeEventListener('resize', onResize);
+            window.removeEventListener('orientationchange', onResize);
             if (resizeRafRef.current !== null) {
                 cancelAnimationFrame(resizeRafRef.current);
             }
@@ -430,6 +443,12 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
         let frame = 0;
 
         const updateRepulsors = () => {
+            if (!visible) {
+                repulsorsRef.current = [];
+                frame = requestAnimationFrame(updateRepulsors);
+                return;
+            }
+
             const nextRepulsors: BubbleRepulsor[] = [];
 
             bubblesRef.current.forEach((el, index) => {
@@ -457,48 +476,71 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
             cancelAnimationFrame(frame);
             repulsorsRef.current = [];
         }
-    }, [repulsorsRef]);
+    }, [repulsorsRef, visible]);
 
     return (
         <>
-            <div className='fixed transition-all rounded-full size-12 animate-turbulence z-10'
-                 ref={el => {bubblesRef.current[1] = el}}
+            <div
+                className='fixed gpu-fixed-layer transition-all rounded-full animate-turbulence z-10 pointer-events-none'
+                ref={el => {bubblesRef.current[1] = el}}
+                style={{
+                    width: `${bubbleSizes[1].width}px`,
+                    height: `${bubbleSizes[1].height}px`,
+                }}
             >
                 <GlassBubble
                     className='rounded-full'
+                    containerClassName='pointer-events-none'
                     innerStyle={{
                         width: `${bubbleSizes[1].width}px`,
                         height: `${bubbleSizes[1].height}px`
                     }}
                     visible={visible}
+                    active={visible}
+                    interactive={false}
                     effectStrength='sm'
                 />
             </div>
-            <div className='fixed transition-all rounded-full animate-turbulence z-10'
-                 ref={el => {bubblesRef.current[2] = el}}
-                 style={{
-                     width: `${bubbleSizes[2].width}px`,
-                     height: `${bubbleSizes[2].height}px`
-                 }}
+            <div
+                className='fixed gpu-fixed-layer transition-all rounded-full animate-turbulence z-10 pointer-events-none'
+                ref={el => {bubblesRef.current[2] = el}}
+                style={{
+                    width: `${bubbleSizes[2].width}px`,
+                    height: `${bubbleSizes[2].height}px`
+                }}
             >
                 <GlassBubble
                     className='rounded-full'
-                    innerClassName='size-14'
+                    containerClassName='pointer-events-none'
+                    innerStyle={{
+                        width: `${bubbleSizes[2].width}px`,
+                        height: `${bubbleSizes[2].height}px`
+                    }}
                     visible={visible}
+                    active={visible}
+                    interactive={false}
                     effectStrength='sm'
                 />
             </div>
-            <div className='fixed rounded-full animate-turbulence z-20'
-                 ref={(el) => {bubblesRef.current[0] = el}}
+            <div
+                className='fixed gpu-fixed-layer rounded-full animate-turbulence z-20 pointer-events-none'
+                ref={(el) => {bubblesRef.current[0] = el}}
+                style={{
+                    width: `${bubbleSizes[0].width}px`,
+                    height: `${bubbleSizes[0].height}px`
+                }}
             >
                 <GlassBubble
                     className='rounded-full'
+                    containerClassName='pointer-events-none'
                     innerClassName='z-20 sm:p-10 flex justify-center items-center'
                     innerStyle={{
                         width: `${bubbleSizes[0].width}px`,
                         height: `${bubbleSizes[0].height}px`
                     }}
                     visible={visible}
+                    active={visible}
+                    interactive={false}
                     effectStrength='md'
                 >
                     <div className='rounded-full flex items-center justify-center'
