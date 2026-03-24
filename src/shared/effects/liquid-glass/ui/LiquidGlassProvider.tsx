@@ -15,12 +15,14 @@ type Props = {
     zIndex?: number;
 };
 
-function getViewportCssSize() {
+function getViewportMetrics() {
+    const visualViewport = window.visualViewport;
     const docEl = document.documentElement;
 
     return {
-        w: Math.max(1, Math.round(docEl.clientWidth || window.innerWidth)),
-        h: Math.max(1, Math.round(docEl.clientHeight || window.innerHeight)),
+        w: Math.max(1, Math.round(visualViewport?.width ?? docEl.clientWidth ?? window.innerWidth)),
+        h: Math.max(1, Math.round(visualViewport?.height ?? docEl.clientHeight ?? window.innerHeight)),
+        dpr: Math.min(window.devicePixelRatio || 1, 4),
     };
 }
 
@@ -437,6 +439,7 @@ export function LiquidGlassProvider({
 
     const fbScaleRef = useRef(1);
     const vpCssRef = useRef({ w: 1, h: 1 });
+    const resizeRafRef = useRef<number | null>(null);
 
     const progBgRef = useRef<WebGLProgram | null>(null);
     const progBlurRef = useRef<WebGLProgram | null>(null);
@@ -459,8 +462,8 @@ export function LiquidGlassProvider({
     const texBlurRef = useRef<WebGLTexture | null>(null);
 
     const sizesRef = useRef({ bgW: 1, bgH: 1, blurW: 1, blurH: 1 });
-
-
+    const forceBgRefreshRef = useRef(true);
+    const lastVideoTimeRef = useRef(-1);
 
     const uniBg = useRef({ uVideo: null as any, uViewport: null as any, uVideoSize: null as any });
     const uniBlur = useRef({ uSrc: null as any, uSrcSize: null as any });
@@ -603,27 +606,41 @@ export function LiquidGlassProvider({
         const gl = glRef.current;
         if (!canvas || !gl) return;
 
-        const dpr = Math.min(dprCap, window.devicePixelRatio || 1);
+        const viewport = getViewportMetrics();
+        const dpr = Math.min(dprCap, viewport.dpr);
         const q = Math.max(0.6, Math.min(1, quality));
         const scale = dpr * q;
 
-        const {w: wCss, h: hCss} = getViewportCssSize();
+        const {w: wCss, h: hCss} = viewport;
+        const targetWidth = Math.max(1, Math.floor(wCss * scale));
+        const targetHeight = Math.max(1, Math.floor(hCss * scale));
+
+        if (
+            vpCssRef.current.w === wCss &&
+            vpCssRef.current.h === hCss &&
+            Math.abs(fbScaleRef.current - scale) < 0.0001 &&
+            canvas.width === targetWidth &&
+            canvas.height === targetHeight
+        ) {
+            return;
+        }
 
         vpCssRef.current = { w: wCss, h: hCss };
         fbScaleRef.current = scale;
 
         canvas.style.position = 'fixed';
-        canvas.style.inset = '0';
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
+        canvas.style.left = '0px';
+        canvas.style.top = '0px';
+        canvas.style.width = `${wCss}px`;
+        canvas.style.height = `${hCss}px`;
         canvas.style.pointerEvents = 'none';
         canvas.style.zIndex = String(zIndex);
-        canvas.style.transform = 'translateZ(0)';
+        canvas.style.willChange = 'auto';
         canvas.style.backfaceVisibility = 'hidden';
         canvas.style.webkitBackfaceVisibility = 'hidden';
 
-        const w = Math.max(1, Math.floor(wCss * scale));
-        const h = Math.max(1, Math.floor(hCss * scale));
+        const w = targetWidth;
+        const h = targetHeight;
         canvas.width = w;
         canvas.height = h;
         gl.viewport(0, 0, w, h);
@@ -634,6 +651,7 @@ export function LiquidGlassProvider({
         const blurW = Math.max(1, (w / 2) | 0);
         const blurH = Math.max(1, (h / 2) | 0);
         sizesRef.current = { bgW, bgH, blurW, blurH };
+        forceBgRefreshRef.current = true;
 
         // reallocate FBO textures
         if (texBgRef.current) gl.deleteTexture(texBgRef.current);
@@ -646,6 +664,15 @@ export function LiquidGlassProvider({
         texBlurRef.current = setupTex(gl, blurW, blurH);
         fboBlurRef.current = setupFbo(gl, texBlurRef.current);
     }, [quality, dprCap, zIndex]);
+
+    const scheduleResize = useCallback(() => {
+        if (resizeRafRef.current !== null) return;
+
+        resizeRafRef.current = requestAnimationFrame(() => {
+            resizeRafRef.current = null;
+            resize();
+        });
+    }, [resize]);
 
     const start = useCallback(() => {
         if (rafRef.current) return;
@@ -667,6 +694,19 @@ export function LiquidGlassProvider({
             const texBlur = texBlurRef.current;
 
             if (!gl || !canvas || !progBg || !progBlur || !progMask || !progLens || !vaoFull || !vaoFan || !vboFan || !texVideo || !fboBg || !texBg || !fboBlur || !texBlur) {
+                rafRef.current = requestAnimationFrame(loop);
+                return;
+            }
+
+            const nextViewport = getViewportMetrics();
+            const nextScale = Math.min(dprCap, nextViewport.dpr) * Math.max(0.6, Math.min(1, quality));
+
+            if (
+                nextViewport.w !== vpCssRef.current.w ||
+                nextViewport.h !== vpCssRef.current.h ||
+                Math.abs(nextScale - fbScaleRef.current) > 0.0001
+            ) {
+                scheduleResize();
                 rafRef.current = requestAnimationFrame(loop);
                 return;
             }
@@ -701,42 +741,46 @@ export function LiquidGlassProvider({
                 return;
             }
 
-            // update video texture
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, texVideo);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, vid);
-
             const vp = vpCssRef.current;
             const { bgW, bgH, blurW, blurH } = sizesRef.current;
+            const videoTime = Number.isFinite(vid.currentTime) ? vid.currentTime : 0;
+            const shouldRefreshBg = forceBgRefreshRef.current || Math.abs(videoTime - lastVideoTimeRef.current) > 0.0005;
 
+            if (shouldRefreshBg) {
+                lastVideoTimeRef.current = videoTime;
+                forceBgRefreshRef.current = false;
 
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, texVideo);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, vid);
 
-            // pass 1: video -> bgTex (cover)
-            gl.bindFramebuffer(gl.FRAMEBUFFER, fboBg);
-            gl.viewport(0, 0, bgW, bgH);
-            gl.disable(gl.DEPTH_TEST);
-            gl.disable(gl.STENCIL_TEST);
-            gl.disable(gl.SCISSOR_TEST);
-            gl.disable(gl.BLEND);
+                // pass 1: video -> bgTex (cover)
+                gl.bindFramebuffer(gl.FRAMEBUFFER, fboBg);
+                gl.viewport(0, 0, bgW, bgH);
+                gl.disable(gl.DEPTH_TEST);
+                gl.disable(gl.STENCIL_TEST);
+                gl.disable(gl.SCISSOR_TEST);
+                gl.disable(gl.BLEND);
 
-            gl.useProgram(progBg);
-            gl.bindVertexArray(vaoFull);
-            gl.uniform1i(uniBg.current.uVideo, 0);
-            gl.uniform2f(uniBg.current.uViewport, bgW, bgH);
-            gl.uniform2f(uniBg.current.uVideoSize, vid.videoWidth, vid.videoHeight);
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
+                gl.useProgram(progBg);
+                gl.bindVertexArray(vaoFull);
+                gl.uniform1i(uniBg.current.uVideo, 0);
+                gl.uniform2f(uniBg.current.uViewport, bgW, bgH);
+                gl.uniform2f(uniBg.current.uVideoSize, vid.videoWidth, vid.videoHeight);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-            // pass 2: bgTex -> blurTex (half)
-            gl.bindFramebuffer(gl.FRAMEBUFFER, fboBlur);
-            gl.viewport(0, 0, blurW, blurH);
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, texBg);
+                // pass 2: bgTex -> blurTex (half)
+                gl.bindFramebuffer(gl.FRAMEBUFFER, fboBlur);
+                gl.viewport(0, 0, blurW, blurH);
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, texBg);
 
-            gl.useProgram(progBlur);
-            gl.bindVertexArray(vaoFull);
-            gl.uniform1i(uniBlur.current.uSrc, 0);
-            gl.uniform2f(uniBlur.current.uSrcSize, bgW, bgH);
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
+                gl.useProgram(progBlur);
+                gl.bindVertexArray(vaoFull);
+                gl.uniform1i(uniBlur.current.uSrc, 0);
+                gl.uniform2f(uniBlur.current.uSrcSize, bgW, bgH);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+            }
 
             // pass 3: lenses to screen with stencil masks
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -909,7 +953,7 @@ export function LiquidGlassProvider({
         };
 
         rafRef.current = requestAnimationFrame(loop);
-    }, [videoRef]);
+    }, [videoRef, dprCap, quality, scheduleResize]);
 
     const stop = useCallback(() => {
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -925,7 +969,7 @@ export function LiquidGlassProvider({
                     const cur = mapRef.current.get(h.id);
                     if (cur) cur.visible = !!e?.isIntersecting;
                 },
-                { root: null, rootMargin: '180px', threshold: 0.01 }
+                { root: null, rootMargin: '96px 0px', threshold: 0.01 }
             );
             io.observe(h.el);
             entry.io = io;
@@ -1072,16 +1116,21 @@ export function LiquidGlassProvider({
         uniLens.current.uCenterCss = gl.getUniformLocation(progLens, 'uCenterCss');
         uniLens.current.uShapeMaxRadius = gl.getUniformLocation(progLens, 'uShapeMaxRadius');
 
+        const visualViewport = window.visualViewport;
+
         resize();
 
-        window.addEventListener('resize', resize, { passive: true });
-        window.addEventListener('orientationchange', resize);
-        window.addEventListener('pageshow', resize);
+        window.addEventListener('resize', scheduleResize, { passive: true });
+        window.addEventListener('orientationchange', scheduleResize);
+        window.addEventListener('pageshow', scheduleResize);
+        visualViewport?.addEventListener('resize', scheduleResize);
 
         return () => {
-            window.removeEventListener('resize', resize);
-            window.removeEventListener('orientationchange', resize);
-            window.removeEventListener('pageshow', resize);
+            window.removeEventListener('resize', scheduleResize);
+            window.removeEventListener('orientationchange', scheduleResize);
+            window.removeEventListener('pageshow', scheduleResize);
+            visualViewport?.removeEventListener('resize', scheduleResize);
+            if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
             stop();
 
             for (const v of mapRef.current.values() as any) v.io?.disconnect();
@@ -1106,7 +1155,7 @@ export function LiquidGlassProvider({
 
             glRef.current = null;
         };
-    }, [resize, stop]);
+    }, [resize, scheduleResize, stop]);
 
     const ctxValue = useMemo(() => register, [register]);
 

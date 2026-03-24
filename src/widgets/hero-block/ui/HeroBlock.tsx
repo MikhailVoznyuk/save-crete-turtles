@@ -21,7 +21,7 @@ export function HeroBlock() {
     const repulsorsRef = useRef<BubbleRepulsor[]>([]);
 
     return (
-        <section className='relative w-full h-screen'>
+        <section className='relative w-full hero-screen'>
             <div className='flex flex-col size-full p-4 justify-center  sm:p-10 text-9'>
                 <div className='flex flex-col gap-4  max-w-[740px] items-center sm:items-start'>
                     <div ref={textParticleRootRef} className='relative w-full'>
