@@ -16,20 +16,41 @@ export default function Home() {
     const isMobile = useIsMobile();
 
     useEffect(() => {
+        const visualViewport = window.visualViewport;
+        let frame = 0;
+        let lastHeight = -1;
+
         const setAppVh = () => {
-            const height = window.visualViewport?.height ?? window.innerHeight;
+            const height = Math.round(visualViewport?.height ?? window.innerHeight);
+            if (height === lastHeight) return;
+            lastHeight = height;
             document.documentElement.style.setProperty('--app-vh', `${height * 0.01}px`);
         };
 
+        const scheduleSetAppVh = () => {
+            if (frame !== 0) return;
+
+            frame = window.requestAnimationFrame(() => {
+                frame = 0;
+                setAppVh();
+            });
+        };
+
         setAppVh();
-        window.addEventListener('resize', setAppVh, {passive: true});
-        window.addEventListener('orientationchange', setAppVh);
-        window.addEventListener('pageshow', setAppVh);
+        window.addEventListener('resize', scheduleSetAppVh, {passive: true});
+        window.addEventListener('orientationchange', scheduleSetAppVh);
+        window.addEventListener('pageshow', scheduleSetAppVh);
+        visualViewport?.addEventListener('resize', scheduleSetAppVh);
 
         return () => {
-            window.removeEventListener('resize', setAppVh);
-            window.removeEventListener('orientationchange', setAppVh);
-            window.removeEventListener('pageshow', setAppVh);
+            window.removeEventListener('resize', scheduleSetAppVh);
+            window.removeEventListener('orientationchange', scheduleSetAppVh);
+            window.removeEventListener('pageshow', scheduleSetAppVh);
+            visualViewport?.removeEventListener('resize', scheduleSetAppVh);
+
+            if (frame !== 0) {
+                window.cancelAnimationFrame(frame);
+            }
         };
     }, []);
 
