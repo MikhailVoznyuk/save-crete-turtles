@@ -14,11 +14,12 @@ export type FactCardProps = {
     description: string,
     iconAlt?: string,
     cardOpened?: boolean,
-    cardToggler?: () => void
+    cardToggler?: () => void,
+    glassActive?: boolean,
 }
 
 
-export function FactCard({ icon, title, description, iconAlt, cardOpened, cardToggler }: FactCardProps) {
+export function FactCard({ icon, title, description, iconAlt, cardOpened, cardToggler, glassActive = true }: FactCardProps) {
     const [opened, setOpened] = useState(cardOpened ?? false);
     const [contentHeight, setContentHeight] = useState<number>(0);
     const isMobile = useIsMobile();
@@ -44,6 +45,7 @@ export function FactCard({ icon, title, description, iconAlt, cardOpened, cardTo
             effectStrength={'xs'}
             className='rounded-4xl'
             innerClassName='p-4 sm:p-5 flex items-center flex-col gap-4'
+            active={glassActive}
         >
             <div className='overflow-hidden'
                  style={{height: (opened) ? 'auto' : `${visibleHeight - ((needDropDown) ? 72 : 0)}px`}}

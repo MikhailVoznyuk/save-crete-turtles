@@ -48,7 +48,6 @@ export function FactCardsSection() {
         setIsCardOpen(prev => !prev);
     }
 
-    console.log(isCardOpen);
 
     return (
         <section className='flex flex-col items-center gap-12 w-full'>

@@ -1,6 +1,6 @@
-import {useLayoutEffect, useEffect,  useState, useCallback, useRef} from 'react';
+import {useLayoutEffect, useEffect,  useState, useCallback, useRef, cloneElement, isValidElement} from 'react';
 import {ArrowButton} from "@/shared/ui/buttons/arrow-button";
-import type {TouchEvent, ReactNode} from 'react'
+import type {TouchEvent, ReactNode, ReactElement} from 'react'
 
 type MobileSliderProps = {
     slides: ReactNode[];
@@ -88,7 +88,6 @@ export function MobileSlider({slides, isCardOpen, autoDelay=8000 }: MobileSlider
     const onTouchStart = (event: TouchEvent<HTMLDivElement>) => {
         const x = event.touches[0].clientX;
         if (x === null) return;
-        console.log('workin')
         setIsTouching(true);
         touchStartX.current = x;
         touchCurrentX.current = x;
@@ -136,15 +135,21 @@ export function MobileSlider({slides, isCardOpen, autoDelay=8000 }: MobileSlider
                          gap: `${gap}px`
                      }}
                 >
-                    {slides.map((slide, i) => (
-                        <div
-                            key={i}
-                            ref={el => {slidesRef.current[i] = el}}
-                            className={`transition-opacity duration-300 shrink-0 grow-0 ${idx === i ? 'opacity-100' : 'opacity-0'}`}
-                        >
-                            {slide}
-                        </div>
-                    ))}
+                    {slides.map((slide, i) => {
+                        const slideNode = isValidElement(slide)
+                            ? cloneElement(slide as ReactElement<any>, {glassActive: idx === i})
+                            : slide;
+
+                        return (
+                            <div
+                                key={i}
+                                ref={el => {slidesRef.current[i] = el}}
+                                className={`transition-opacity duration-300 shrink-0 grow-0 ${idx === i ? 'opacity-100' : 'opacity-0'}`}
+                            >
+                                {slideNode}
+                            </div>
+                        )
+                    })}
                 </div>
             </div>
             <div className='flex gap-4 justify-center'>

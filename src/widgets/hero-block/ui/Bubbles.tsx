@@ -275,11 +275,12 @@ type Cords = {x: number, y: number};
 type Sizes = {width: number, height: number};
 
 function getViewportSize() {
+    const visualViewport = window.visualViewport;
     const docEl = document.documentElement;
 
     return {
-        width: Math.max(1, docEl.clientWidth || window.innerWidth),
-        height: Math.max(1, docEl.clientHeight || window.innerHeight),
+        width: Math.max(1, Math.round(visualViewport?.width ?? docEl.clientWidth ?? window.innerWidth)),
+        height: Math.max(1, Math.round(visualViewport?.height ?? docEl.clientHeight ?? window.innerHeight)),
     };
 }
 
@@ -297,16 +298,20 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
     const rafId = useRef<number | null>(null);
     const ticking = useRef<boolean>(false);
     const resizeRafRef = useRef<number | null>(null);
+    const layoutRafRef = useRef<number | null>(null);
 
     useEffect(() => {
         if (bubblesRef.current.length === 0 || anchor === null) return;
 
-        const updateSteps= () => {
+        const visualViewport = window.visualViewport;
+
+        const updateSteps = () => {
+            const viewport = getViewportSize();
             const pointAnchor = new VideoPointAnchor(
                 {
                     anchor,
-                    containerW: getViewportSize().width,
-                    containerH: getViewportSize().height,
+                    containerW: viewport.width,
+                    containerH: viewport.height,
                     videoW: 1920,
                     videoH: 1080
                 }
@@ -365,15 +370,33 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
 
                 timelinesRef.current[i] = tl;
             }
-        }
+        };
+
+        const scheduleUpdateSteps = () => {
+            if (layoutRafRef.current !== null) return;
+
+            layoutRafRef.current = requestAnimationFrame(() => {
+                layoutRafRef.current = null;
+                updateSteps();
+            });
+        };
 
         updateSteps();
-        window.addEventListener('resize', updateSteps);
-        window.addEventListener('orientationchange', updateSteps);
+        window.addEventListener('resize', scheduleUpdateSteps, {passive: true});
+        window.addEventListener('orientationchange', scheduleUpdateSteps);
+        window.addEventListener('pageshow', scheduleUpdateSteps);
+        visualViewport?.addEventListener('resize', scheduleUpdateSteps);
 
         return () => {
-            window.removeEventListener('resize', updateSteps);
-            window.removeEventListener('orientationchange', updateSteps);
+            window.removeEventListener('resize', scheduleUpdateSteps);
+            window.removeEventListener('orientationchange', scheduleUpdateSteps);
+            window.removeEventListener('pageshow', scheduleUpdateSteps);
+            visualViewport?.removeEventListener('resize', scheduleUpdateSteps);
+
+            if (layoutRafRef.current !== null) {
+                cancelAnimationFrame(layoutRafRef.current);
+                layoutRafRef.current = null;
+            }
         };
     }, [anchor, bubbleSizes, isMobile]);
 
