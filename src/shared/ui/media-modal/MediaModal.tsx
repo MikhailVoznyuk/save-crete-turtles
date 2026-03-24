@@ -53,7 +53,7 @@ export function MediaModal({preview, content}: Props) {
                             {opened ? (
                                 <motion.div
                                     layoutRoot
-                                    className='fixed inset-0 flex justify-center items-center p-4'
+                                    className='fixed inset-0 flex justify-center items-center p-2'
                                     initial={{opacity: 0}}
                                     animate={{opacity: 1}}
                                     exit={{opacity: 0}}
@@ -70,7 +70,7 @@ export function MediaModal({preview, content}: Props) {
                                         onClick={() => setOpened(false)}
                                     >
                                         <div
-                                            className='relative w-full max-w-5xl'
+                                            className='relative w-full max-w-6xl'
                                         >
                                             {/* кнопочка */}
                                             <motion.div
