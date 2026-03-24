@@ -181,7 +181,7 @@ export function GlassBubble({
                 active={active}
             >
             <LiquidGlass
-                enabled={visible}
+                enabled={visible && active}
                 intensity={1.35}
                 magnify={0.30}
                 blur={0.18}
