@@ -66,7 +66,7 @@ export function MediaModal({preview, content}: Props) {
                                         exit={{opacity: 0,  backdropFilter: 'blur(0px)'}}
                                     />
                                     <motion.div
-                                        className='relative inset-0 z-10 flex items-center justify-center p-4'
+                                        className='relative inset-0 z-10 flex items-center justify-center p-4 sm:p-2'
                                         onClick={() => setOpened(false)}
                                     >
                                         <div
