@@ -20,8 +20,8 @@ export function TextMediaRow({header, content, mediaType, mediaSrc, reversed=fal
             <div className={`flex gap-14 flex-col ${(reversed) ? 'md:flex-row-reverse' : 'md:flex-row'}`}>
                 <TextBlock className='md:max-w-1/2' size='md'>{content}</TextBlock>
                 {mediaType === 'image' ?
-                    <ModalImage src={mediaSrc} className='w-full md:w-1/2 max-h-96' /> :
-                    <ModalVideo src={mediaSrc} className='w-full md:w-1/2 max-h-96' />
+                    <ModalImage src={mediaSrc} className='max-w-full md:max-w-1/2' /> :
+                    <ModalVideo src={mediaSrc} className='max-w-full md:max-w-1/2 sm:max-h-[60vh]' />
                 }
             </div>
         </div>
