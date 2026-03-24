@@ -44,18 +44,10 @@ type LocalRepulsor = {
     speed: number;
 };
 
-function getViewportSize() {
-    const docEl = document.documentElement;
-
-    return {
-        width: Math.max(1, docEl.clientWidth || window.innerWidth),
-        height: Math.max(1, docEl.clientHeight || window.innerHeight),
-    };
-}
 
 const SAFE_BUBBLE_GAP_PX = 10;
 const COLLISION_EPSILON_PX = 0.75;
-const RENDER_PADDING_PX = 520;
+const RENDER_PADDING_PX = 180;
 const EDGE_ALPHA_THRESHOLD = 10;
 const ALPHA_BOOST_EXPONENT = 0.72;
 const ALPHA_BOOST_MULTIPLIER = 1.08;
@@ -317,7 +309,7 @@ export function HeroDustText({
         renderer.domElement.style.position = 'absolute';
         renderer.domElement.style.display = 'block';
         renderer.domElement.style.pointerEvents = 'none';
-        renderer.domElement.style.transform = 'translateZ(0)';
+        renderer.domElement.style.willChange = 'auto';
         renderer.domElement.style.backfaceVisibility = 'hidden';
         renderer.domElement.style.webkitBackfaceVisibility = 'hidden';
         mount.appendChild(renderer.domElement);
@@ -393,6 +385,34 @@ export function HeroDustText({
         let initFrame2 = 0;
         let rebuildToken = 0;
 
+        const syncViewportBounds = (snapshotWidth = state.width, snapshotHeight = state.height) => {
+            if (snapshotWidth < 1 || snapshotHeight < 1) return;
+
+            const renderWidth = snapshotWidth + RENDER_PADDING_PX * 2;
+            const renderHeight = snapshotHeight + RENDER_PADDING_PX * 2;
+
+            mount.style.left = `${-RENDER_PADDING_PX}px`;
+            mount.style.top = `${-RENDER_PADDING_PX}px`;
+            mount.style.width = `${renderWidth}px`;
+            mount.style.height = `${renderHeight}px`;
+            mount.style.overflow = 'visible';
+
+            camera.left = -snapshotWidth / 2 - RENDER_PADDING_PX;
+            camera.right = snapshotWidth / 2 + RENDER_PADDING_PX;
+            camera.top = snapshotHeight / 2 + RENDER_PADDING_PX;
+            camera.bottom = -snapshotHeight / 2 - RENDER_PADDING_PX;
+            camera.near = -100;
+            camera.far = 100;
+            camera.position.z = 10;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(renderWidth, renderHeight, false);
+            renderer.domElement.style.left = '0px';
+            renderer.domElement.style.top = '0px';
+            renderer.domElement.style.width = `${renderWidth}px`;
+            renderer.domElement.style.height = `${renderHeight}px`;
+        };
+
         const rebuild = async () => {
             if (disposed) return;
 
@@ -434,39 +454,7 @@ export function HeroDustText({
 
             material.uniforms.uSize.value = nextSnapshot.width < 640 ? MOBILE_POINT_SIZE : DESKTOP_POINT_SIZE;
 
-            const rootRect = root.getBoundingClientRect();
-            const viewport = getViewportSize();
-            const pageLeft = rootRect.left + window.scrollX;
-            const pageTop = rootRect.top + window.scrollY;
-
-            const padLeft = Math.min(RENDER_PADDING_PX, Math.max(0, pageLeft));
-            const padTop = Math.min(RENDER_PADDING_PX, Math.max(0, pageTop));
-            const padRight = Math.min(RENDER_PADDING_PX, Math.max(0, viewport.width - rootRect.right));
-            const padBottom = Math.min(RENDER_PADDING_PX, Math.max(0, viewport.height - rootRect.bottom));
-
-            const renderWidth = nextSnapshot.width + padLeft + padRight;
-            const renderHeight = nextSnapshot.height + padTop + padBottom;
-
-            mount.style.left = `${-padLeft}px`;
-            mount.style.top = `${-padTop}px`;
-            mount.style.width = `${renderWidth}px`;
-            mount.style.height = `${renderHeight}px`;
-            mount.style.overflow = 'hidden';
-
-            camera.left = -nextSnapshot.width / 2 - padLeft;
-            camera.right = nextSnapshot.width / 2 + padRight;
-            camera.top = nextSnapshot.height / 2 + padTop;
-            camera.bottom = -nextSnapshot.height / 2 - padBottom;
-            camera.near = -100;
-            camera.far = 100;
-            camera.position.z = 10;
-            camera.updateProjectionMatrix();
-
-            renderer.setSize(renderWidth, renderHeight, false);
-            renderer.domElement.style.left = `0px`;
-            renderer.domElement.style.top = `0px`;
-            renderer.domElement.style.width = `${renderWidth}px`;
-            renderer.domElement.style.height = `${renderHeight}px`;
+            syncViewportBounds(nextSnapshot.width, nextSnapshot.height);
         };
 
         const scheduleRebuild = () => {
@@ -477,6 +465,7 @@ export function HeroDustText({
             });
         };
 
+
         const resizeObserver = new ResizeObserver(() => {
             scheduleRebuild();
         });
@@ -486,6 +475,7 @@ export function HeroDustText({
         resizeObserver.observe(textRoot);
         window.addEventListener('resize', scheduleRebuild);
         window.addEventListener('orientationchange', scheduleRebuild);
+        window.addEventListener('pageshow', scheduleRebuild);
 
         const visualViewport = window.visualViewport;
         visualViewport?.addEventListener('resize', scheduleRebuild);
@@ -696,6 +686,7 @@ export function HeroDustText({
             disposed = true;
             window.removeEventListener('resize', scheduleRebuild);
             window.removeEventListener('orientationchange', scheduleRebuild);
+            window.removeEventListener('pageshow', scheduleRebuild);
             visualViewport?.removeEventListener('resize', scheduleRebuild);
             resizeObserver.disconnect();
             window.cancelAnimationFrame(animationFrame);
@@ -713,7 +704,7 @@ export function HeroDustText({
         <div
             ref={mountRef}
             aria-hidden
-            className={twMerge('pointer-events-none absolute overflow-hidden', className)}
+            className={twMerge('pointer-events-none absolute', className)}
         />
     );
 }
