@@ -29,7 +29,7 @@ const TOURIST_ACTIONS_DATA: Step[] = [
         header: 'Protect Your Skin Without Harming the Sea',
         content: 'Sun protection matters, but so does what washes off your body into the water. Try to choose mineral-based sunscreen when possible, avoid overusing products right before swimming, and use UV-protective clothing like rash guards, swim shirts, hats, or cover-ups whenever you can. The point is not perfection. The point is reducing the chemical load that enters fragile coastal ecosystems. Healthy reefs, cleaner shallows, and less pollution mean a better feeding and resting environment for marine life, including sea turtles.',
         mediaType: 'image',
-        mediaSrc: '/media/img/steps-section/sand_turtle.png',
+        mediaSrc: '/media/img/steps-section/tourists/reef_turtle.png',
         reversed: false,
     },
     {
@@ -37,7 +37,7 @@ const TOURIST_ACTIONS_DATA: Step[] = [
         header: 'Keep the Beach Dark at Night',
         content: 'For sea turtles, artificial light can be deadly. Nesting females may feel unsafe and turn back without laying eggs, while hatchlings can crawl toward hotel lights, roads, and promenades instead of the moonlit sea. If you are near the beach at night, avoid flash photography, keep phone lights to a minimum, and switch off unnecessary outdoor lights if you can. Close curtains in beachfront rooms and respect “lights out” rules in nesting areas. A dark beach may seem inconvenient for people. For baby turtles, it is how they find their way home.',
         mediaType: 'video',
-        mediaSrc: '/media/video/bg/bg_2.mp4',
+        mediaSrc: 'https://pub-fb50e14352e04cce8019675f0d1f59cf.r2.dev/media/video/steps-section/tourists/baby_tutle_runs.mp4',
         reversed: true,
     },
     {
@@ -53,7 +53,7 @@ const TOURIST_ACTIONS_DATA: Step[] = [
         header: 'Keep Nesting Beaches Clear and Safe',
         content: 'What people leave behind on the sand can become a barrier by night. Beach chairs, umbrellas, toys, coolers, sandcastles, and deep holes may seem harmless during the day, but they can block nesting females or trap hatchlings trying to reach the water. Before you leave, remove your gear, flatten sand structures, and fill in any holes your group made. Never enter marked nesting areas, move protective barriers, or let children dig nearby. A turtle may wait decades to return and lay eggs on a beach. It would be a miserable joke if a plastic shovel or a beach chair stopped her.',
         mediaType: 'video',
-        mediaSrc: '/media/video/bg/bg_2.mp4',
+        mediaSrc: 'https://pub-fb50e14352e04cce8019675f0d1f59cf.r2.dev/media/video/steps-section/tourists/baby_tutle_runs.mp4',
         reversed: true,
     },
     {
@@ -73,8 +73,8 @@ const BOATERS_ACTIONS_DATA: Step[] = [
         id: 'fb-line',
         header: 'Never Leave Line, Hooks, or Nets Behind',
         content: 'What looks small to us can become a deadly trap in the water. Fishing line, hooks, rope, and netting can wrap around a turtle’s flippers, neck, or mouth, or be swallowed by mistake. Always collect every piece of gear before you leave. If you lose something, retrieve it safely if you can. If you find abandoned line or netting, remove it and dispose of it properly instead of leaving the problem for the next animal.',
-        mediaType: 'image',
-        mediaSrc: '/media/img/steps-section/sand_turtle.png',
+        mediaType: 'video',
+        mediaSrc: 'https://pub-fb50e14352e04cce8019675f0d1f59cf.r2.dev/media/video/steps-section/boaters-fishers/net_save.mp4',
         reversed: false,
     },
     {
