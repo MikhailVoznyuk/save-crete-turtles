@@ -26,6 +26,15 @@ function getViewportMetrics() {
     };
 }
 
+function getViewOrigin() {
+    const visualViewport = window.visualViewport;
+
+    return {
+        x: Math.round(window.scrollX + (visualViewport?.offsetLeft ?? 0)),
+        y: Math.round(window.scrollY + (visualViewport?.offsetTop ?? 0)),
+    };
+}
+
 function compile(gl: WebGL2RenderingContext, type: number, src: string) {
     const sh = gl.createShader(type);
     if (!sh) throw new Error('shader alloc failed');
@@ -462,8 +471,14 @@ export function LiquidGlassProvider({
     const texBlurRef = useRef<WebGLTexture | null>(null);
 
     const sizesRef = useRef({ bgW: 1, bgH: 1, blurW: 1, blurH: 1 });
-    const forceBgRefreshRef = useRef(true);
+    const bgDirtyRef = useRef(true);
     const lastVideoTimeRef = useRef(-1);
+    const lastVideoSizeRef = useRef({ w: 0, h: 0 });
+    const lastRenderedViewRef = useRef({ x: 0, y: 0 });
+    const scrollCompRef = useRef({ x: 0, y: 0 });
+    const scrollCompRafRef = useRef<number | null>(null);
+
+
 
     const uniBg = useRef({ uVideo: null as any, uViewport: null as any, uVideoSize: null as any });
     const uniBlur = useRef({ uSrc: null as any, uSrcSize: null as any });
@@ -635,7 +650,8 @@ export function LiquidGlassProvider({
         canvas.style.height = `${hCss}px`;
         canvas.style.pointerEvents = 'none';
         canvas.style.zIndex = String(zIndex);
-        canvas.style.willChange = 'auto';
+        canvas.style.transform = 'translate3d(0px, 0px, 0)';
+        canvas.style.willChange = 'transform';
         canvas.style.backfaceVisibility = 'hidden';
         canvas.style.webkitBackfaceVisibility = 'hidden';
 
@@ -651,7 +667,10 @@ export function LiquidGlassProvider({
         const blurW = Math.max(1, (w / 2) | 0);
         const blurH = Math.max(1, (h / 2) | 0);
         sizesRef.current = { bgW, bgH, blurW, blurH };
-        forceBgRefreshRef.current = true;
+        bgDirtyRef.current = true;
+        scrollCompRef.current = { x: 0, y: 0 };
+        lastRenderedViewRef.current = getViewOrigin();
+        canvas.style.transform = 'translate3d(0px, 0px, 0)';
 
         // reallocate FBO textures
         if (texBgRef.current) gl.deleteTexture(texBgRef.current);
@@ -673,6 +692,24 @@ export function LiquidGlassProvider({
             resize();
         });
     }, [resize]);
+
+    const scheduleScrollCompensation = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        if (scrollCompRafRef.current !== null) return;
+
+        scrollCompRafRef.current = requestAnimationFrame(() => {
+            scrollCompRafRef.current = null;
+
+            const now = getViewOrigin();
+            const last = lastRenderedViewRef.current;
+            const dx = now.x - last.x;
+            const dy = now.y - last.y;
+
+            scrollCompRef.current = { x: dx, y: dy };
+            canvas.style.transform = `translate3d(${-dx}px, ${-dy}px, 0)`;
+        });
+    }, []);
 
     const start = useCallback(() => {
         if (rafRef.current) return;
@@ -741,18 +778,23 @@ export function LiquidGlassProvider({
                 return;
             }
 
+            const videoTime = Number.isFinite(vid.currentTime) ? vid.currentTime : 0;
+            const videoFrameChanged = Math.abs(videoTime - lastVideoTimeRef.current) > 0.0005;
+            const videoSizeChanged =
+                vid.videoWidth !== lastVideoSizeRef.current.w ||
+                vid.videoHeight !== lastVideoSizeRef.current.h;
+
             const vp = vpCssRef.current;
             const { bgW, bgH, blurW, blurH } = sizesRef.current;
-            const videoTime = Number.isFinite(vid.currentTime) ? vid.currentTime : 0;
-            const shouldRefreshBg = forceBgRefreshRef.current || Math.abs(videoTime - lastVideoTimeRef.current) > 0.0005;
 
-            if (shouldRefreshBg) {
-                lastVideoTimeRef.current = videoTime;
-                forceBgRefreshRef.current = false;
-
+            if (videoFrameChanged || videoSizeChanged || bgDirtyRef.current) {
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, texVideo);
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, vid);
+
+                lastVideoTimeRef.current = videoTime;
+                lastVideoSizeRef.current = { w: vid.videoWidth, h: vid.videoHeight };
+                bgDirtyRef.current = false;
 
                 // pass 1: video -> bgTex (cover)
                 gl.bindFramebuffer(gl.FRAMEBUFFER, fboBg);
@@ -785,6 +827,13 @@ export function LiquidGlassProvider({
             // pass 3: lenses to screen with stencil masks
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             gl.viewport(0, 0, canvas.width, canvas.height);
+
+            const viewNow = getViewOrigin();
+            lastRenderedViewRef.current = viewNow;
+            if (scrollCompRef.current.x !== 0 || scrollCompRef.current.y !== 0) {
+                scrollCompRef.current = { x: 0, y: 0 };
+                canvas.style.transform = 'translate3d(0px, 0px, 0)';
+            }
 
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -993,7 +1042,8 @@ export function LiquidGlassProvider({
         const gl = canvas.getContext('webgl2', {
             alpha: true,
             stencil: true,
-            antialias: true,
+            antialias: false,
+            desynchronized: true,
             premultipliedAlpha: false,
             powerPreference: 'high-performance',
             preserveDrawingBuffer: false,
@@ -1120,17 +1170,24 @@ export function LiquidGlassProvider({
 
         resize();
 
+        lastRenderedViewRef.current = getViewOrigin();
+
         window.addEventListener('resize', scheduleResize, { passive: true });
         window.addEventListener('orientationchange', scheduleResize);
         window.addEventListener('pageshow', scheduleResize);
+        window.addEventListener('scroll', scheduleScrollCompensation, { passive: true });
         visualViewport?.addEventListener('resize', scheduleResize);
+        visualViewport?.addEventListener('scroll', scheduleScrollCompensation);
 
         return () => {
             window.removeEventListener('resize', scheduleResize);
             window.removeEventListener('orientationchange', scheduleResize);
             window.removeEventListener('pageshow', scheduleResize);
+            window.removeEventListener('scroll', scheduleScrollCompensation);
             visualViewport?.removeEventListener('resize', scheduleResize);
+            visualViewport?.removeEventListener('scroll', scheduleScrollCompensation);
             if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
+            if (scrollCompRafRef.current !== null) cancelAnimationFrame(scrollCompRafRef.current);
             stop();
 
             for (const v of mapRef.current.values() as any) v.io?.disconnect();
@@ -1155,7 +1212,7 @@ export function LiquidGlassProvider({
 
             glRef.current = null;
         };
-    }, [resize, scheduleResize, stop]);
+    }, [resize, scheduleResize, scheduleScrollCompensation, stop]);
 
     const ctxValue = useMemo(() => register, [register]);
 
