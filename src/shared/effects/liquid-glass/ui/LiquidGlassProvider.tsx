@@ -650,6 +650,8 @@ export function LiquidGlassProvider({
         canvas.style.height = `${hCss}px`;
         canvas.style.pointerEvents = 'none';
         canvas.style.zIndex = String(zIndex);
+        canvas.style.background = 'transparent';
+        canvas.style.display = 'block';
         canvas.style.transform = 'translate3d(0px, 0px, 0)';
         canvas.style.willChange = 'transform';
         canvas.style.backfaceVisibility = 'hidden';
@@ -1043,13 +1045,15 @@ export function LiquidGlassProvider({
             alpha: true,
             stencil: true,
             antialias: false,
-            desynchronized: true,
-            premultipliedAlpha: false,
+            premultipliedAlpha: true,
             powerPreference: 'high-performance',
             preserveDrawingBuffer: false,
         });
 
-        if (!gl) return;
+        if (!gl) {
+            canvas.style.display = 'none';
+            return;
+        }
         glRef.current = gl;
 
         const progBg = program(gl, VS, FS_BG);
@@ -1168,6 +1172,14 @@ export function LiquidGlassProvider({
 
         const visualViewport = window.visualViewport;
 
+        const handleContextLost = (e: Event) => {
+            e.preventDefault();
+            stop();
+            canvas.style.display = 'none';
+        };
+
+        canvas.addEventListener('webglcontextlost', handleContextLost as EventListener, false);
+
         resize();
 
         lastRenderedViewRef.current = getViewOrigin();
@@ -1186,6 +1198,7 @@ export function LiquidGlassProvider({
             window.removeEventListener('scroll', scheduleScrollCompensation);
             visualViewport?.removeEventListener('resize', scheduleResize);
             visualViewport?.removeEventListener('scroll', scheduleScrollCompensation);
+            canvas.removeEventListener('webglcontextlost', handleContextLost as EventListener, false);
             if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
             if (scrollCompRafRef.current !== null) cancelAnimationFrame(scrollCompRafRef.current);
             stop();
@@ -1218,8 +1231,10 @@ export function LiquidGlassProvider({
 
     return (
         <LiquidGlassRegistryProvider register={ctxValue}>
-            <canvas ref={canvasRef} />
-            {children}
+            <canvas ref={canvasRef} aria-hidden />
+            <div style={{ position: 'relative', zIndex: zIndex + 1 }}>
+                {children}
+            </div>
         </LiquidGlassRegistryProvider>
     );
 }
