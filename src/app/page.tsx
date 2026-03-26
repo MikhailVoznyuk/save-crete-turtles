@@ -60,8 +60,8 @@ export default function Home() {
     }, []);
 
     return (
-        <div className='w-full min-w-0'>
-            <main className='w-full'>
+        <div className='relative isolate w-full min-w-0'>
+            <main className='relative w-full'>
                 <Background
                     videoRef={videoRef}
                     videoSrc='/media/video/bg/bg_1.mp4'
@@ -69,7 +69,7 @@ export default function Home() {
                     fixed
                 />
                 <SectionNavigationProvider>
-                    <LiquidGlassProvider videoRef={videoRef}>
+                    <LiquidGlassProvider videoRef={videoRef} zIndex={1}>
                         <HeroBlock />
                         <div className='relative flex flex-col gap-24 p-3 sm:p-6'>
                             <FactCardsSection />
