@@ -1,4 +1,5 @@
 import {useState} from 'react'
+import {useSectionNavigation} from "@/app/_model/section-navigation/section-navigation.context";
 import {Title} from "@/shared/ui/text-blocks";
 import {FactCard} from "@/widgets/cards-section/ui/FactCard";
 import {MobileSlider} from "@/shared/ui/mobile-slider";
@@ -42,6 +43,7 @@ const CARD_DATA: FactCardProps[] = [
 
 export function FactCardsSection() {
     const [isCardOpen, setIsCardOpen] = useState<boolean>(false);
+    const {registerSection} = useSectionNavigation();
     const isMobile = useIsMobile();
 
     const toggleCard = () => {
@@ -50,7 +52,7 @@ export function FactCardsSection() {
 
 
     return (
-        <section className='flex flex-col items-center gap-12 w-full'>
+        <section ref={registerSection('cards')} className='flex flex-col items-center gap-12 w-full'>
             <Title variant='primary' size='lg' lined centered>
                 Why it is important?
             </Title>
