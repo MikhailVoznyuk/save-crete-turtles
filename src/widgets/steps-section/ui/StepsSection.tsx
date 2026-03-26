@@ -46,7 +46,7 @@ const TOURIST_ACTIONS_DATA: Step[] = [
         header: 'Give Turtles Space and Stay Quiet',
         content: 'A sea turtle on the beach is not a photo prop, not a pet, and not a moment to crowd for social media. If you see a nesting turtle or hatchlings, keep your distance, stay quiet, and never touch, chase, block, or surround them. Even a few people standing too close can cause stress and interrupt nesting. Hatchlings are even more vulnerable: they can be disoriented, delayed, or crushed in the confusion. The best way to respect wildlife is often the least exciting one for humans: step back, stay calm, and let the animal do what it came there to do.',
         mediaType: 'image',
-        mediaSrc: '/media/img/steps-section/tourists/sand_turtle.png',
+        mediaSrc: '/media/img/steps-section/tourists/turtle_nesting.png',
         reversed: false,
     },
     {

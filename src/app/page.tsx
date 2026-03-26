@@ -60,17 +60,16 @@ export default function Home() {
     }, []);
 
     return (
-        <div className='relative isolate w-full min-w-0 bg-abyss'>
-            <Background
-                videoRef={videoRef}
-                videoSrc='/media/video/bg/bg_1.mp4'
-                objectPos={(isMobile) ? {x: 1200, y: 200} : null}
-                fixed
-            />
-
-            <main className='relative z-10 w-full'>
+        <div className='relative isolate w-full min-w-0'>
+            <main className='relative w-full'>
+                <Background
+                    videoRef={videoRef}
+                    videoSrc='/media/video/bg/bg_1.mp4'
+                    objectPos={(isMobile) ? {x: 1200, y: 200} : null}
+                    fixed
+                />
                 <SectionNavigationProvider>
-                    <LiquidGlassProvider videoRef={videoRef} zIndex={5}>
+                    <LiquidGlassProvider videoRef={videoRef} zIndex={1}>
                         <HeroBlock />
                         <div className='relative flex flex-col gap-24 p-3 sm:p-6'>
                             <FactCardsSection />
