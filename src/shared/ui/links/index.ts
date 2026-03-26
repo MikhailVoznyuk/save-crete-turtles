@@ -1,0 +1,1 @@
+export {IconLink} from "@/shared/ui/links/IconLink";
