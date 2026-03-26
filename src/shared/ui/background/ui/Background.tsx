@@ -33,7 +33,7 @@ export function Background({videoSrc, fixed, videoRef, objectPos, videoSize={w: 
     }, [videoSrc]);
 
     return (
-        <div className={`${fixed ? 'fixed' : 'absolute'} -z-10 inset-0 overflow-hidden`}>
+        <div className={`${fixed ? 'fixed' : 'absolute'} z-0 inset-0 overflow-hidden pointer-events-none`} aria-hidden>
             <video
                 src={videoSrc}
                 ref={setVideoRef}
