@@ -1,14 +1,15 @@
 'use client';
 
-import {useEffect, useRef} from 'react'
+import {useEffect, useState, useRef} from 'react'
 import {HeroBlock} from "@/widgets/hero-block";
 import {FactCardsSection} from "@/widgets/cards-section";
 import {StepsSection} from "@/widgets/steps-section";
 import {QuestionsSection} from "@/widgets/questions-section";
+import {ContactsSection} from "@/widgets/contacts-section/ui/ContactsSection";
+import {SectionNavigationProvider} from "@/app/_model/section-navigation/section-navigation.context";
 import {LiquidGlassProvider} from "@/shared/effects/liquid-glass/ui/LiquidGlassProvider";
 import {Background} from "@/shared/ui/background";
 import {useIsMobile} from "@/shared/hooks/adaptive";
-
 import React from "react";
 
 export default function Home() {
@@ -54,6 +55,10 @@ export default function Home() {
         };
     }, []);
 
+    useEffect(() => {
+
+    }, []);
+
     return (
         <div className='w-full min-w-0'>
             <main className='w-full'>
@@ -63,14 +68,17 @@ export default function Home() {
                     objectPos={(isMobile) ? {x: 1200, y: 200} : null}
                     fixed
                 />
-                <LiquidGlassProvider videoRef={videoRef}>
-                    <HeroBlock />
-                    <div className='relative flex flex-col gap-24 p-3 sm:p-6'>
-                        <FactCardsSection />
-                        <StepsSection />
-                        <QuestionsSection />
-                    </div>
-                </LiquidGlassProvider>
+                <SectionNavigationProvider>
+                    <LiquidGlassProvider videoRef={videoRef}>
+                        <HeroBlock />
+                        <div className='relative flex flex-col gap-24 p-3 sm:p-6'>
+                            <FactCardsSection />
+                            <StepsSection />
+                            <QuestionsSection />
+                            <ContactsSection />
+                        </div>
+                    </LiquidGlassProvider>
+                </SectionNavigationProvider>
             </main>
         </div>
     );
