@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #07131d;
+  --foreground: #F5FAFF;
   --bounce-amplitude: 20%;
   --app-vh: 1vh;
 }
@@ -56,13 +56,6 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 @media (max-width: 639px) {
   :root {
     --bounce-amplitude: 10%;
@@ -76,7 +69,7 @@ body {
 }
 
 body {
-  background: var(--background);
+  background: radial-gradient(circle at top, rgba(0, 238, 255, 0.08), transparent 32%), var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   -webkit-text-size-adjust: 100%;
