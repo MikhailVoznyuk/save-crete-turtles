@@ -1,3 +1,4 @@
+import {useSectionNavigation} from "@/app/_model/section-navigation/section-navigation.context";
 import {Title} from "@/shared/ui/text-blocks";
 import {DropDownBlock} from "@/widgets/questions-section/ui/DropDownBlock";
 import type {DropDownBlockProps} from "@/widgets/questions-section/types/types";
@@ -30,8 +31,10 @@ const QaABlocks: QaABlock[] = [
     }
 ]
 export function QuestionsSection() {
+    const {registerSection} = useSectionNavigation();
+
     return (
-        <section className='flex flex-col items-center gap-6 w-full pb-40'>
+        <section ref={registerSection('q&a')} className='flex flex-col items-center gap-6 w-full pb-40'>
             <Title variant='primary' size='lg' centered lined>Q&A</Title>
             <div className='flex flex-row justify-center gap-10 flex-wrap max-w-[1200px]'>
                 {QaABlocks.map(({id, ...props}) => (

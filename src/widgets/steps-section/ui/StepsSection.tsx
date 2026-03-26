@@ -1,4 +1,5 @@
 import {useState} from "react";
+import {useSectionNavigation} from "@/app/_model/section-navigation/section-navigation.context";
 import {Title, TextBlock, TextMediaRow} from "@/shared/ui/text-blocks";
 import type {TextMediaRowProps} from "@/shared/ui/media/types/types";
 import {Toggler} from "@/shared/ui/buttons/toggler/Toggler";
@@ -36,8 +37,8 @@ const TOURIST_ACTIONS_DATA: Step[] = [
         id: 'ac-lights',
         header: 'Keep the Beach Dark at Night',
         content: 'For sea turtles, artificial light can be deadly. Nesting females may feel unsafe and turn back without laying eggs, while hatchlings can crawl toward hotel lights, roads, and promenades instead of the moonlit sea. If you are near the beach at night, avoid flash photography, keep phone lights to a minimum, and switch off unnecessary outdoor lights if you can. Close curtains in beachfront rooms and respect “lights out” rules in nesting areas. A dark beach may seem inconvenient for people. For baby turtles, it is how they find their way home.',
-        mediaType: 'video',
-        mediaSrc: 'https://pub-fb50e14352e04cce8019675f0d1f59cf.r2.dev/media/video/steps-section/tourists/baby_tutle_runs.mp4',
+        mediaType: 'image',
+        mediaSrc: '/media/img/steps-section/tourists/night_baby_turtle.png',
         reversed: true,
     },
     {
@@ -45,7 +46,7 @@ const TOURIST_ACTIONS_DATA: Step[] = [
         header: 'Give Turtles Space and Stay Quiet',
         content: 'A sea turtle on the beach is not a photo prop, not a pet, and not a moment to crowd for social media. If you see a nesting turtle or hatchlings, keep your distance, stay quiet, and never touch, chase, block, or surround them. Even a few people standing too close can cause stress and interrupt nesting. Hatchlings are even more vulnerable: they can be disoriented, delayed, or crushed in the confusion. The best way to respect wildlife is often the least exciting one for humans: step back, stay calm, and let the animal do what it came there to do.',
         mediaType: 'image',
-        mediaSrc: '/media/img/steps-section/sand_turtle.png',
+        mediaSrc: '/media/img/steps-section/tourists/sand_turtle.png',
         reversed: false,
     },
     {
@@ -140,9 +141,11 @@ const STEPS_ROWS: Step[] = [
 
 export function StepsSection() {
     const [actionsType, setActionsType] = useState<number>(0);
+    const {registerSection} = useSectionNavigation();
+
     const actions = (actionsType === 0) ? TOURIST_ACTIONS_DATA : BOATERS_ACTIONS_DATA
     return (
-        <section className='flex flex-col justify-center items-center gap-12 w-full'>
+        <section ref={registerSection('steps')} className='flex flex-col justify-center items-center gap-12 w-full'>
             <Title variant='primary' size='lg' lined centered>
                 How you can help
             </Title>

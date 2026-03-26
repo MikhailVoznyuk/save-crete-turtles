@@ -1,6 +1,7 @@
 'use client';
 
 import {useRef} from 'react';
+import {useSectionNavigation} from "@/app/_model/section-navigation/section-navigation.context";
 import {Title} from '@/shared/ui/text-blocks/ui/Title';
 import {TextBlock} from '@/shared/ui/text-blocks';
 import {WaveButton} from '@/shared/ui/buttons/wave-button';
@@ -14,6 +15,7 @@ const HERO_TITLE = 'Help us save the Cretan sea turtles in Almyrida';
 const HERO_TEXT = "Contribute to improving the loggerhead sea turtles (Caretta caretta)' living conditions and survival. It's not difficult, but it will help save their lives.";
 
 export function HeroBlock() {
+    const {registerSection, scrollToSection} = useSectionNavigation();
     const isMobile = useIsMobile();
     const textParticleRootRef = useRef<HTMLDivElement | null>(null);
     const titleRef = useRef<HTMLDivElement | null>(null);
@@ -21,7 +23,7 @@ export function HeroBlock() {
     const repulsorsRef = useRef<BubbleRepulsor[]>([]);
 
     return (
-        <section className='relative w-full hero-screen'>
+        <section ref={registerSection('hero')} className='relative w-full hero-screen'>
             <div className='flex flex-col size-full p-4 justify-center  sm:p-10 text-9'>
                 <div className='flex flex-col gap-4  max-w-[740px] items-center sm:items-start'>
                     <div ref={textParticleRootRef} className='relative w-full'>
@@ -45,8 +47,8 @@ export function HeroBlock() {
                         />
                     </div>
                     <div className='flex flex-col sm:flex-row gap-4 items-center sm:items-center'>
-                        <WaveButton onClick={() => {}}>Read More</WaveButton>
-                        <WaveButton onClick={() => {}} variant='secondary'>Contact us</WaveButton>
+                        <WaveButton onClick={() => {scrollToSection('cards')}}>Read More</WaveButton>
+                        <WaveButton onClick={() => {scrollToSection('contacts')}} variant='secondary'>Contact us</WaveButton>
                     </div>
                 </div>
             </div>
