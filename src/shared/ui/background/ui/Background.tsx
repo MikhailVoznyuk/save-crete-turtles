@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useRef} from "react";
+import React, {useCallback, useEffect, useRef, useState} from "react";
 import {stabilizeInlineVideo} from "@/shared/utils/media/stabilizeInlineVideo";
 
 type BackgroundProps = {
@@ -11,6 +11,7 @@ type BackgroundProps = {
 
 export function Background({videoSrc, fixed, videoRef, objectPos, videoSize={w: 1920, h: 1080}}: BackgroundProps) {
     const localVideoRef = useRef<HTMLVideoElement | null>(null);
+    const [videoReady, setVideoReady] = useState(false);
 
     const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
         localVideoRef.current = node;
@@ -29,18 +30,39 @@ export function Background({videoSrc, fixed, videoRef, objectPos, videoSize={w: 
         const video = localVideoRef.current;
         if (!video) return;
 
+        setVideoReady(video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0);
         return stabilizeInlineVideo(video, {keepPlaying: true});
     }, [videoSrc]);
 
+    const markReady = useCallback(() => {
+        const video = localVideoRef.current;
+        if (!video) return;
+        if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+            setVideoReady(true);
+        }
+    }, []);
+
+    const resetReady = useCallback(() => {
+        setVideoReady(false);
+    }, []);
+
     return (
-        <div className={`${fixed ? 'fixed' : 'absolute'} -z-10 inset-0 overflow-hidden`}>
+        <div
+            aria-hidden
+            className={`${fixed ? 'fixed' : 'absolute'} inset-0 z-0 overflow-hidden pointer-events-none select-none bg-abyss`}
+        >
+            <div className='absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(0,238,255,0.10),transparent_32%)]' />
             <video
                 src={videoSrc}
                 ref={setVideoRef}
-                className='absolute inset-0 h-full w-full object-cover pointer-events-none select-none'
-                style={objectPos ? {
-                    objectPosition: `${objectPos.x / videoSize?.w * 100}% ${objectPos.y / videoSize?.h * 100}%`
-                } : {}}
+                className='absolute inset-0 h-full w-full object-cover pointer-events-none select-none transition-opacity duration-300'
+                style={{
+                    ...(objectPos ? {
+                        objectPosition: `${objectPos.x / videoSize?.w * 100}% ${objectPos.y / videoSize?.h * 100}%`
+                    } : {}),
+                    opacity: videoReady ? 1 : 0,
+                    backgroundColor: '#07131d'
+                }}
                 autoPlay
                 loop
                 muted
@@ -49,6 +71,12 @@ export function Background({videoSrc, fixed, videoRef, objectPos, videoSize={w: 
                 disablePictureInPicture
                 aria-hidden
                 tabIndex={-1}
+                onLoadedData={markReady}
+                onCanPlay={markReady}
+                onPlaying={markReady}
+                onSuspend={resetReady}
+                onEmptied={resetReady}
+                onError={resetReady}
             />
         </div>
     )

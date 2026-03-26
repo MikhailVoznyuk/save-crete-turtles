@@ -35,6 +35,16 @@ function getViewOrigin() {
     };
 }
 
+function showCanvas(canvas: HTMLCanvasElement) {
+    canvas.style.opacity = '1';
+    canvas.style.visibility = 'visible';
+}
+
+function hideCanvas(canvas: HTMLCanvasElement) {
+    canvas.style.opacity = '0';
+    canvas.style.visibility = 'hidden';
+}
+
 function compile(gl: WebGL2RenderingContext, type: number, src: string) {
     const sh = gl.createShader(type);
     if (!sh) throw new Error('shader alloc failed');
@@ -441,6 +451,7 @@ export function LiquidGlassProvider({
                                         zIndex = 0,
                                     }: Props) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const canvasVisibleRef = useRef(false);
     const glRef = useRef<WebGL2RenderingContext | null>(null);
 
     const mapRef = useRef(new Map<string, LiquidGlassHandle & { visible: boolean; io?: IntersectionObserver }>());
@@ -648,6 +659,7 @@ export function LiquidGlassProvider({
         canvas.style.top = '0px';
         canvas.style.width = `${wCss}px`;
         canvas.style.height = `${hCss}px`;
+        canvas.style.display = 'block';
         canvas.style.pointerEvents = 'none';
         canvas.style.zIndex = String(zIndex);
         canvas.style.transform = 'translate3d(0px, 0px, 0)';
@@ -833,6 +845,11 @@ export function LiquidGlassProvider({
             if (scrollCompRef.current.x !== 0 || scrollCompRef.current.y !== 0) {
                 scrollCompRef.current = { x: 0, y: 0 };
                 canvas.style.transform = 'translate3d(0px, 0px, 0)';
+            }
+
+            if (!canvasVisibleRef.current) {
+                showCanvas(canvas);
+                canvasVisibleRef.current = true;
             }
 
             gl.enable(gl.BLEND);
@@ -1039,6 +1056,18 @@ export function LiquidGlassProvider({
         const canvas = canvasRef.current;
         if (!canvas) return;
 
+        hideCanvas(canvas);
+        canvasVisibleRef.current = false;
+
+        const onContextLost = (event: Event) => {
+            event.preventDefault();
+            hideCanvas(canvas);
+            canvasVisibleRef.current = false;
+            stop();
+        };
+
+        canvas.addEventListener('webglcontextlost', onContextLost as EventListener, false);
+
         const gl = canvas.getContext('webgl2', {
             alpha: true,
             stencil: true,
@@ -1049,7 +1078,10 @@ export function LiquidGlassProvider({
             preserveDrawingBuffer: false,
         });
 
-        if (!gl) return;
+        if (!gl) {
+            canvas.removeEventListener('webglcontextlost', onContextLost as EventListener, false);
+            return;
+        }
         glRef.current = gl;
 
         const progBg = program(gl, VS, FS_BG);
@@ -1210,6 +1242,9 @@ export function LiquidGlassProvider({
             if (progMaskRef.current) gl.deleteProgram(progMaskRef.current);
             if (progLensRef.current) gl.deleteProgram(progLensRef.current);
 
+            canvas.removeEventListener('webglcontextlost', onContextLost as EventListener, false);
+            hideCanvas(canvas);
+            canvasVisibleRef.current = false;
             glRef.current = null;
         };
     }, [resize, scheduleResize, scheduleScrollCompensation, stop]);
@@ -1218,7 +1253,18 @@ export function LiquidGlassProvider({
 
     return (
         <LiquidGlassRegistryProvider register={ctxValue}>
-            <canvas ref={canvasRef} />
+            <canvas
+                ref={canvasRef}
+                aria-hidden
+                style={{
+                    position: 'fixed',
+                    inset: 0,
+                    display: 'block',
+                    pointerEvents: 'none',
+                    opacity: 0,
+                    visibility: 'hidden',
+                }}
+            />
             {children}
         </LiquidGlassRegistryProvider>
     );
