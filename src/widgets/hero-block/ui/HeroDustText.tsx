@@ -51,8 +51,8 @@ const RENDER_PADDING_PX = 180;
 const EDGE_ALPHA_THRESHOLD = 10;
 const ALPHA_BOOST_EXPONENT = 0.72;
 const ALPHA_BOOST_MULTIPLIER = 1.08;
-const MOBILE_POINT_SIZE = 1.9;
-const DESKTOP_POINT_SIZE = 1.75;
+const MOBILE_POINT_SIZE = 2.0;
+const DESKTOP_POINT_SIZE = 1.9;
 const POINT_EDGE_SOFTNESS = 0.16;
 
 function parseLineHeight(style: CSSStyleDeclaration, fontSize: number) {
