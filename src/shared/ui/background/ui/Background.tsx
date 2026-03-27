@@ -1,15 +1,22 @@
 import React, {useCallback, useEffect, useRef} from "react";
 import {stabilizeInlineVideo} from "@/shared/utils/media/stabilizeInlineVideo";
 
+type VideoSource = {
+    src: string;
+    media?: string;
+    type?: string;
+}
+
 type BackgroundProps = {
     videoSrc: string;
+    sources?: VideoSource[];
     fixed?: boolean;
     videoRef?: React.Ref<HTMLVideoElement | null>;
     objectPos?: {x: number; y: number} | null;
     videoSize?: {w: number; h: number};
 }
 
-export function Background({videoSrc, fixed, videoRef, objectPos, videoSize={w: 1920, h: 1080}}: BackgroundProps) {
+export function Background({videoSrc, sources, fixed, videoRef, objectPos, videoSize={w: 1920, h: 1080}}: BackgroundProps) {
     const localVideoRef = useRef<HTMLVideoElement | null>(null);
 
     const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
@@ -25,12 +32,14 @@ export function Background({videoSrc, fixed, videoRef, objectPos, videoSize={w: 
         (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = node;
     }, [videoRef]);
 
+    const sourcesKey = sources?.map(({src, media, type}) => `${media || ''}|${type || ''}|${src}`).join(';;') ?? videoSrc;
+
     useEffect(() => {
         const video = localVideoRef.current;
         if (!video) return;
 
         return stabilizeInlineVideo(video, {keepPlaying: true});
-    }, [videoSrc]);
+    }, [sourcesKey, videoSrc]);
 
     return (
         <div className={`${fixed ? 'fixed' : 'absolute'} z-0 inset-0 overflow-hidden pointer-events-none`} aria-hidden>
@@ -45,11 +54,20 @@ export function Background({videoSrc, fixed, videoRef, objectPos, videoSize={w: 
                 loop
                 muted
                 playsInline
-                preload='auto'
+                preload='metadata'
                 disablePictureInPicture
                 aria-hidden
                 tabIndex={-1}
-            />
+            >
+                {sources?.map((source) => (
+                    <source
+                        key={`${source.media || 'default'}-${source.src}`}
+                        src={source.src}
+                        media={source.media}
+                        type={source.type || 'video/mp4'}
+                    />
+                ))}
+            </video>
         </div>
     )
 }
