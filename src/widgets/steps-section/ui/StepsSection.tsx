@@ -22,7 +22,7 @@ const TOURIST_ACTIONS_DATA: Step[] = [
         header: 'Choose Reusables Over Single-Use Plastic',
         content: 'Many of the items people use for a few minutes stay in the environment for years. Plastic straws, takeaway containers, shopping bags, disposable cutlery, and balloon releases often end up in the sea, where they break into smaller pieces but do not truly disappear. Turtles can mistake drifting plastic for prey, especially when it moves like jellyfish in the water. Carry a reusable bottle, say no to unnecessary plastic, and choose products you can use again. It is one of the easiest ways to reduce the slow flood of waste that turns the ocean into a trap.',
         mediaType: 'video',
-        mediaSrc: '/media/video/steps-section/tourists/turtle_eats_plastic_pocket.mp4',
+        mediaSrc: 'https://pub-fb50e14352e04cce8019675f0d1f59cf.r2.dev/media/video/steps-section/tourists/turtle_eats_plastic_pocket.mp4',
         reversed: true,
     },
     {
@@ -62,7 +62,7 @@ const TOURIST_ACTIONS_DATA: Step[] = [
         header: 'Support Rescue, Cleanups, and Local Conservation',
         content: 'You do not need to be a scientist to make a real difference. Join a beach cleanup, support trusted turtle conservation groups, follow local nesting season rules, and report injured, stranded, or entangled turtles to local wildlife authorities instead of trying to handle them yourself. If you live near the coast, learn who to call before an emergency happens. If you are just visiting, share accurate information with the people around you. Not every act of help looks dramatic, but conservation is built on ordinary people doing the right thing repeatedly.',
         mediaType: 'image',
-        mediaSrc: '/media/img/steps-section/sand_turtle.png',
+        mediaSrc: '/media/img/steps-section/tourists/beach_cleaning.png',
         reversed: false,
     }
 ];
@@ -82,8 +82,8 @@ const BOATERS_ACTIONS_DATA: Step[] = [
         id: 'fb-disposal',
         header: 'Dispose of Fishing Gear Properly',
         content: 'Do not throw unwanted line, bait packaging, or damaged tackle into the sea, on the sand, or near the pier. Monofilament can remain in the environment for a very long time, and because it is thin and hard to see, animals do not avoid it until it is too late. Use designated recycling bins for fishing line where available, or store used gear securely until you can throw it away on land.',
-        mediaType: 'video',
-        mediaSrc: '/media/video/bg/bg_2.mp4',
+        mediaType: 'image',
+        mediaSrc: '/media/img/steps-section/boaters-fishers/turtle_fishing_gear.png',
         reversed: true,
     },
     {
@@ -91,23 +91,23 @@ const BOATERS_ACTIONS_DATA: Step[] = [
         header: 'Slow Down and Watch the Water',
         content: 'Sea turtles often surface to breathe, especially in shallow coastal areas. A fast-moving boat can strike a turtle before the driver even realizes it was there. Reduce speed near beaches, in shallow water, around seagrass beds, and anywhere turtles are likely to surface. Stay alert, keep a sharp lookout ahead, and remember that giving wildlife a few extra seconds can save it from a life-changing injury.',
         mediaType: 'image',
-        mediaSrc: '/media/img/steps-section/sand_turtle.png',
+        mediaSrc: '/media/img/steps-section/boaters-fishers/turtle_breathe.jpg',
         reversed: false,
     },
     {
         id: 'fb-help',
         header: 'If a Turtle Is Hooked or Entangled, Do Not Panic',
         content: 'Do not yank the line, cut blindly, or try to “fix” a serious entanglement by force. Mishandling can make internal injuries worse or reduce the turtle’s chance of survival. The safest response is to contact local wildlife rescue authorities or the appropriate marine animal hotline and follow professional guidance. Helping badly does not become helping just because the intention was good.',
-        mediaType: 'image',
-        mediaSrc: '/media/img/steps-section/sand_turtle.png',
+        mediaType: 'video',
+        mediaSrc: 'https://pub-fb50e14352e04cce8019675f0d1f59cf.r2.dev/media/video/steps-section/boaters-fishers/turtle_resque.mp4',
         reversed: true,
     },
     {
         id: 'fb-respect',
         header: 'Do Not Attract Turtles to Busy Fishing Areas',
         content: 'Do not feed turtles, do not encourage them to approach boats or piers, and do not leave fish scraps where wildlife learns to associate people with food. When turtles begin coming closer to human activity, the risk of hooks, propellers, entanglement, and repeated injury goes up. Wild animals survive better when they stay wary of us, which, to be fair, is one of the smartest instincts in nature.',
-        mediaType: 'video',
-        mediaSrc: '/media/video/bg/bg_2.mp4',
+        mediaType: 'image',
+        mediaSrc: '/media/img/steps-section/boaters-fishers/turtle_boat.jpg',
         reversed: false,
     }
 ];

@@ -18,6 +18,7 @@ type BackgroundProps = {
 
 export function Background({videoSrc, sources, fixed, videoRef, objectPos, videoSize={w: 1920, h: 1080}}: BackgroundProps) {
     const localVideoRef = useRef<HTMLVideoElement | null>(null);
+    const hasSources = (sources?.length ?? 0) > 0;
 
     const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
         localVideoRef.current = node;
@@ -44,7 +45,7 @@ export function Background({videoSrc, sources, fixed, videoRef, objectPos, video
     return (
         <div className={`${fixed ? 'fixed' : 'absolute'} z-0 inset-0 overflow-hidden pointer-events-none`} aria-hidden>
             <video
-                src={videoSrc}
+                src={hasSources ? undefined : videoSrc}
                 ref={setVideoRef}
                 className='absolute inset-0 h-full w-full object-cover pointer-events-none select-none'
                 style={objectPos ? {
@@ -54,8 +55,9 @@ export function Background({videoSrc, sources, fixed, videoRef, objectPos, video
                 loop
                 muted
                 playsInline
-                preload='metadata'
+                preload={fixed ? 'auto' : 'metadata'}
                 disablePictureInPicture
+                controls={false}
                 aria-hidden
                 tabIndex={-1}
             >
