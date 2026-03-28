@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect, useState, useRef} from 'react'
+import {useEffect, useRef} from 'react'
 import {HeroBlock} from "@/widgets/hero-block";
 import {FactCardsSection} from "@/widgets/cards-section";
 import {StepsSection} from "@/widgets/steps-section";
@@ -55,9 +55,10 @@ export default function Home() {
         };
     }, []);
 
-    useEffect(() => {
-
-    }, []);
+    const backgroundSources = [
+        { src: '/media/video/bg/bg_1_mobile.mp4', media: '(max-width: 639px)', type: 'video/mp4' },
+        { src: '/media/video/bg/bg_1.mp4', type: 'video/mp4' },
+    ];
 
     return (
         <div className='relative isolate w-full min-w-0'>
@@ -65,11 +66,12 @@ export default function Home() {
                 <Background
                     videoRef={videoRef}
                     videoSrc='/media/video/bg/bg_1.mp4'
+                    sources={backgroundSources}
                     objectPos={(isMobile) ? {x: 1200, y: 200} : null}
                     fixed
                 />
                 <SectionNavigationProvider>
-                    <LiquidGlassProvider videoRef={videoRef} zIndex={1}>
+                    <LiquidGlassProvider videoRef={videoRef} zIndex={1} quality={isMobile ? 0.7 : 0.78} dprCap={isMobile ? 1.4 : 2}>
                         <HeroBlock />
                         <div className='relative flex flex-col gap-24 p-3 sm:p-6'>
                             <FactCardsSection />
