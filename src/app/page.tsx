@@ -71,7 +71,7 @@ export default function Home() {
                     fixed
                 />
                 <SectionNavigationProvider>
-                    <LiquidGlassProvider videoRef={videoRef} zIndex={1} quality={isMobile ? 0.7 : 0.78} dprCap={isMobile ? 1.4 : 2}>
+                    <LiquidGlassProvider videoRef={videoRef} zIndex={1} quality={isMobile ? 0.92 : 1} dprCap={isMobile ? 1.4 : 2}>
                         <HeroBlock />
                         <div className='relative flex flex-col gap-24 p-3 sm:p-6'>
                             <FactCardsSection />
