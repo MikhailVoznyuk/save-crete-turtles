@@ -29,10 +29,10 @@ type TitleProps = LinedOn | LinedOff;
 
 // Потом дописать адаптив для шрифтов
 const s: Record<TextSize, string> = {
-    sm: 'text-2xl sm:text-4xl leading-[0.7]',
-    md: 'text-4xl sm:text-5xl leading-[0.7]',
-    lg: 'text-5xl sm:text-7xl leading-[0.7]',
-    xl: 'text-5xl sm:text-8xl leading-[0.7]',
+    sm: 'text-2xl sm:text-4xl leading-[0.9] sn:leading-[0.7]',
+    md: 'text-4xl sm:text-5xl leading-[0.9] sm:leading-[0.7]',
+    lg: 'text-5xl sm:text-7xl leading-[0.9] sm:leading-[0.7]',
+    xl: 'text-5xl sm:text-8xl leading-[0.88] sm:leading-[0.7]',
 }
 
 const t: Record<Variant, string> = {
@@ -57,7 +57,7 @@ export function Title({
             (centered) ? 'text-center items-center' : '',
             containerClassName)}>
             <Tag
-                className={twMerge(`font-dongle font-light ${t[variant]} ${s[size]}`, titleClassName)}
+                className={twMerge(`block font-dongle font-light [-webkit-text-size-adjust:100%] ${t[variant]} ${s[size]}`, titleClassName)}
             >{children}</Tag>
             {lined && (
                 <Line className={lineClassName}/>
