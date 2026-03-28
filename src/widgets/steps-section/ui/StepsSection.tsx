@@ -22,7 +22,7 @@ const TOURIST_ACTIONS_DATA: Step[] = [
         header: 'Choose Reusables Over Single-Use Plastic',
         content: 'Many of the items people use for a few minutes stay in the environment for years. Plastic straws, takeaway containers, shopping bags, disposable cutlery, and balloon releases often end up in the sea, where they break into smaller pieces but do not truly disappear. Turtles can mistake drifting plastic for prey, especially when it moves like jellyfish in the water. Carry a reusable bottle, say no to unnecessary plastic, and choose products you can use again. It is one of the easiest ways to reduce the slow flood of waste that turns the ocean into a trap.',
         mediaType: 'video',
-        mediaSrc: '/media/video/steps-section/tourists/turtle_eats_plastic_pocket.mp4',
+        mediaSrc: 'https://pub-fb50e14352e04cce8019675f0d1f59cf.r2.dev/media/video/steps-section/tourists/turtle_eats_plastic_pocket.mp4',
         reversed: true,
     },
     {
@@ -62,7 +62,7 @@ const TOURIST_ACTIONS_DATA: Step[] = [
         header: 'Support Rescue, Cleanups, and Local Conservation',
         content: 'You do not need to be a scientist to make a real difference. Join a beach cleanup, support trusted turtle conservation groups, follow local nesting season rules, and report injured, stranded, or entangled turtles to local wildlife authorities instead of trying to handle them yourself. If you live near the coast, learn who to call before an emergency happens. If you are just visiting, share accurate information with the people around you. Not every act of help looks dramatic, but conservation is built on ordinary people doing the right thing repeatedly.',
         mediaType: 'image',
-        mediaSrc: '/media/img/steps-section/sand_turtle.png',
+        mediaSrc: '/media/img/steps-section/tourists/beach_cleaning.png',
         reversed: false,
     }
 ];
