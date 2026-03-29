@@ -434,7 +434,7 @@ export function LiquidGlassProvider({
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const glRef = useRef<WebGL2RenderingContext | null>(null);
 
-    const mapRef = useRef(new Map<string, LiquidGlassHandle & { visible: boolean; io?: IntersectionObserver }>());
+    const mapRef = useRef(new Map<string, LiquidGlassHandle>());
     const rafRef = useRef<number | null>(null);
 
     const fbScaleRef = useRef(1);
@@ -463,6 +463,7 @@ export function LiquidGlassProvider({
 
     const sizesRef = useRef({ bgW: 1, bgH: 1, blurW: 1, blurH: 1 });
     const bgDirtyRef = useRef(true);
+    const hasBgFrameRef = useRef(false);
     const lastVideoTimeRef = useRef(-1);
     const lastVideoSizeRef = useRef({ w: 0, h: 0 });
     const lastCompositeTsRef = useRef(0);
@@ -529,13 +530,23 @@ export function LiquidGlassProvider({
 
         let sumX = 0;
         let sumY = 0;
+        let signedArea = 0;
+        let centroidX = 0;
+        let centroidY = 0;
 
         for (let i = 0; i < N; i++) {
             const x = rect.left + pts[i * 2] * scaleX;
             const y = rect.top + pts[i * 2 + 1] * scaleY;
+            const ni = (i + 1) % N;
+            const nx = rect.left + pts[ni * 2] * scaleX;
+            const ny = rect.top + pts[ni * 2 + 1] * scaleY;
+            const cross = x * ny - nx * y;
 
             sumX += x;
             sumY += y;
+            signedArea += cross;
+            centroidX += (x + nx) * cross;
+            centroidY += (y + ny) * cross;
 
             if (x < minX) minX = x;
             if (x > maxX) maxX = x;
@@ -543,8 +554,12 @@ export function LiquidGlassProvider({
             if (y > maxY) maxY = y;
         }
 
-        const cx = sumX / N;
-        const cy = sumY / N;
+        const meanX = sumX / N;
+        const meanY = sumY / N;
+        const area = signedArea * 0.5;
+        const hasCentroid = Number.isFinite(area) && Math.abs(area) > 1e-3;
+        const cx = hasCentroid ? centroidX / (6 * area) : meanX;
+        const cy = hasCentroid ? centroidY / (6 * area) : meanY;
 
         let maxRadius = 1;
 
@@ -659,6 +674,7 @@ export function LiquidGlassProvider({
         const blurH = Math.max(1, (h / 2) | 0);
         sizesRef.current = { bgW, bgH, blurW, blurH };
         bgDirtyRef.current = true;
+        hasBgFrameRef.current = false;
 
         // reallocate FBO textures
         if (texBgRef.current) gl.deleteTexture(texBgRef.current);
@@ -721,85 +737,90 @@ export function LiquidGlassProvider({
                 nextViewport.h !== vpCssRef.current.h ||
                 Math.abs(nextScale - fbScaleRef.current) > 0.0001
             ) {
-                scheduleResize();
-                rafRef.current = requestAnimationFrame(loop);
-                return;
+                resize();
             }
 
-            const lenses = mapRef.current;
-
-            const orderedLenses = [...lenses.values()]
-                .filter((h) => h.visible && h.enabledRef.current)
+            const vp = vpCssRef.current;
+            const viewportMargin = 96;
+            const orderedLenses = [...mapRef.current.values()]
+                .filter((h) => h.enabledRef.current)
                 .sort((a, b) => {
                     const ao = a.orderRef.current ?? 0;
                     const bo = b.orderRef.current ?? 0;
                     return ao - bo;
                 });
 
-            let any = false;
+            const visibleLenses: Array<{ h: LiquidGlassHandle; rect: DOMRect }> = [];
             for (const h of orderedLenses) {
-                if (h.visible && h.enabledRef.current) { any = true; break; }
+                const rect = h.el.getBoundingClientRect();
+                if (rect.width < 1 || rect.height < 1) continue;
+                if (
+                    rect.right < -viewportMargin ||
+                    rect.bottom < -viewportMargin ||
+                    rect.left > vp.w + viewportMargin ||
+                    rect.top > vp.h + viewportMargin
+                ) continue;
+                visibleLenses.push({ h, rect });
             }
 
-            gl.clearColor(0, 0, 0, 0);
-            gl.clearStencil(0);
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
-
-            if (!any || document.hidden) {
+            if (visibleLenses.length === 0 || document.hidden) {
                 rafRef.current = requestAnimationFrame(loop);
                 return;
             }
 
             const vid = videoRef.current;
-            if (!vid || vid.readyState < 2 || vid.videoWidth <= 0 || vid.videoHeight <= 0) {
-                rafRef.current = requestAnimationFrame(loop);
-                return;
-            }
-
-            const videoTime = Number.isFinite(vid.currentTime) ? vid.currentTime : 0;
-            const videoFrameChanged = Math.abs(videoTime - lastVideoTimeRef.current) > 0.0005;
-            const videoSizeChanged =
-                vid.videoWidth !== lastVideoSizeRef.current.w ||
-                vid.videoHeight !== lastVideoSizeRef.current.h;
-
-            const vp = vpCssRef.current;
+            const videoReady = vid !== null && vid.readyState >= 2 && vid.videoWidth > 0 && vid.videoHeight > 0;
             const { bgW, bgH, blurW, blurH } = sizesRef.current;
 
-            if (videoFrameChanged || videoSizeChanged || bgDirtyRef.current) {
-                gl.activeTexture(gl.TEXTURE0);
-                gl.bindTexture(gl.TEXTURE_2D, texVideo);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, vid);
+            if (vid && videoReady) {
+                const videoTime = Number.isFinite(vid.currentTime) ? vid.currentTime : 0;
+                const videoFrameChanged = Math.abs(videoTime - lastVideoTimeRef.current) > 0.0005;
+                const videoSizeChanged =
+                    vid.videoWidth !== lastVideoSizeRef.current.w ||
+                    vid.videoHeight !== lastVideoSizeRef.current.h;
 
-                lastVideoTimeRef.current = videoTime;
-                lastVideoSizeRef.current = { w: vid.videoWidth, h: vid.videoHeight };
-                bgDirtyRef.current = false;
+                if (videoFrameChanged || videoSizeChanged || bgDirtyRef.current) {
+                    gl.activeTexture(gl.TEXTURE0);
+                    gl.bindTexture(gl.TEXTURE_2D, texVideo);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, vid);
 
-                // pass 1: video -> bgTex (cover)
-                gl.bindFramebuffer(gl.FRAMEBUFFER, fboBg);
-                gl.viewport(0, 0, bgW, bgH);
-                gl.disable(gl.DEPTH_TEST);
-                gl.disable(gl.STENCIL_TEST);
-                gl.disable(gl.SCISSOR_TEST);
-                gl.disable(gl.BLEND);
+                    lastVideoTimeRef.current = videoTime;
+                    lastVideoSizeRef.current = { w: vid.videoWidth, h: vid.videoHeight };
+                    bgDirtyRef.current = false;
+                    hasBgFrameRef.current = true;
 
-                gl.useProgram(progBg);
-                gl.bindVertexArray(vaoFull);
-                gl.uniform1i(uniBg.current.uVideo, 0);
-                gl.uniform2f(uniBg.current.uViewport, bgW, bgH);
-                gl.uniform2f(uniBg.current.uVideoSize, vid.videoWidth, vid.videoHeight);
-                gl.drawArrays(gl.TRIANGLES, 0, 6);
+                    // pass 1: video -> bgTex (cover)
+                    gl.bindFramebuffer(gl.FRAMEBUFFER, fboBg);
+                    gl.viewport(0, 0, bgW, bgH);
+                    gl.disable(gl.DEPTH_TEST);
+                    gl.disable(gl.STENCIL_TEST);
+                    gl.disable(gl.SCISSOR_TEST);
+                    gl.disable(gl.BLEND);
 
-                // pass 2: bgTex -> blurTex (half)
-                gl.bindFramebuffer(gl.FRAMEBUFFER, fboBlur);
-                gl.viewport(0, 0, blurW, blurH);
-                gl.activeTexture(gl.TEXTURE0);
-                gl.bindTexture(gl.TEXTURE_2D, texBg);
+                    gl.useProgram(progBg);
+                    gl.bindVertexArray(vaoFull);
+                    gl.uniform1i(uniBg.current.uVideo, 0);
+                    gl.uniform2f(uniBg.current.uViewport, bgW, bgH);
+                    gl.uniform2f(uniBg.current.uVideoSize, vid.videoWidth, vid.videoHeight);
+                    gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-                gl.useProgram(progBlur);
-                gl.bindVertexArray(vaoFull);
-                gl.uniform1i(uniBlur.current.uSrc, 0);
-                gl.uniform2f(uniBlur.current.uSrcSize, bgW, bgH);
-                gl.drawArrays(gl.TRIANGLES, 0, 6);
+                    // pass 2: bgTex -> blurTex (half)
+                    gl.bindFramebuffer(gl.FRAMEBUFFER, fboBlur);
+                    gl.viewport(0, 0, blurW, blurH);
+                    gl.activeTexture(gl.TEXTURE0);
+                    gl.bindTexture(gl.TEXTURE_2D, texBg);
+
+                    gl.useProgram(progBlur);
+                    gl.bindVertexArray(vaoFull);
+                    gl.uniform1i(uniBlur.current.uSrc, 0);
+                    gl.uniform2f(uniBlur.current.uSrcSize, bgW, bgH);
+                    gl.drawArrays(gl.TRIANGLES, 0, 6);
+                }
+            }
+
+            if (!hasBgFrameRef.current) {
+                rafRef.current = requestAnimationFrame(loop);
+                return;
             }
 
             // pass 3: lenses to screen with stencil masks
@@ -829,11 +850,7 @@ export function LiquidGlassProvider({
 
             let ref = 1;
 
-            for (const h of orderedLenses) {
-                if (!h.visible || !h.enabledRef.current) continue;
-
-                const rect = h.el.getBoundingClientRect();
-                if (rect.width < 1 || rect.height < 1) continue;
+            for (const { h, rect } of visibleLenses) {
 
                 const pad = h.padRef.current || 0;
 
@@ -875,8 +892,8 @@ export function LiquidGlassProvider({
                 gl.scissor(sx, sy, sw, sh);
 
                 // build triangle fan in clip space
-                const cxCss = rect.left + rect.width * 0.5;
-                const cyCss = rect.top + rect.height * 0.5;
+                const cxCss = shape.cx;
+                const cyCss = shape.cy;
 
                 const cx = (cxCss / vp.w) * 2 - 1;
                 const cy = 1 - (cyCss / vp.h) * 2;
@@ -977,7 +994,7 @@ export function LiquidGlassProvider({
         };
 
         rafRef.current = requestAnimationFrame(loop);
-    }, [videoRef, dprCap, quality, scheduleResize]);
+    }, [videoRef, dprCap, quality, resize]);
 
     const stop = useCallback(() => {
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -985,26 +1002,10 @@ export function LiquidGlassProvider({
     }, []);
 
     const register = useCallback<RegisterLiquidGlass>((h) => {
-        const entry = { ...h, visible: true } as any;
-
-        if (typeof IntersectionObserver !== 'undefined') {
-            const io = new IntersectionObserver(
-                ([e]) => {
-                    const cur = mapRef.current.get(h.id);
-                    if (cur) cur.visible = !!e?.isIntersecting;
-                },
-                { root: null, rootMargin: '96px 0px', threshold: 0.01 }
-            );
-            io.observe(h.el);
-            entry.io = io;
-        }
-
-        mapRef.current.set(h.id, entry);
+        mapRef.current.set(h.id, h);
         start();
 
         return () => {
-            const cur: any = mapRef.current.get(h.id);
-            if (cur?.io) cur.io.disconnect();
             mapRef.current.delete(h.id);
             if (mapRef.current.size === 0) stop();
         };
@@ -1169,7 +1170,6 @@ export function LiquidGlassProvider({
             if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
             stop();
 
-            for (const v of mapRef.current.values() as any) v.io?.disconnect();
             mapRef.current.clear();
 
             if (texVideoRef.current) gl.deleteTexture(texVideoRef.current);
