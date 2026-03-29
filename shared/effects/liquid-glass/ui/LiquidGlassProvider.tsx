@@ -15,15 +15,6 @@ type Props = {
     zIndex?: number;
 };
 
-function isRectNearViewport(rect: DOMRect, viewport: { w: number; h: number }, pad = 96) {
-    return (
-        rect.right >= -pad &&
-        rect.bottom >= -pad &&
-        rect.left <= viewport.w + pad &&
-        rect.top <= viewport.h + pad
-    );
-}
-
 function getViewportMetrics() {
     const visualViewport = window.visualViewport;
     const docEl = document.documentElement;
@@ -475,6 +466,7 @@ export function LiquidGlassProvider({
     const lastVideoTimeRef = useRef(-1);
     const lastVideoSizeRef = useRef({ w: 0, h: 0 });
 
+
     const uniBg = useRef({ uVideo: null as any, uViewport: null as any, uVideoSize: null as any });
     const uniBlur = useRef({ uSrc: null as any, uSrcSize: null as any });
     const uniLens = useRef({
@@ -535,13 +527,24 @@ export function LiquidGlassProvider({
 
         let sumX = 0;
         let sumY = 0;
+        let area2 = 0;
+        let centroidAccX = 0;
+        let centroidAccY = 0;
 
         for (let i = 0; i < N; i++) {
             const x = rect.left + pts[i * 2] * scaleX;
             const y = rect.top + pts[i * 2 + 1] * scaleY;
+            const nextI = (i + 1) % N;
+            const nx = rect.left + pts[nextI * 2] * scaleX;
+            const ny = rect.top + pts[nextI * 2 + 1] * scaleY;
 
             sumX += x;
             sumY += y;
+
+            const cross = x * ny - nx * y;
+            area2 += cross;
+            centroidAccX += (x + nx) * cross;
+            centroidAccY += (y + ny) * cross;
 
             if (x < minX) minX = x;
             if (x > maxX) maxX = x;
@@ -549,8 +552,11 @@ export function LiquidGlassProvider({
             if (y > maxY) maxY = y;
         }
 
-        const cx = sumX / N;
-        const cy = sumY / N;
+        const fallbackCx = sumX / N;
+        const fallbackCy = sumY / N;
+        const centroidScale = Math.abs(area2) > 1e-4 ? 1 / (3 * area2) : 0;
+        const cx = centroidScale !== 0 ? centroidAccX * centroidScale : fallbackCx;
+        const cy = centroidScale !== 0 ? centroidAccY * centroidScale : fallbackCy;
 
         let maxRadius = 1;
 
@@ -647,8 +653,8 @@ export function LiquidGlassProvider({
         canvas.style.zIndex = String(zIndex);
         canvas.style.background = 'transparent';
         canvas.style.display = 'block';
-        canvas.style.transform = 'none';
-        canvas.style.willChange = 'auto';
+        canvas.style.transform = 'translate3d(0px, 0px, 0)';
+        canvas.style.willChange = 'transform';
         canvas.style.backfaceVisibility = 'hidden';
         canvas.style.webkitBackfaceVisibility = 'hidden';
 
@@ -724,8 +730,10 @@ export function LiquidGlassProvider({
                 return;
             }
 
-            const vp = vpCssRef.current;
-            const orderedLenses = [...mapRef.current.values()]
+            const lenses = mapRef.current;
+            const visibilityMargin = 96;
+
+            const orderedLenses = [...lenses.values()]
                 .filter((h) => h.enabledRef.current)
                 .sort((a, b) => {
                     const ao = a.orderRef.current ?? 0;
@@ -733,14 +741,18 @@ export function LiquidGlassProvider({
                     return ao - bo;
                 });
 
-            let any = false;
-            for (const h of orderedLenses) {
-                const rect = h.el.getBoundingClientRect();
-                if (rect.width >= 1 && rect.height >= 1 && isRectNearViewport(rect, vp)) {
-                    any = true;
-                    break;
-                }
-            }
+            const activeLenses = orderedLenses
+                .map((h) => ({ h, rect: h.el.getBoundingClientRect() }))
+                .filter(({ rect }) => (
+                    rect.width >= 1 &&
+                    rect.height >= 1 &&
+                    rect.right > -visibilityMargin &&
+                    rect.bottom > -visibilityMargin &&
+                    rect.left < nextViewport.w + visibilityMargin &&
+                    rect.top < nextViewport.h + visibilityMargin
+                ));
+
+            const any = activeLenses.length > 0;
 
             gl.clearColor(0, 0, 0, 0);
             gl.clearStencil(0);
@@ -763,6 +775,7 @@ export function LiquidGlassProvider({
                 vid.videoWidth !== lastVideoSizeRef.current.w ||
                 vid.videoHeight !== lastVideoSizeRef.current.h;
 
+            const vp = vpCssRef.current;
             const { bgW, bgH, blurW, blurH } = sizesRef.current;
 
             if (videoFrameChanged || videoSizeChanged || bgDirtyRef.current) {
@@ -825,10 +838,7 @@ export function LiquidGlassProvider({
 
             let ref = 1;
 
-            for (const h of orderedLenses) {
-                const rect = h.el.getBoundingClientRect();
-                if (rect.width < 1 || rect.height < 1) continue;
-                if (!isRectNearViewport(rect, vp)) continue;
+            for (const { h, rect } of activeLenses) {
 
                 const pad = h.padRef.current || 0;
 
@@ -870,8 +880,8 @@ export function LiquidGlassProvider({
                 gl.scissor(sx, sy, sw, sh);
 
                 // build triangle fan in clip space
-                const cxCss = rect.left + rect.width * 0.5;
-                const cyCss = rect.top + rect.height * 0.5;
+                const cxCss = shape.cx;
+                const cyCss = shape.cy;
 
                 const cx = (cxCss / vp.w) * 2 - 1;
                 const cy = 1 - (cyCss / vp.h) * 2;

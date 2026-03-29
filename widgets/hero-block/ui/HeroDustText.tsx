@@ -54,7 +54,8 @@ const ALPHA_BOOST_MULTIPLIER = 1.08;
 const MOBILE_POINT_SIZE = 2.0;
 const DESKTOP_POINT_SIZE = 1.9;
 const POINT_EDGE_SOFTNESS = 0.16;
-const MAX_REPULSOR_CARRY_SPEED = 14;
+const MAX_REPULSOR_CARRY_SPEED = 18;
+const REPULSOR_SPEED_SMOOTHING = 0.34;
 
 function parseLineHeight(style: CSSStyleDeclaration, fontSize: number) {
     const raw = style.lineHeight;
@@ -501,22 +502,20 @@ export function HeroDustText({
             const elapsed = time * 0.001;
 
             const rootRect = root.getBoundingClientRect();
-            const velocityNorm = Math.max(0.65, dtFrames);
+            const repulsorDt = Math.max(0.35, dtFrames);
             const repulsors = toLocalRepulsors(repulsorsRef.current, rootRect, state.width, state.height).map((repulsor, index) => {
                 const prev = repulsorState.get(index);
-                const rawDx = prev ? (repulsor.x - prev.x) / velocityNorm : 0;
-                const rawDy = prev ? (repulsor.y - prev.y) / velocityNorm : 0;
-                const smoothFactor = Math.min(1, 0.24 + dtFrames * 0.12);
-
-                let dx = prev ? prev.dx + (rawDx - prev.dx) * smoothFactor : rawDx;
-                let dy = prev ? prev.dy + (rawDy - prev.dy) * smoothFactor : rawDy;
-
-                const carrySpeed = Math.hypot(dx, dy);
-                if (carrySpeed > MAX_REPULSOR_CARRY_SPEED) {
-                    const scale = MAX_REPULSOR_CARRY_SPEED / carrySpeed;
-                    dx *= scale;
-                    dy *= scale;
-                }
+                const rawDx = prev ? (repulsor.x - prev.x) / repulsorDt : 0;
+                const rawDy = prev ? (repulsor.y - prev.y) / repulsorDt : 0;
+                const mix = Math.min(1, REPULSOR_SPEED_SMOOTHING * repulsorDt);
+                const dx0 = prev ? prev.dx + (rawDx - prev.dx) * mix : rawDx;
+                const dy0 = prev ? prev.dy + (rawDy - prev.dy) * mix : rawDy;
+                const speed0 = Math.hypot(dx0, dy0);
+                const speedClamp = speed0 > MAX_REPULSOR_CARRY_SPEED
+                    ? MAX_REPULSOR_CARRY_SPEED / speed0
+                    : 1;
+                const dx = dx0 * speedClamp;
+                const dy = dy0 * speedClamp;
 
                 repulsorState.set(index, {
                     x: repulsor.x,
