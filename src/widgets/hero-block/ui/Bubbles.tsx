@@ -295,12 +295,10 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
     const [visible, setVisible] = useState<boolean>(true);
     const [anchor, setAnchor] = useState<Cords | null>(null);
     const [isMobile, setIsMobile] = useState<boolean>(false);
-    const [scrolling, setScrolling] = useState<boolean>(false);
     const rafId = useRef<number | null>(null);
     const ticking = useRef<boolean>(false);
     const resizeRafRef = useRef<number | null>(null);
     const layoutRafRef = useRef<number | null>(null);
-    const scrollEndTimerRef = useRef<number | null>(null);
 
     useEffect(() => {
         if (bubblesRef.current.length === 0 || anchor === null) return;
@@ -405,20 +403,8 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
     useEffect(() => {
         const SHOW_SCROLL_Y = 56;
         const HIDE_SCROLL_Y = 136;
-        const SCROLL_IDLE_MS = 140;
 
         const onScroll = () => {
-            setScrolling(true);
-
-            if (scrollEndTimerRef.current !== null) {
-                window.clearTimeout(scrollEndTimerRef.current);
-            }
-
-            scrollEndTimerRef.current = window.setTimeout(() => {
-                scrollEndTimerRef.current = null;
-                setScrolling(false);
-            }, SCROLL_IDLE_MS);
-
             if (ticking.current) return;
 
             ticking.current = true;
@@ -439,10 +425,6 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
             if (rafId.current !== null) {
                 cancelAnimationFrame(rafId.current);
                 rafId.current = null;
-            }
-            if (scrollEndTimerRef.current !== null) {
-                window.clearTimeout(scrollEndTimerRef.current);
-                scrollEndTimerRef.current = null;
             }
             ticking.current = false;
         }
@@ -485,10 +467,9 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
         if (!repulsorsRef) return;
 
         let frame = 0;
-        const repulsorsEnabled = visible && !scrolling;
 
         const updateRepulsors = () => {
-            if (!repulsorsEnabled) {
+            if (!visible) {
                 repulsorsRef.current = [];
                 frame = requestAnimationFrame(updateRepulsors);
                 return;
@@ -521,7 +502,7 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
             cancelAnimationFrame(frame);
             repulsorsRef.current = [];
         }
-    }, [repulsorsRef, visible, scrolling]);
+    }, [repulsorsRef, visible]);
 
     return (
         <>

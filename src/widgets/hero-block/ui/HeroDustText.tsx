@@ -54,6 +54,8 @@ const ALPHA_BOOST_MULTIPLIER = 1.08;
 const MOBILE_POINT_SIZE = 2.0;
 const DESKTOP_POINT_SIZE = 1.9;
 const POINT_EDGE_SOFTNESS = 0.16;
+const REPULSOR_SPEED_SMOOTHING = 18;
+const MAX_REPULSOR_SPEED_PX_PER_FRAME = 14;
 
 function parseLineHeight(style: CSSStyleDeclaration, fontSize: number) {
     const raw = style.lineHeight;
@@ -500,10 +502,21 @@ export function HeroDustText({
             const elapsed = time * 0.001;
 
             const rootRect = root.getBoundingClientRect();
+            const repulsorLerp = 1 - Math.exp(-dt * REPULSOR_SPEED_SMOOTHING);
             const repulsors = toLocalRepulsors(repulsorsRef.current, rootRect, state.width, state.height).map((repulsor, index) => {
                 const prev = repulsorState.get(index);
-                const dx = prev ? (repulsor.x - prev.x) * 0.76 + prev.dx * 0.24 : 0;
-                const dy = prev ? (repulsor.y - prev.y) * 0.76 + prev.dy * 0.24 : 0;
+                const rawDx = prev ? (repulsor.x - prev.x) / Math.max(1e-4, dtFrames) : 0;
+                const rawDy = prev ? (repulsor.y - prev.y) / Math.max(1e-4, dtFrames) : 0;
+
+                let dx = prev ? prev.dx + (rawDx - prev.dx) * repulsorLerp : rawDx;
+                let dy = prev ? prev.dy + (rawDy - prev.dy) * repulsorLerp : rawDy;
+
+                const speed = Math.hypot(dx, dy);
+                if (speed > MAX_REPULSOR_SPEED_PX_PER_FRAME) {
+                    const mul = MAX_REPULSOR_SPEED_PX_PER_FRAME / speed;
+                    dx *= mul;
+                    dy *= mul;
+                }
 
                 repulsorState.set(index, {
                     x: repulsor.x,
