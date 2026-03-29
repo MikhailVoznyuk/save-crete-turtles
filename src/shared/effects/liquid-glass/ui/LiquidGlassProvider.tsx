@@ -26,15 +26,6 @@ function getViewportMetrics() {
     };
 }
 
-function getViewOrigin() {
-    const visualViewport = window.visualViewport;
-
-    return {
-        x: Math.round(window.scrollX + (visualViewport?.offsetLeft ?? 0)),
-        y: Math.round(window.scrollY + (visualViewport?.offsetTop ?? 0)),
-    };
-}
-
 function compile(gl: WebGL2RenderingContext, type: number, src: string) {
     const sh = gl.createShader(type);
     if (!sh) throw new Error('shader alloc failed');
@@ -474,9 +465,7 @@ export function LiquidGlassProvider({
     const bgDirtyRef = useRef(true);
     const lastVideoTimeRef = useRef(-1);
     const lastVideoSizeRef = useRef({ w: 0, h: 0 });
-    const lastRenderedViewRef = useRef({ x: 0, y: 0 });
-    const scrollCompRef = useRef({ x: 0, y: 0 });
-    const scrollCompRafRef = useRef<number | null>(null);
+    const lastCompositeTsRef = useRef(0);
 
 
 
@@ -670,9 +659,6 @@ export function LiquidGlassProvider({
         const blurH = Math.max(1, (h / 2) | 0);
         sizesRef.current = { bgW, bgH, blurW, blurH };
         bgDirtyRef.current = true;
-        scrollCompRef.current = { x: 0, y: 0 };
-        lastRenderedViewRef.current = getViewOrigin();
-        canvas.style.transform = 'translate3d(0px, 0px, 0)';
 
         // reallocate FBO textures
         if (texBgRef.current) gl.deleteTexture(texBgRef.current);
@@ -694,24 +680,6 @@ export function LiquidGlassProvider({
             resize();
         });
     }, [resize]);
-
-    const scheduleScrollCompensation = useCallback(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        if (scrollCompRafRef.current !== null) return;
-
-        scrollCompRafRef.current = requestAnimationFrame(() => {
-            scrollCompRafRef.current = null;
-
-            const now = getViewOrigin();
-            const last = lastRenderedViewRef.current;
-            const dx = now.x - last.x;
-            const dy = now.y - last.y;
-
-            scrollCompRef.current = { x: dx, y: dy };
-            canvas.style.transform = `translate3d(${-dx}px, ${-dy}px, 0)`;
-        });
-    }, []);
 
     const start = useCallback(() => {
         if (rafRef.current) return;
@@ -739,6 +707,14 @@ export function LiquidGlassProvider({
 
             const nextViewport = getViewportMetrics();
             const nextScale = Math.min(dprCap, nextViewport.dpr) * Math.max(0.6, Math.min(1, quality));
+            const targetFrameMs = dprCap <= 1.5 ? 1000 / 30 : 1000 / 45;
+
+            if (lastCompositeTsRef.current !== 0 && t - lastCompositeTsRef.current < targetFrameMs) {
+                rafRef.current = requestAnimationFrame(loop);
+                return;
+            }
+
+            lastCompositeTsRef.current = t;
 
             if (
                 nextViewport.w !== vpCssRef.current.w ||
@@ -830,10 +806,7 @@ export function LiquidGlassProvider({
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             gl.viewport(0, 0, canvas.width, canvas.height);
 
-            const viewNow = getViewOrigin();
-            lastRenderedViewRef.current = viewNow;
-            if (scrollCompRef.current.x !== 0 || scrollCompRef.current.y !== 0) {
-                scrollCompRef.current = { x: 0, y: 0 };
+            if (canvas.style.transform !== 'translate3d(0px, 0px, 0)') {
                 canvas.style.transform = 'translate3d(0px, 0px, 0)';
             }
 
@@ -1182,25 +1155,18 @@ export function LiquidGlassProvider({
 
         resize();
 
-        lastRenderedViewRef.current = getViewOrigin();
-
         window.addEventListener('resize', scheduleResize, { passive: true });
         window.addEventListener('orientationchange', scheduleResize);
         window.addEventListener('pageshow', scheduleResize);
-        window.addEventListener('scroll', scheduleScrollCompensation, { passive: true });
         visualViewport?.addEventListener('resize', scheduleResize);
-        visualViewport?.addEventListener('scroll', scheduleScrollCompensation);
 
         return () => {
             window.removeEventListener('resize', scheduleResize);
             window.removeEventListener('orientationchange', scheduleResize);
             window.removeEventListener('pageshow', scheduleResize);
-            window.removeEventListener('scroll', scheduleScrollCompensation);
             visualViewport?.removeEventListener('resize', scheduleResize);
-            visualViewport?.removeEventListener('scroll', scheduleScrollCompensation);
             canvas.removeEventListener('webglcontextlost', handleContextLost as EventListener, false);
             if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
-            if (scrollCompRafRef.current !== null) cancelAnimationFrame(scrollCompRafRef.current);
             stop();
 
             for (const v of mapRef.current.values() as any) v.io?.disconnect();
@@ -1225,7 +1191,7 @@ export function LiquidGlassProvider({
 
             glRef.current = null;
         };
-    }, [resize, scheduleResize, scheduleScrollCompensation, stop]);
+    }, [resize, scheduleResize, stop]);
 
     const ctxValue = useMemo(() => register, [register]);
 
