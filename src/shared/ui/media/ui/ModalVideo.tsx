@@ -1,5 +1,6 @@
+'use client';
+
 import {useEffect, useRef} from 'react';
-import {motion} from 'framer-motion';
 import {twMerge} from "tailwind-merge";
 import {MediaModal} from "@/shared/ui/media-modal";
 import {ModalToggleButton} from "@/shared/ui/buttons/modal-toggle-button";
@@ -59,15 +60,12 @@ function InlineVideo({
 export function ModalVideo({src, className, videoClassName, btnNeeded=true}: ModalVideoProps) {
     return (
         <MediaModal
-            preview={({open, layoutId}) => (
-                <motion.div
-                    layoutId={layoutId}
-                    className={twMerge(
-                        'relative rounded-2xl border-2 border-cold-white/50 cursor-pointer hover:border-turk/80 overflow-hidden duration-300',
-                        className
-                    )}
-                    onClick={open}
-                >
+            previewClassName={twMerge(
+                'relative rounded-2xl border-2 border-cold-white/50 cursor-pointer hover:border-turk/80 overflow-hidden duration-300',
+                className
+            )}
+            preview={(
+                <>
                     <InlineVideo
                         src={src}
                         muted
@@ -77,12 +75,11 @@ export function ModalVideo({src, className, videoClassName, btnNeeded=true}: Mod
                         className={twMerge('w-full object-contain pointer-events-none select-none', videoClassName)}
                     />
                     {btnNeeded && (
-                        <ModalToggleButton onClick={open} className='absolute right-4 bottom-4' />
+                        <ModalToggleButton onClick={() => undefined} className='absolute right-4 bottom-4' />
                     )}
-                </motion.div>
-
+                </>
             )}
-            content={() => (
+            content={(
                 <InlineVideo
                     src={src}
                     controls

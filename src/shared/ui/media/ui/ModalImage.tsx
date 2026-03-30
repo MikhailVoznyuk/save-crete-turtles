@@ -1,7 +1,5 @@
 'use client'
 
-import Image from "next/image";
-import {motion} from "framer-motion";
 import {twMerge} from "tailwind-merge";
 import {ModalToggleButton} from "@/shared/ui/buttons/modal-toggle-button";
 import {MediaModal} from "@/shared/ui/media-modal";
@@ -20,15 +18,13 @@ export function ModalImage({src, className, imageClassName, alt, width=1920, hei
 
     return (
         <MediaModal
-            preview={({open, layoutId}) => (
-                <motion.div
-                    layoutId={layoutId}
-                    className={twMerge(
-                    'relative rounded-2xl shadow-xl border-2 cursor-pointer border-cold-white/50 hover:border-turk/80 overflow-hidden duration-300',
-                    className
-                )}>
+            previewClassName={twMerge(
+                'relative rounded-2xl shadow-xl border-2 cursor-pointer border-cold-white/50 hover:border-turk/80 overflow-hidden duration-300',
+                className
+            )}
+            preview={(
+                <>
                     <img
-                        onClick={open}
                         className={twMerge('size-full object-cover', imageClassName)}
                         width={width}
                         height={height}
@@ -36,11 +32,11 @@ export function ModalImage({src, className, imageClassName, alt, width=1920, hei
                         alt={alt ?? 'Side photo of text block'}
                     />
                     {btnNeeded && (
-                        <ModalToggleButton onClick={open}  className='absolute bottom-4 right-4' />
+                        <ModalToggleButton onClick={() => undefined} className='absolute bottom-4 right-4' />
                     )}
-                </motion.div>
+                </>
             )}
-            content={() => (
+            content={(
                 <img
                     className='w-full max-h-[85vh] object-cover'
                     src={src}
