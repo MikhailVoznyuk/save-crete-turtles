@@ -13,14 +13,14 @@ export function DropDownBlock({header, content, iconSrc}: DropDownBlockProps) {
     return (
         <GlassPanel
             outline={false}
-            className={`${opened ? '' : 'h-[80px]'} relative w-[360px] rounded-2xl border border-cold-white/50 bg-black/10`}
+            className={`${opened ? '' : 'h-24'} relative w-[320px] sm:w-[460px] rounded-2xl border border-cold-white/50 bg-black/10`}
             innerClassName='w-full'
         >
             <div className=' w-full flex justify-between items-center gap-3 pr-4'>
-                <div className={`flex justify-center items-center size-[80px]  ${opened ? 'bg-turk/60 rounded-br-2xl' : 'bg-white/10'} duration-300`}>
+                <div className={`flex justify-center items-center size-24  ${opened ? 'bg-turk/80 rounded-br-2xl' : 'bg-white/10'} duration-300`}>
                     <Image src={iconSrc} width={56} height={56} className='size-14' alt='Q&A block icon' />
                 </div>
-                <Title variant='secondary' size='sm' containerClassName='w-48' >{header}</Title>
+                <Title variant='secondary' size='sm' containerClassName='w-38 sm:w-60' >{header}</Title>
                 <ArrowButton onClick={() => setOpened((prev => !prev))} variant='secondary' direction='down' toggling  />
             </div>
             <div className={`${opened ? '' : 'h-0'} p-4 duration-300`}>
