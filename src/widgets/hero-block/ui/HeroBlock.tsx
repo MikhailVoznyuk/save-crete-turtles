@@ -58,7 +58,7 @@ export function HeroBlock() {
                 onClick={() => {}}
                 direction='down'
                 containerVisible={false}
-                className='absolute left-1/2 bottom-2 -translate-1/2 animate-bounce-slow'
+                className='absolute left-1/2 bottom-2 -translate-1/2 animate-bounce-slow hidden sm:block'
             />
         </section>
     )
