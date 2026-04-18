@@ -21,13 +21,13 @@ export function ContactBlock() {
                         href='mailto:cretevacation.villas@gmail.com'
                         icon='/media/icons/envelope.svg'
                     >
-                        <span className='text-base sm:text-xl text-center'>cretevacation.villas@gmail.com</span>
+                        <span className='text-base sm:text-xl text-center'>almyridakera@gmail.com</span>
                     </IconLink>
                 </BlurContainer>
                 <BlurContainer>
                     <div className='flex flex-col items-center gap-2 w-fit'>
                         <IconLink
-                            href='mailto:cretevacation.villas@gmail.com'
+                            href='tel:+306949366482'
                             icon='/media/icons/phone.svg'
                         >
                             <span className='text-base sm:text-xl text-center'>+306949366482</span>
