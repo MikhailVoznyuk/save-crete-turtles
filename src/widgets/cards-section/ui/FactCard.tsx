@@ -46,6 +46,7 @@ export function FactCard({ icon, title, description, iconAlt, cardOpened, cardTo
             className='rounded-4xl'
             innerClassName='p-4 sm:p-5 flex items-center flex-col gap-4'
             active={glassActive}
+            interactive={!isMobile ? glassActive : false}
         >
             <div className='overflow-hidden'
                  style={{height: (opened) ? 'auto' : `${visibleHeight - ((needDropDown) ? 72 : 0)}px`}}
