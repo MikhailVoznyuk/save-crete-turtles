@@ -123,7 +123,7 @@ export function MobileSlider({slides, isCardOpen, autoDelay=8000 }: MobileSlider
 
     return (
         <div className='relative flex flex-col w-fit gap-6'>
-            <div className={`overflow-hidden touch-pan-x`}
+            <div className={`overflow-hidden touch-pan-y`}
                  style={{width: `${slideW}px`}}
                  onTouchStart={onTouchStart}
                  onTouchMove={onTouchMove}
