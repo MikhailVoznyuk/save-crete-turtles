@@ -15,7 +15,7 @@ const s: Record<TextSize, string> = {
     sm: 'text-lg leading-[0.95]',
     md: 'text-3xl leading-[0.9] sm:leading-[0.9]',
     lg: 'text-2xl leading-[0.92] sm:leading-[0.9]',
-    xl: 'text-3xl sm:text-6xl leading-[0.9]  sm:leading-[0.7]',
+    xl: '[@media(max-height:460px)]:text-2xl text-3xl sm:text-6xl leading-[0.9]  sm:leading-[0.7]',
 }
 
 
