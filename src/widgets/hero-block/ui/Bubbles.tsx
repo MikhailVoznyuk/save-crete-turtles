@@ -507,7 +507,7 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
     return (
         <>
             <div
-                className='fixed gpu-fixed-layer transition-all rounded-full animate-turbulence z-10 pointer-events-none'
+                className={`fixed gpu-fixed-layer transition-all rounded-full animate-turbulence ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
                 ref={el => {bubblesRef.current[1] = el}}
                 style={{
                     width: `${bubbleSizes[1].width}px`,
@@ -528,7 +528,7 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
                 />
             </div>
             <div
-                className='fixed gpu-fixed-layer transition-all rounded-full animate-turbulence z-10 pointer-events-none'
+                className={`fixed gpu-fixed-layer transition-all rounded-full animate-turbulence ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
                 ref={el => {bubblesRef.current[2] = el}}
                 style={{
                     width: `${bubbleSizes[2].width}px`,
@@ -549,7 +549,7 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
                 />
             </div>
             <div
-                className='fixed gpu-fixed-layer rounded-full animate-turbulence z-20 pointer-events-none'
+                className={`fixed gpu-fixed-layer rounded-full animate-turbulence ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
                 ref={(el) => {bubblesRef.current[0] = el}}
                 style={{
                     width: `${bubbleSizes[0].width}px`,
