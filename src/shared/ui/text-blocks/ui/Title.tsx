@@ -32,7 +32,7 @@ const s: Record<TextSize, string> = {
     sm: 'text-3xl sm:text-4xl leading-[0.9] sn:leading-[0.7]',
     md: 'text-4xl sm:text-5xl leading-[0.9] sm:leading-[0.7]',
     lg: 'text-5xl sm:text-7xl leading-[0.9] sm:leading-[0.7]',
-    xl: 'text-5xl sm:text-8xl leading-[0.88] sm:leading-[0.7]',
+    xl: '[@media(max-height:460px)]:text-4xl text-5xl sm:text-8xl leading-[0.84] sm:leading-[0.7]',
 }
 
 const t: Record<Variant, string> = {
