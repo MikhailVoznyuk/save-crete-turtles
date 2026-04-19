@@ -52,7 +52,7 @@ export function FactCard({ icon, title, description, iconAlt, cardOpened, cardTo
                  style={{height: (opened) ? 'auto' : `${visibleHeight - ((needDropDown) ? 72 : 0)}px`}}
             >
                 <div ref={setHeight}
-                     className={`flex flex-col gap-4 w-64 sm:w-72 items-center ${isMobile ? 'select-none cursor-grab' : ''}`}
+                     className={`flex flex-col gap-4 w-64 sm:w-72 items-center ${isMobile ? 'cursor-grab' : ''}`}
                 >
                     <div className='flex flex-col items-center gap-4 w-full'>
                         <div className='size-[72px] sm:size-20 rounded-full bg-white/10 border border-cold-white/40 flex items-center justify-center shrink-0 shadow-xl sm:shadow-2xl'>
