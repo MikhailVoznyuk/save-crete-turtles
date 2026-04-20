@@ -4,6 +4,7 @@ import {useEffect, useRef, type MutableRefObject, type RefObject} from 'react';
 import * as THREE from 'three';
 import {twMerge} from 'tailwind-merge';
 import type {BubbleRepulsor} from '@/widgets/hero-block/model/types';
+import type {LoadState} from '@/shared/types/load-state';
 
 type HeroDustTextProps = {
     className?: string;
@@ -11,6 +12,7 @@ type HeroDustTextProps = {
     titleRef: RefObject<HTMLElement | null>;
     textRef: RefObject<HTMLElement | null>;
     repulsorsRef: MutableRefObject<BubbleRepulsor[]>;
+    onLoadStateChange?: (state: LoadState) => void;
 }
 
 type Snapshot = {
@@ -288,10 +290,13 @@ export function HeroDustText({
     titleRef,
     textRef,
     repulsorsRef,
+    onLoadStateChange,
 }: HeroDustTextProps) {
     const mountRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
+        onLoadStateChange?.('pending');
+
         const mount = mountRef.current;
         const root = containerRef.current;
         const titleRoot = titleRef.current;
@@ -299,12 +304,20 @@ export function HeroDustText({
 
         if (!mount || !root || !titleRoot || !textRoot) return;
 
-        const renderer = new THREE.WebGLRenderer({
+        let renderer: THREE.WebGLRenderer;
+
+        try {
+            renderer = new THREE.WebGLRenderer({
             alpha: true,
             antialias: true,
             powerPreference: 'high-performance',
             premultipliedAlpha: false,
         });
+        } catch {
+            onLoadStateChange?.('error');
+            return;
+        }
+
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.setClearColor(0x000000, 0);
@@ -386,6 +399,8 @@ export function HeroDustText({
         let initFrame1 = 0;
         let initFrame2 = 0;
         let rebuildToken = 0;
+        let firstSnapshotReady = false;
+        let firstFrameRendered = false;
 
         const syncViewportBounds = (snapshotWidth = state.width, snapshotHeight = state.height) => {
             if (snapshotWidth < 1 || snapshotHeight < 1) return;
@@ -428,6 +443,8 @@ export function HeroDustText({
 
             const nextSnapshot = createSnapshot(root, titleRoot, textRoot);
             if (!nextSnapshot || nextSnapshot.count === 0) return;
+
+            firstSnapshotReady = true;
 
             state.basePositions = nextSnapshot.positions;
             state.positions = new Float32Array(nextSnapshot.positions);
@@ -691,6 +708,11 @@ export function HeroDustText({
             }
 
             renderer.render(scene, camera);
+
+            if (firstSnapshotReady && !firstFrameRendered) {
+                firstFrameRendered = true;
+                onLoadStateChange?.('ready');
+            }
         };
 
         animationFrame = window.requestAnimationFrame(tick);
@@ -711,7 +733,7 @@ export function HeroDustText({
             renderer.dispose();
             mount.removeChild(renderer.domElement);
         };
-    }, [containerRef, titleRef, textRef, repulsorsRef]);
+    }, [containerRef, titleRef, textRef, repulsorsRef, onLoadStateChange]);
 
     return (
         <div

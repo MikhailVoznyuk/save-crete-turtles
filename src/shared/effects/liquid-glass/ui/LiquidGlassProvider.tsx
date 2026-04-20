@@ -6,6 +6,7 @@ import {
     LiquidGlassRegistryProvider,
     RegisterLiquidGlass
 } from "@/shared/effects/liquid-glass/model/context";
+import type {LoadState} from '@/shared/types/load-state';
 
 type Props = {
     videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -13,6 +14,7 @@ type Props = {
     quality?: number; // 0.6..1
     dprCap?: number;  // 1..2
     zIndex?: number;
+    onLoadStateChange?: (state: LoadState) => void;
 };
 
 function getViewportMetrics() {
@@ -425,13 +427,21 @@ col += (nse - 0.5) * 0.0025;
 `;
 
 export function LiquidGlassProvider({
-                                        videoRef,
-                                        children,
-                                        quality = 0.78,
-                                        dprCap = 2,
-                                        zIndex = 0,
-                                    }: Props) {
+    videoRef,
+    children,
+    quality = 0.78,
+    dprCap = 2,
+    zIndex = 0,
+    onLoadStateChange,
+}: Props) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const loadStateRef = useRef<LoadState>('pending');
+
+    const emitLoadState = useCallback((state: LoadState) => {
+        if (loadStateRef.current === state) return;
+        loadStateRef.current = state;
+        onLoadStateChange?.(state);
+    }, [onLoadStateChange]);
     const glRef = useRef<WebGL2RenderingContext | null>(null);
 
     const mapRef = useRef(new Map<string, LiquidGlassHandle>());
@@ -696,6 +706,11 @@ export function LiquidGlassProvider({
             resize();
         });
     }, [resize]);
+
+    useEffect(() => {
+        loadStateRef.current = 'pending';
+        onLoadStateChange?.('pending');
+    }, [onLoadStateChange]);
 
     const start = useCallback(() => {
         if (rafRef.current) return;
@@ -1026,6 +1041,7 @@ export function LiquidGlassProvider({
 
         if (!gl) {
             canvas.style.display = 'none';
+            emitLoadState('skipped');
             return;
         }
         glRef.current = gl;
@@ -1150,11 +1166,13 @@ export function LiquidGlassProvider({
             e.preventDefault();
             stop();
             canvas.style.display = 'none';
+            emitLoadState('error');
         };
 
         canvas.addEventListener('webglcontextlost', handleContextLost as EventListener, false);
 
         resize();
+        emitLoadState('ready');
 
         window.addEventListener('resize', scheduleResize, { passive: true });
         window.addEventListener('orientationchange', scheduleResize);
@@ -1191,7 +1209,7 @@ export function LiquidGlassProvider({
 
             glRef.current = null;
         };
-    }, [resize, scheduleResize, stop]);
+    }, [resize, scheduleResize, stop, emitLoadState]);
 
     const ctxValue = useMemo(() => register, [register]);
 

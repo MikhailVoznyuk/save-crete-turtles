@@ -4,6 +4,7 @@ import {Timeline} from '@/shared/utils/animations';
 import {VideoPointAnchor} from '@/shared/utils/position';
 import {GlassBubble} from '@/shared/ui/containers/glass-bubble';
 import type {BubbleRepulsor} from '@/widgets/hero-block/model/types';
+import type {LoadState} from '@/shared/types/load-state';
 
 type StageProps  = {
     style?: Record<string, string>,
@@ -286,9 +287,10 @@ function getViewportSize() {
 
 type BubblesProps = {
     repulsorsRef?: MutableRefObject<BubbleRepulsor[]>;
+    onLoadStateChange?: (state: LoadState) => void;
 }
 
-export function Bubbles({repulsorsRef}: BubblesProps) {
+export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
     const bubblesRef = useRef<(HTMLElement | null)[]>([]);
     const timelinesRef = useRef<Timeline[]>([]);
     const [bubbleSizes, setBubbleSizes] = useState<Sizes[]>([{width: 256, height: 160}, {width: 56, height: 56}, {width: 56, height: 56}]);
@@ -299,6 +301,11 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
     const ticking = useRef<boolean>(false);
     const resizeRafRef = useRef<number | null>(null);
     const layoutRafRef = useRef<number | null>(null);
+    const hasReportedReadyRef = useRef(false);
+
+    useEffect(() => {
+        onLoadStateChange?.('pending');
+    }, [onLoadStateChange]);
 
     useEffect(() => {
         if (bubblesRef.current.length === 0 || anchor === null) return;
@@ -372,16 +379,24 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
             }
         };
 
+        const reportReady = () => {
+            if (hasReportedReadyRef.current) return;
+            hasReportedReadyRef.current = true;
+            onLoadStateChange?.('ready');
+        };
+
         const scheduleUpdateSteps = () => {
             if (layoutRafRef.current !== null) return;
 
             layoutRafRef.current = requestAnimationFrame(() => {
                 layoutRafRef.current = null;
                 updateSteps();
+                reportReady();
             });
         };
 
         updateSteps();
+        reportReady();
         window.addEventListener('resize', scheduleUpdateSteps, {passive: true});
         window.addEventListener('orientationchange', scheduleUpdateSteps);
         window.addEventListener('pageshow', scheduleUpdateSteps);
@@ -398,7 +413,7 @@ export function Bubbles({repulsorsRef}: BubblesProps) {
                 layoutRafRef.current = null;
             }
         };
-    }, [anchor, bubbleSizes, isMobile]);
+    }, [anchor, bubbleSizes, isMobile, onLoadStateChange]);
 
     useEffect(() => {
         const SHOW_SCROLL_Y = 56;

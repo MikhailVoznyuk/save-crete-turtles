@@ -1,7 +1,7 @@
 'use client';
 
 import {useRef} from 'react';
-import {useSectionNavigation} from "@/app/_model/section-navigation/section-navigation.context";
+import {useSectionNavigation} from '@/app/_model/section-navigation/section-navigation.context';
 import {Title} from '@/shared/ui/text-blocks/ui/Title';
 import {TextBlock} from '@/shared/ui/text-blocks';
 import {WaveButton} from '@/shared/ui/buttons/wave-button';
@@ -10,11 +10,17 @@ import {ArrowButton} from '@/shared/ui/buttons/arrow-button';
 import {useIsMobile} from '@/shared/hooks/adaptive';
 import {HeroDustText} from '@/widgets/hero-block/ui/HeroDustText';
 import type {BubbleRepulsor} from '@/widgets/hero-block/model/types';
+import type {LoadState} from '@/shared/types/load-state';
 
 const HERO_TITLE = 'Help us save the Cretan sea turtles in Almyrida';
 const HERO_TEXT = "Contribute to improving the loggerhead sea turtles (Caretta caretta)' living conditions and survival. It's not difficult, but it will help save their lives.";
 
-export function HeroBlock() {
+type HeroBlockProps = {
+    onBubblesLoadStateChange?: (state: LoadState) => void;
+    onParticlesLoadStateChange?: (state: LoadState) => void;
+}
+
+export function HeroBlock({onBubblesLoadStateChange, onParticlesLoadStateChange}: HeroBlockProps) {
     const {registerSection, scrollToSection} = useSectionNavigation();
     const isMobile = useIsMobile();
     const textParticleRootRef = useRef<HTMLDivElement | null>(null);
@@ -44,6 +50,7 @@ export function HeroBlock() {
                             titleRef={titleRef}
                             textRef={textRef}
                             repulsorsRef={repulsorsRef}
+                            onLoadStateChange={onParticlesLoadStateChange}
                         />
                     </div>
                     <div className='flex flex-col sm:flex-row gap-4 items-center sm:items-center'>
@@ -52,7 +59,7 @@ export function HeroBlock() {
                     </div>
                 </div>
             </div>
-            <Bubbles repulsorsRef={repulsorsRef}/>
+            <Bubbles repulsorsRef={repulsorsRef} onLoadStateChange={onBubblesLoadStateChange}/>
 
             <ArrowButton
                 onClick={() => {}}
