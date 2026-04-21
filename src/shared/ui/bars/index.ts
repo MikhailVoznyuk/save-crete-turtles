@@ -1,0 +1,1 @@
+export {ProgressBar} from "@/shared/ui/bars/ProgressBar";
