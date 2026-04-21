@@ -2,16 +2,17 @@
 
 import {useEffect, type ReactNode} from 'react';
 import {twMerge} from 'tailwind-merge';
+import {LoadingBlock} from "@/app/_model/home-loader/ui/LoadingBlock";
 
 type HomeLoadingOverlayProps = {
-    visible: boolean;
+    isLoaded: boolean;
     className?: string;
     children?: ReactNode;
 }
 
-export function HomeLoadingOverlay({visible, className, children}: HomeLoadingOverlayProps) {
+export function HomeLoadingOverlay({isLoaded, className}: HomeLoadingOverlayProps) {
     useEffect(() => {
-        if (!visible) return;
+        if (!isLoaded) return;
 
         const {style} = document.body;
         const prevOverflow = style.overflow;
@@ -20,26 +21,32 @@ export function HomeLoadingOverlay({visible, className, children}: HomeLoadingOv
         style.overflow = 'hidden';
         style.touchAction = 'none';
 
-        console.log(visible)
-
         return () => {
             style.overflow = prevOverflow;
             style.touchAction = prevTouchAction;
         };
-    }, [visible]);
+    }, [isLoaded]);
+
+    console.log(isLoaded)
 
     return (
         <div
             role='status'
             aria-live='polite'
-            aria-hidden={!visible}
+            aria-hidden={!isLoaded}
             className={twMerge(
-                'fixed inset-0 z-[999] flex items-center justify-center bg-black/10 blur-[200px] transition-opacity duration-300',
-                visible ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
+                'fixed inset-0 z-[999] transition-opacity duration-500',
+                !isLoaded ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
                 className,
             )}
         >
-            {children ?? <span className='sr-only'>Loading home page</span>}
+            <div className='absolute inset-0 bg-white/10 backdrop-blur-[48px]'
+                 style={{WebkitBackdropFilter: 'blur(48px)'}}
+            />
+            <div className='relative size-full flex items-center justify-center'>
+                <LoadingBlock isLoaded={isLoaded} />
+            </div>
+
         </div>
     );
 }
