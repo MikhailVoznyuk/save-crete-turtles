@@ -82,7 +82,7 @@ export default function Home() {
 
     return (
         <div className='relative isolate w-full min-w-0'>
-            <HomeLoadingOverlay visible={!isReady}>
+            <HomeLoadingOverlay isLoaded={isReady}>
                 <div className='sr-only'>Preparing hero scene</div>
             </HomeLoadingOverlay>
 
