@@ -20,6 +20,8 @@ export function HomeLoadingOverlay({visible, className, children}: HomeLoadingOv
         style.overflow = 'hidden';
         style.touchAction = 'none';
 
+        console.log(visible)
+
         return () => {
             style.overflow = prevOverflow;
             style.touchAction = prevTouchAction;
