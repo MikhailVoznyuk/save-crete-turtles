@@ -14,7 +14,7 @@ export function ProgressBar({progress, className}: Props) {
                 className
             )}
         >
-            <span className='absolute top-0 left-0 h-full bg-turk rounded-full transition-all duration-100'
+            <span className='absolute top-0 left-0 h-full w-0 bg-turk rounded-full transition-all duration-100'
                 style={{width: `${progress}%`}}
             />
         </BlurContainer>
