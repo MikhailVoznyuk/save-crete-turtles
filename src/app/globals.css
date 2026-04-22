@@ -25,22 +25,25 @@
 
 @keyframes turbulence {
   0% {
-    translate: 0 0
+    transform: translate3d(0, 0, 0);
   }
   16% {
-    translate: 5% 5%;
+    transform: translate3d(5%, 5%, 0);
   }
   32% {
-    translate: -5% 10%
+    transform: translate3d(-5%, 10%, 0);
   }
   50% {
-    translate: 0 0
+    transform: translate3d(0, 0, 0);
   }
   66% {
-    translate: -5% -5%
+    transform: translate3d(-5%, -5%, 0);
   }
   82% {
-    translate: 5% -10%;
+    transform: translate3d(5%, -10%, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
   }
 }
 

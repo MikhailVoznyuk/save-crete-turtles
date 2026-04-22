@@ -53,11 +53,13 @@ export function Title({
 
     return (
         <div className={twMerge(
-            (lined) ? 'flex flex-col gap-1' : '',
+            (lined) ? 'flex flex-col gap-2' : '',
             (centered) ? 'text-center items-center' : '',
             containerClassName)}>
             <Tag
-                className={twMerge(`block font-dongle font-light [-webkit-text-size-adjust:100%] ${t[variant]} ${s[size]}`, titleClassName)}
+                className={twMerge(`block font-dongle font-light [-webkit-text-size-adjust:100%] ${t[variant]} ${s[size]}`,
+                    titleClassName)
+                }
             >{children}</Tag>
             {lined && (
                 <Line className={lineClassName}/>
