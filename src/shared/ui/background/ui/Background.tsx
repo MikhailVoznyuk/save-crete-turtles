@@ -65,6 +65,7 @@ export function Background({
         let readyToken = 0;
         let fallbackRaf1 = 0;
         let fallbackRaf2 = 0;
+        let fallbackTimeout = 0;
 
         const clearFallback = () => {
             if (fallbackRaf1 !== 0) {
@@ -75,6 +76,11 @@ export function Background({
             if (fallbackRaf2 !== 0) {
                 cancelAnimationFrame(fallbackRaf2);
                 fallbackRaf2 = 0;
+            }
+
+            if (fallbackTimeout !== 0) {
+                window.clearTimeout(fallbackTimeout);
+                fallbackTimeout = 0;
             }
         };
 
@@ -91,9 +97,16 @@ export function Background({
             const token = ++readyToken;
             clearFallback();
 
+            fallbackTimeout = window.setTimeout(() => {
+                fallbackTimeout = 0;
+                if (disposed || token !== readyToken) return;
+                markReady();
+            }, 320);
+
             if ('requestVideoFrameCallback' in video) {
                 video.requestVideoFrameCallback(() => {
                     if (disposed || token !== readyToken) return;
+                    clearFallback();
                     markReady();
                 });
                 return;
@@ -104,13 +117,14 @@ export function Background({
                 fallbackRaf2 = requestAnimationFrame(() => {
                     fallbackRaf2 = 0;
                     if (disposed || token !== readyToken) return;
+                    clearFallback();
                     markReady();
                 });
             });
         };
 
         const tryResolveReady = () => {
-            if (video.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) return;
+            if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
             if (video.videoWidth < 1 || video.videoHeight < 1) return;
             waitForPaintedFrame();
         };
@@ -121,6 +135,7 @@ export function Background({
         };
 
         const readyEvents: Array<keyof HTMLMediaElementEventMap> = [
+            'loadedmetadata',
             'loadeddata',
             'canplay',
             'playing',

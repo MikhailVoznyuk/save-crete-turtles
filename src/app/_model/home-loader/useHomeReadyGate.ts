@@ -12,7 +12,7 @@ function createInitialSnapshot(): HomeReadySnapshot {
 }
 
 function isResolved(state: LoadState) {
-    return state === 'ready' || state === 'skipped';
+    return state === 'ready' || state === 'skipped' || state === 'error';
 }
 
 export function useHomeReadyGate() {
