@@ -12,7 +12,7 @@ type HomeLoadingOverlayProps = {
 
 export function HomeLoadingOverlay({isLoaded, className}: HomeLoadingOverlayProps) {
     useEffect(() => {
-        if (!isLoaded) return;
+        if (isLoaded) return;
 
         const {style} = document.body;
         const prevOverflow = style.overflow;
@@ -27,13 +27,12 @@ export function HomeLoadingOverlay({isLoaded, className}: HomeLoadingOverlayProp
         };
     }, [isLoaded]);
 
-    console.log(isLoaded)
 
     return (
         <div
             role='status'
             aria-live='polite'
-            aria-hidden={!isLoaded}
+            aria-hidden={isLoaded}
             className={twMerge(
                 'fixed inset-0 z-[999] transition-opacity duration-500',
                 !isLoaded ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
