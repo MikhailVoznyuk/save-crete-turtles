@@ -33,7 +33,7 @@ export function HeroBlock({onBubblesLoadStateChange, onParticlesLoadStateChange}
             <div className='flex flex-col size-full p-4 justify-center  sm:p-10 text-9'>
                 <div className='flex flex-col gap-4  max-w-[740px] items-center sm:items-start'>
                     <div ref={textParticleRootRef} className='relative w-full'>
-                        <div className='opacity-0 select-none flex flex-col items-cemter gap-4'>
+                        <div className='opacity-0 select-none flex flex-col items-center gap-4'>
                             <div ref={titleRef}>
                                 <Title as='h1' size='xl' lined centered={isMobile}>
                                     {HERO_TITLE}
