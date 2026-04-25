@@ -4,6 +4,7 @@ import {ReactNode, useEffect, useId, useState} from "react";
 import {createPortal} from "react-dom";
 import {AnimatePresence, motion} from "framer-motion";
 import {twMerge} from "tailwind-merge";
+import {CloseButton} from "@/shared/ui/buttons/close-button";
 
 type Props = {
     preview: ReactNode;
@@ -81,6 +82,10 @@ export function MediaModal({preview, content, previewClassName, contentClassName
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         {content}
+                                        <CloseButton
+                                            onClick={() => setOpened(false)}
+                                            className='absolute top-2 right-2'
+                                        />
                                     </motion.div>
                                 </div>
                             </motion.div>
