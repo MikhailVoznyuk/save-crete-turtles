@@ -432,8 +432,8 @@ export function JellyContainer({
 
     const rafRef = useRef<number | null>(null);
     const lastTRef = useRef<number>(0);
-    const shapeTickTRef = useRef<number>(-1);
-    const syncRef = useRef<((time: number) => void) | null>(null);
+    const lastSyncTRef = useRef<number>(-1);
+    const syncRef = useRef<((t: number) => void) | null>(null);
 
     const supportsPath = useMemo(() => {
         if (typeof CSS === 'undefined' || !CSS.supports) return false;
@@ -689,13 +689,12 @@ export function JellyContainer({
         const blob = blobRef.current;
         if (!blob || !active) return;
 
-        const syncShape = (t: number) => {
-            if (shapeTickTRef.current === t) return;
-            shapeTickTRef.current = t;
+        const advance = (t: number) => {
+            if (lastSyncTRef.current === t) return;
+            lastSyncTRef.current = t;
+
             const nodes = nodesRef.current;
-            if (!nodes.length) {
-                return;
-            }
+            if (!nodes.length) return;
 
             const dt = Math.min(0.033, Math.max(0.008, (t - (lastTRef.current || t)) / 1000));
             lastTRef.current = t;
@@ -974,12 +973,13 @@ export function JellyContainer({
                 (blob.style as CSSStyleDeclaration & {webkitClipPath?: string}).webkitClipPath = `path("${d}")`;
             }
             if (pathRef.current) pathRef.current.setAttribute('d', d);
+
         };
 
-        syncRef.current = syncShape;
+        syncRef.current = advance;
 
         const step = (t: number) => {
-            syncShape(t);
+            advance(t);
             rafRef.current = requestAnimationFrame(step);
         };
 
