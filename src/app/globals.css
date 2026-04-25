@@ -111,10 +111,10 @@ video {
 
 .fixed-video-bg {
   position: fixed;
-  left: 0;
-  top: 0;
+  inset: 0;
   width: 100vw;
   height: 100vh;
+  min-height: 100vh;
   overflow: hidden;
   pointer-events: none;
   contain: paint;
@@ -126,6 +126,7 @@ video {
 @supports (height: 100lvh) {
   .fixed-video-bg {
     height: 100lvh;
+    min-height: 100lvh;
   }
 }
 
@@ -135,20 +136,3 @@ video {
   -webkit-backface-visibility: hidden;
 }
 
-@media (max-width: 639px) {
-  .fixed-video-bg {
-    top: -64px;
-    height: calc(100vh + 128px);
-  }
-
-  @supports (height: 100lvh) {
-    .fixed-video-bg {
-      height: calc(100lvh + 128px);
-    }
-}
-
-  .fixed-video-bg__video {
-    transform: translate3d(0, 0, 0) scale(1.02);
-    transform-origin: center;
-  }
-}

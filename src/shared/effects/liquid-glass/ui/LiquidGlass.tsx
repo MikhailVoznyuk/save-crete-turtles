@@ -99,7 +99,7 @@ export function LiquidGlass({
         });
 
         return () => un();
-    }, [register, id, blobRef, pointsRef, countRef, syncRef]);
+    }, [register, id, blobRef, pointsRef, countRef, padRef, syncRef]);
 
     const overlayNode = useMemo(() => {
         if (!overlay) return null;
