@@ -280,8 +280,14 @@ function getViewportSize() {
     const docEl = document.documentElement;
 
     return {
-        width: Math.max(1, Math.round(visualViewport?.width ?? docEl.clientWidth ?? window.innerWidth)),
-        height: Math.max(1, Math.round(visualViewport?.height ?? docEl.clientHeight ?? window.innerHeight)),
+        width: Math.max(
+            1,
+            Math.round(Math.max(visualViewport?.width ?? 0, docEl.clientWidth || 0, window.innerWidth || 0))
+        ),
+        height: Math.max(
+            1,
+            Math.round(Math.max(visualViewport?.height ?? 0, docEl.clientHeight || 0, window.innerHeight || 0))
+        ),
     };
 }
 
@@ -522,7 +528,7 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
     return (
         <>
             <div
-                className={`fixed gpu-fixed-layer transition-all rounded-full animate-turbulence ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
+                className={`fixed gpu-fixed-layer transition-all rounded-full ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
                 ref={el => {bubblesRef.current[1] = el}}
                 style={{
                     width: `${bubbleSizes[1].width}px`,
@@ -543,7 +549,7 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
                 />
             </div>
             <div
-                className={`fixed gpu-fixed-layer transition-all rounded-full animate-turbulence ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
+                className={`fixed gpu-fixed-layer transition-all rounded-full ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
                 ref={el => {bubblesRef.current[2] = el}}
                 style={{
                     width: `${bubbleSizes[2].width}px`,
@@ -564,7 +570,7 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
                 />
             </div>
             <div
-                className={`fixed gpu-fixed-layer rounded-full animate-turbulence ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
+                className={`fixed gpu-fixed-layer rounded-full ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
                 ref={(el) => {bubblesRef.current[0] = el}}
                 style={{
                     width: `${bubbleSizes[0].width}px`,
