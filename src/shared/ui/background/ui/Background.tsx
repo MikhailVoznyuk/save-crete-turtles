@@ -163,11 +163,11 @@ export function Background({
     }, [sourcesKey, videoSrc, onLoadStateChange]);
 
     return (
-        <div className={`${fixed ? 'fixed' : 'absolute'} z-0 inset-0 overflow-hidden pointer-events-none`} aria-hidden>
+        <div className={`${fixed ? 'fixed-video-bg' : 'absolute inset-0'} z-0 overflow-hidden pointer-events-none`} aria-hidden>
             <video
                 src={hasSources ? undefined : videoSrc}
                 ref={setVideoRef}
-                className='absolute inset-0 h-full w-full object-cover pointer-events-none select-none'
+                className='absolute inset-0 h-full w-full object-cover pointer-events-none select-none fixed-video-bg__video'
                 style={objectPos ? {
                     objectPosition: `${objectPos.x / videoSize?.w * 100}% ${objectPos.y / videoSize?.h * 100}%`
                 } : {}}

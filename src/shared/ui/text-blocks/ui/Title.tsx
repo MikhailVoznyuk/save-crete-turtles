@@ -53,7 +53,7 @@ export function Title({
 
     return (
         <div className={twMerge(
-            (lined) ? 'flex flex-col gap-2' : '',
+            (lined) ? 'flex flex-col gap-1' : '',
             (centered) ? 'text-center items-center' : '',
             containerClassName)}>
             <Tag
