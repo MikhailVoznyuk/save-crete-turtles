@@ -21,78 +21,36 @@ function getViewportMetrics() {
     const visualViewport = window.visualViewport;
     const docEl = document.documentElement;
 
+    // Не берём visualViewport как единственный источник высоты.
+    // На мобильных он меняется во время скролла из-за адресной строки,
+    // из-за чего WebGL пересоздавал FBO прямо во время кадра.
     return {
-        w: Math.max(1, Math.round(visualViewport?.width ?? docEl.clientWidth ?? window.innerWidth)),
-        h: Math.max(1, Math.round(visualViewport?.height ?? docEl.clientHeight ?? window.innerHeight)),
+        w: Math.max(1, Math.round(visualViewport?.width ?? 0), Math.round(docEl.clientWidth || 0), Math.round(window.innerWidth || 0)),
+        h: Math.max(1, Math.round(visualViewport?.height ?? 0), Math.round(docEl.clientHeight || 0), Math.round(window.innerHeight || 0)),
         dpr: Math.min(window.devicePixelRatio || 1, 4),
     };
 }
 
-type VideoLayoutMetrics = {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-    objectX: number;
-    objectY: number;
-};
+function getObjectPosition01(el: HTMLVideoElement) {
+    const raw = getComputedStyle(el).objectPosition || '50% 50%';
+    const parts = raw.trim().split(/\s+/);
 
-function parseObjectPositionAxis(token: string | undefined, axis: 'x' | 'y') {
-    if (!token) return 0.5;
-
-    const value = token.trim().toLowerCase();
-    if (value === 'center') return 0.5;
-    if (axis === 'x' && value === 'left') return 0;
-    if (axis === 'x' && value === 'right') return 1;
-    if (axis === 'y' && value === 'top') return 0;
-    if (axis === 'y' && value === 'bottom') return 1;
-
-    if (value.endsWith('%')) {
-        const parsed = Number.parseFloat(value);
-        return Number.isFinite(parsed) ? parsed / 100 : 0.5;
-    }
-
-    return 0.5;
-}
-
-function readVideoLayout(video: HTMLVideoElement): VideoLayoutMetrics {
-    const rect = video.getBoundingClientRect();
-    const style = window.getComputedStyle(video);
-    const tokens = style.objectPosition.trim().split(/\s+/);
-
-    let xToken = tokens[0];
-    let yToken = tokens[1];
-
-    if (tokens.length === 1) {
-        if (xToken === 'top' || xToken === 'bottom') {
-            yToken = xToken;
-            xToken = 'center';
-        } else {
-            yToken = 'center';
-        }
-    }
-
-    if (xToken === 'top' || xToken === 'bottom') {
-        [xToken, yToken] = [yToken ?? 'center', xToken];
-    }
+    const parse = (value: string | undefined, axis: 'x' | 'y') => {
+        if (!value) return 0.5;
+        const v = value.toLowerCase();
+        if (v === 'left' || v === 'top') return 0;
+        if (v === 'center') return 0.5;
+        if (v === 'right' || v === 'bottom') return 1;
+        if (v.endsWith('%')) return Math.max(0, Math.min(1, parseFloat(v) / 100));
+        const n = parseFloat(v);
+        if (Number.isFinite(n)) return Math.max(0, Math.min(1, n / (axis === 'x' ? Math.max(1, el.clientWidth) : Math.max(1, el.clientHeight))));
+        return 0.5;
+    };
 
     return {
-        left: rect.left,
-        top: rect.top,
-        width: Math.max(1, rect.width),
-        height: Math.max(1, rect.height),
-        objectX: parseObjectPositionAxis(xToken, 'x'),
-        objectY: parseObjectPositionAxis(yToken, 'y'),
+        x: parse(parts[0], 'x'),
+        y: parse(parts[1] ?? parts[0], 'y'),
     };
-}
-
-function almostSameVideoLayout(a: VideoLayoutMetrics, b: VideoLayoutMetrics) {
-    return Math.abs(a.left - b.left) < 0.5 &&
-        Math.abs(a.top - b.top) < 0.5 &&
-        Math.abs(a.width - b.width) < 0.5 &&
-        Math.abs(a.height - b.height) < 0.5 &&
-        Math.abs(a.objectX - b.objectX) < 0.001 &&
-        Math.abs(a.objectY - b.objectY) < 0.001;
 }
 
 function compile(gl: WebGL2RenderingContext, type: number, src: string) {
@@ -141,26 +99,30 @@ precision highp float;
 in vec2 vUv;
 out vec4 o;
 uniform sampler2D uVideo;
-uniform vec2 uViewportCss;
-uniform vec4 uVideoRectCss;
+uniform vec2 uViewport;
 uniform vec2 uVideoSize;
+uniform vec4 uVideoRectCss;
 uniform vec2 uObjectPos;
 
-vec2 coverUvFromCss(vec2 css, vec4 videoRect, vec2 videoSize, vec2 objectPos) {
-  vec2 boxSize = max(videoRect.zw, vec2(1.0));
-  vec2 srcSize = max(videoSize, vec2(1.0));
+vec2 coverUvFromCss(vec2 css, vec4 rectCss, vec2 videoSize, vec2 objectPos) {
+  vec2 boxSize = max(rectCss.zw, vec2(1.0));
+  vec2 localPx = css - rectCss.xy;
 
-  float coverScale = max(boxSize.x / srcSize.x, boxSize.y / srcSize.y);
-  vec2 renderedSize = srcSize * coverScale;
-  vec2 renderedOffset = (boxSize - renderedSize) * objectPos;
-  vec2 local = css - videoRect.xy;
+  float boxA = boxSize.x / boxSize.y;
+  float vidA = max(1.0, videoSize.x) / max(1.0, videoSize.y);
 
-  return (local - renderedOffset) / renderedSize;
+  vec2 drawSize;
+  if (boxA > vidA) drawSize = vec2(boxSize.x, boxSize.x / vidA);
+  else drawSize = vec2(boxSize.y * vidA, boxSize.y);
+
+  vec2 overflow = max(drawSize - boxSize, vec2(0.0));
+  vec2 drawOrigin = -overflow * clamp(objectPos, vec2(0.0), vec2(1.0));
+  return (localPx - drawOrigin) / max(drawSize, vec2(1.0));
 }
 
 void main(){
-  vec2 css = vUv * uViewportCss;
-  vec2 uv = coverUvFromCss(css, uVideoRectCss, uVideoSize, clamp(uObjectPos, vec2(0.0), vec2(1.0)));
+  vec2 css = vUv * uViewport;
+  vec2 uv = coverUvFromCss(css, uVideoRectCss, uVideoSize, uObjectPos);
   uv = clamp(uv, vec2(0.001), vec2(0.999));
   o = texture(uVideo, uv);
 }
@@ -549,16 +511,15 @@ export function LiquidGlassProvider({
     const hasBgFrameRef = useRef(false);
     const lastVideoTimeRef = useRef(-1);
     const lastVideoSizeRef = useRef({ w: 0, h: 0 });
-    const lastVideoLayoutRef = useRef<VideoLayoutMetrics | null>(null);
     const lastCompositeTsRef = useRef(0);
 
 
 
     const uniBg = useRef({
         uVideo: null as any,
-        uViewportCss: null as any,
-        uVideoRectCss: null as any,
+        uViewport: null as any,
         uVideoSize: null as any,
+        uVideoRectCss: null as any,
         uObjectPos: null as any,
     });
     const uniBlur = useRef({ uSrc: null as any, uSrcSize: null as any });
@@ -713,7 +674,7 @@ export function LiquidGlassProvider({
     const resize = useCallback(() => {
         const canvas = canvasRef.current;
         const gl = glRef.current;
-        if (!canvas || !gl) return;
+        if (!canvas || !gl) return false;
 
         const viewport = getViewportMetrics();
         const dpr = Math.min(dprCap, viewport.dpr);
@@ -731,7 +692,7 @@ export function LiquidGlassProvider({
             canvas.width === targetWidth &&
             canvas.height === targetHeight
         ) {
-            return;
+            return false;
         }
 
         vpCssRef.current = { w: wCss, h: hCss };
@@ -765,7 +726,6 @@ export function LiquidGlassProvider({
         sizesRef.current = { bgW, bgH, blurW, blurH };
         bgDirtyRef.current = true;
         hasBgFrameRef.current = false;
-        lastVideoLayoutRef.current = null;
 
         // reallocate FBO textures
         if (texBgRef.current) gl.deleteTexture(texBgRef.current);
@@ -777,6 +737,7 @@ export function LiquidGlassProvider({
         if (fboBlurRef.current) gl.deleteFramebuffer(fboBlurRef.current);
         texBlurRef.current = setupTex(gl, blurW, blurH);
         fboBlurRef.current = setupFbo(gl, texBlurRef.current);
+        return true;
     }, [quality, dprCap, zIndex]);
 
     const scheduleResize = useCallback(() => {
@@ -819,14 +780,17 @@ export function LiquidGlassProvider({
 
             const nextViewport = getViewportMetrics();
             const nextScale = Math.min(dprCap, nextViewport.dpr) * Math.max(0.6, Math.min(1, quality));
-            const targetVideoFrameMs = dprCap <= 1.5 ? 1000 / 30 : 1000 / 45;
 
             if (
                 nextViewport.w !== vpCssRef.current.w ||
                 nextViewport.h !== vpCssRef.current.h ||
                 Math.abs(nextScale - fbScaleRef.current) > 0.0001
             ) {
-                resize();
+                const didResize = resize();
+                if (didResize) {
+                    rafRef.current = requestAnimationFrame(loop);
+                    return;
+                }
             }
 
             const vp = vpCssRef.current;
@@ -838,6 +802,10 @@ export function LiquidGlassProvider({
                     const bo = b.orderRef.current ?? 0;
                     return ao - bo;
                 });
+
+            for (const h of orderedLenses) {
+                h.syncRef?.current?.(t);
+            }
 
             const visibleLenses: Array<{ h: LiquidGlassHandle; rect: DOMRect }> = [];
             for (const h of orderedLenses) {
@@ -852,19 +820,13 @@ export function LiquidGlassProvider({
                 visibleLenses.push({ h, rect });
             }
 
-            if (document.hidden) {
-                rafRef.current = requestAnimationFrame(loop);
-                return;
-            }
-
-            if (visibleLenses.length === 0) {
+            if (visibleLenses.length === 0 || document.hidden) {
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 gl.viewport(0, 0, canvas.width, canvas.height);
                 gl.disable(gl.SCISSOR_TEST);
                 gl.disable(gl.STENCIL_TEST);
                 gl.clearColor(0, 0, 0, 0);
-                gl.clear(gl.COLOR_BUFFER_BIT);
-
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
                 rafRef.current = requestAnimationFrame(loop);
                 return;
             }
@@ -875,70 +837,73 @@ export function LiquidGlassProvider({
 
             if (vid && videoReady) {
                 const videoTime = Number.isFinite(vid.currentTime) ? vid.currentTime : 0;
-                const videoLayout = readVideoLayout(vid);
                 const videoFrameChanged = Math.abs(videoTime - lastVideoTimeRef.current) > 0.0005;
                 const videoSizeChanged =
                     vid.videoWidth !== lastVideoSizeRef.current.w ||
                     vid.videoHeight !== lastVideoSizeRef.current.h;
-                const videoLayoutChanged =
-                    lastVideoLayoutRef.current === null ||
-                    !almostSameVideoLayout(videoLayout, lastVideoLayoutRef.current);
-                const canRefreshVideoFrame =
-                    lastCompositeTsRef.current === 0 ||
-                    t - lastCompositeTsRef.current >= targetVideoFrameMs ||
-                    bgDirtyRef.current ||
-                    videoSizeChanged ||
-                    videoLayoutChanged;
 
-                if ((videoFrameChanged && canRefreshVideoFrame) || videoSizeChanged || videoLayoutChanged || bgDirtyRef.current) {
-                    gl.activeTexture(gl.TEXTURE0);
-                    gl.bindTexture(gl.TEXTURE_2D, texVideo);
-                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, vid);
+                if (videoFrameChanged || videoSizeChanged || bgDirtyRef.current) {
+                    const videoRect = vid.getBoundingClientRect();
+                    const objectPos = getObjectPosition01(vid);
 
-                    lastVideoTimeRef.current = videoTime;
-                    lastVideoSizeRef.current = { w: vid.videoWidth, h: vid.videoHeight };
-                    lastVideoLayoutRef.current = videoLayout;
-                    lastCompositeTsRef.current = t;
-                    bgDirtyRef.current = false;
-                    hasBgFrameRef.current = true;
+                    if (videoRect.width < 1 || videoRect.height < 1) {
+                        rafRef.current = requestAnimationFrame(loop);
+                        return;
+                    }
 
-                    // pass 1: real video element -> bgTex.
-                    // The DOM video is not always equal to the viewport: on mobile it has overscan,
-                    // object-position, and sometimes a CSS scale. Sampling by its actual rect keeps
-                    // the refraction glued to the same background pixels instead of teleporting.
-                    gl.bindFramebuffer(gl.FRAMEBUFFER, fboBg);
-                    gl.viewport(0, 0, bgW, bgH);
-                    gl.disable(gl.DEPTH_TEST);
-                    gl.disable(gl.STENCIL_TEST);
-                    gl.disable(gl.SCISSOR_TEST);
-                    gl.disable(gl.BLEND);
+                    const compositeFrameMs = dprCap <= 1.5 ? 1000 / 30 : 1000 / 45;
+                    const shouldCompositeNow =
+                        bgDirtyRef.current ||
+                        videoSizeChanged ||
+                        lastCompositeTsRef.current === 0 ||
+                        t - lastCompositeTsRef.current >= compositeFrameMs;
 
-                    gl.useProgram(progBg);
-                    gl.bindVertexArray(vaoFull);
-                    gl.uniform1i(uniBg.current.uVideo, 0);
-                    gl.uniform2f(uniBg.current.uViewportCss, vp.w, vp.h);
-                    gl.uniform4f(
-                        uniBg.current.uVideoRectCss,
-                        videoLayout.left,
-                        videoLayout.top,
-                        videoLayout.width,
-                        videoLayout.height
-                    );
-                    gl.uniform2f(uniBg.current.uVideoSize, vid.videoWidth, vid.videoHeight);
-                    gl.uniform2f(uniBg.current.uObjectPos, videoLayout.objectX, videoLayout.objectY);
-                    gl.drawArrays(gl.TRIANGLES, 0, 6);
+                    if (shouldCompositeNow) {
+                        gl.activeTexture(gl.TEXTURE0);
+                        gl.bindTexture(gl.TEXTURE_2D, texVideo);
+                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, vid);
 
-                    // pass 2: bgTex -> blurTex (half)
-                    gl.bindFramebuffer(gl.FRAMEBUFFER, fboBlur);
-                    gl.viewport(0, 0, blurW, blurH);
-                    gl.activeTexture(gl.TEXTURE0);
-                    gl.bindTexture(gl.TEXTURE_2D, texBg);
+                        lastVideoTimeRef.current = videoTime;
+                        lastVideoSizeRef.current = { w: vid.videoWidth, h: vid.videoHeight };
+                        bgDirtyRef.current = false;
+                        hasBgFrameRef.current = true;
+                        lastCompositeTsRef.current = t;
 
-                    gl.useProgram(progBlur);
-                    gl.bindVertexArray(vaoFull);
-                    gl.uniform1i(uniBlur.current.uSrc, 0);
-                    gl.uniform2f(uniBlur.current.uSrcSize, bgW, bgH);
-                    gl.drawArrays(gl.TRIANGLES, 0, 6);
+                        // pass 1: video -> bgTex (DOM video geometry + object-position)
+                        gl.bindFramebuffer(gl.FRAMEBUFFER, fboBg);
+                        gl.viewport(0, 0, bgW, bgH);
+                        gl.disable(gl.DEPTH_TEST);
+                        gl.disable(gl.STENCIL_TEST);
+                        gl.disable(gl.SCISSOR_TEST);
+                        gl.disable(gl.BLEND);
+
+                        gl.useProgram(progBg);
+                        gl.bindVertexArray(vaoFull);
+                        gl.uniform1i(uniBg.current.uVideo, 0);
+                        gl.uniform2f(uniBg.current.uViewport, vp.w, vp.h);
+                        gl.uniform2f(uniBg.current.uVideoSize, vid.videoWidth, vid.videoHeight);
+                        gl.uniform4f(
+                            uniBg.current.uVideoRectCss,
+                            videoRect.left,
+                            videoRect.top,
+                            videoRect.width,
+                            videoRect.height
+                        );
+                        gl.uniform2f(uniBg.current.uObjectPos, objectPos.x, objectPos.y);
+                        gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+                        // pass 2: bgTex -> blurTex (half)
+                        gl.bindFramebuffer(gl.FRAMEBUFFER, fboBlur);
+                        gl.viewport(0, 0, blurW, blurH);
+                        gl.activeTexture(gl.TEXTURE0);
+                        gl.bindTexture(gl.TEXTURE_2D, texBg);
+
+                        gl.useProgram(progBlur);
+                        gl.bindVertexArray(vaoFull);
+                        gl.uniform1i(uniBlur.current.uSrc, 0);
+                        gl.uniform2f(uniBlur.current.uSrcSize, bgW, bgH);
+                        gl.drawArrays(gl.TRIANGLES, 0, 6);
+                    }
                 }
             }
 
@@ -1237,9 +1202,9 @@ export function LiquidGlassProvider({
         // uniforms
         gl.useProgram(progBg);
         uniBg.current.uVideo = gl.getUniformLocation(progBg, 'uVideo');
-        uniBg.current.uViewportCss = gl.getUniformLocation(progBg, 'uViewportCss');
-        uniBg.current.uVideoRectCss = gl.getUniformLocation(progBg, 'uVideoRectCss');
+        uniBg.current.uViewport = gl.getUniformLocation(progBg, 'uViewport');
         uniBg.current.uVideoSize = gl.getUniformLocation(progBg, 'uVideoSize');
+        uniBg.current.uVideoRectCss = gl.getUniformLocation(progBg, 'uVideoRectCss');
         uniBg.current.uObjectPos = gl.getUniformLocation(progBg, 'uObjectPos');
 
         gl.useProgram(progBlur);
@@ -1289,14 +1254,12 @@ export function LiquidGlassProvider({
         window.addEventListener('orientationchange', scheduleResize);
         window.addEventListener('pageshow', scheduleResize);
         visualViewport?.addEventListener('resize', scheduleResize);
-        visualViewport?.addEventListener('scroll', scheduleResize);
 
         return () => {
             window.removeEventListener('resize', scheduleResize);
             window.removeEventListener('orientationchange', scheduleResize);
             window.removeEventListener('pageshow', scheduleResize);
             visualViewport?.removeEventListener('resize', scheduleResize);
-            visualViewport?.removeEventListener('scroll', scheduleResize);
             canvas.removeEventListener('webglcontextlost', handleContextLost as EventListener, false);
             if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
             stop();

@@ -280,8 +280,8 @@ function getViewportSize() {
     const docEl = document.documentElement;
 
     return {
-        width: Math.max(1, Math.round(visualViewport?.width ?? docEl.clientWidth ?? window.innerWidth)),
-        height: Math.max(1, Math.round(visualViewport?.height ?? docEl.clientHeight ?? window.innerHeight)),
+        width: Math.max(1, Math.round(visualViewport?.width ?? 0), Math.round(docEl.clientWidth || 0), Math.round(window.innerWidth || 0)),
+        height: Math.max(1, Math.round(visualViewport?.height ?? 0), Math.round(docEl.clientHeight || 0), Math.round(window.innerHeight || 0)),
     };
 }
 
@@ -301,6 +301,7 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
     const ticking = useRef<boolean>(false);
     const resizeRafRef = useRef<number | null>(null);
     const layoutRafRef = useRef<number | null>(null);
+    const lastLayoutKeyRef = useRef<string>('');
     const hasReportedReadyRef = useRef(false);
 
     useEffect(() => {
@@ -314,6 +315,15 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
 
         const updateSteps = () => {
             const viewport = getViewportSize();
+            const layoutKey = JSON.stringify({
+                viewport,
+                anchor,
+                isMobile,
+                bubbleSizes,
+            });
+
+            if (layoutKey === lastLayoutKeyRef.current) return;
+            lastLayoutKeyRef.current = layoutKey;
             const pointAnchor = new VideoPointAnchor(
                 {
                     anchor,

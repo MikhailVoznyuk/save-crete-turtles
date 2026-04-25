@@ -191,6 +191,7 @@ export function GlassPanel({
     const pointsRef = useRef<Float32Array>(new Float32Array(0));
     const countRef = useRef<number>(0);
     const padRef = useRef<number>(0);
+    const syncRef = useRef<((t: number) => void) | null>(null);
 
     const liquidParams = useMemo(
         () => ({...DEFAULT_LIQUID, ...liquid}),
@@ -248,7 +249,7 @@ export function GlassPanel({
     }, [boundaryPoints]);
 
     return (
-        <JellyShapeProvider value={{blobRef, pointsRef, countRef, padRef}}>
+        <JellyShapeProvider value={{blobRef, pointsRef, countRef, padRef, syncRef}}>
             <div
                 ref={wrapRef}
                 className={twMerge(

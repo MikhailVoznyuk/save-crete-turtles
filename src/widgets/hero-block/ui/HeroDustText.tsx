@@ -24,6 +24,7 @@ type Snapshot = {
     count: number;
 }
 
+
 type LocalRepulsor = {
     x: number;
     y: number;
@@ -34,6 +35,7 @@ type LocalRepulsor = {
     dy: number;
     speed: number;
 };
+
 
 const SAFE_BUBBLE_GAP_PX = 10;
 const COLLISION_EPSILON_PX = 0.75;
@@ -46,14 +48,6 @@ const DESKTOP_POINT_SIZE = 1.9;
 const POINT_EDGE_SOFTNESS = 0.16;
 const REPULSOR_SPEED_SMOOTHING = 18;
 const MAX_REPULSOR_SPEED_PX_PER_FRAME = 14;
-
-function isDesktopChromium() {
-    const userAgent = navigator.userAgent;
-    const isDesktop = !/Mobile|iPhone|iPad|Android/i.test(userAgent);
-    const isChromium = /\b(?:Chrome|Chromium|Edg|OPR)\//.test(userAgent);
-
-    return isDesktop && isChromium;
-}
 
 function applyTextTransform(text: string, transform: string) {
     if (transform === 'uppercase') return text.toUpperCase();
@@ -93,6 +87,38 @@ function drawRoundedRect(
     ctx.closePath();
 }
 
+type AlphaBounds = {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+};
+
+function getAlphaBounds(ctx: CanvasRenderingContext2D, width: number, height: number): AlphaBounds | null {
+    const image = ctx.getImageData(0, 0, width, height).data;
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const alpha = image[(y * width + x) * 4 + 3];
+
+            if (alpha < EDGE_ALPHA_THRESHOLD) continue;
+
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+        }
+    }
+
+    if (maxX < minX || maxY < minY) return null;
+
+    return {minX, minY, maxX, maxY};
+}
+
 function drawGlyphsToCanvas(
     ctx: CanvasRenderingContext2D,
     element: HTMLElement,
@@ -100,65 +126,90 @@ function drawGlyphsToCanvas(
     padding: number,
 ) {
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-    const useDesktopChromiumMetrics = isDesktopChromium();
+    const range = document.createRange();
 
-    while (walker.nextNode()) {
-        const textNode = walker.currentNode as Text;
-        const rawText = textNode.textContent ?? '';
+    try {
+        while (walker.nextNode()) {
+            const textNode = walker.currentNode as Text;
+            const rawText = textNode.textContent ?? '';
 
-        if (!rawText.trim()) continue;
+            if (!rawText.trim()) continue;
 
-        const styleSource = textNode.parentElement ?? element;
-        const style = window.getComputedStyle(styleSource);
-        const transformedText = applyTextTransform(rawText, style.textTransform);
+            const styleSource = textNode.parentElement ?? element;
+            const style = window.getComputedStyle(styleSource);
+            const transformedText = applyTextTransform(rawText, style.textTransform);
 
-        const fontStyle = style.fontStyle && style.fontStyle !== 'normal' ? `${style.fontStyle} ` : '';
-        const fontVariant = style.fontVariant && style.fontVariant !== 'normal' ? `${style.fontVariant} ` : '';
-        const fontWeight = style.fontWeight ? `${style.fontWeight} ` : '';
-        const fontSize = style.fontSize || '16px';
-        const fontFamily = style.fontFamily || 'sans-serif';
-        const fontSizePx = Number.parseFloat(fontSize);
+            const fontStyle = style.fontStyle && style.fontStyle !== 'normal' ? `${style.fontStyle} ` : '';
+            const fontVariant = style.fontVariant && style.fontVariant !== 'normal' ? `${style.fontVariant} ` : '';
+            const fontWeight = style.fontWeight ? `${style.fontWeight} ` : '';
+            const fontSize = style.fontSize || '16px';
+            const fontFamily = style.fontFamily || 'sans-serif';
 
-        ctx.font = `${fontStyle}${fontVariant}${fontWeight}${fontSize} ${fontFamily}`;
-        ctx.fillStyle = style.color;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = useDesktopChromiumMetrics ? 'alphabetic' : 'top';
+            ctx.font = `${fontStyle}${fontVariant}${fontWeight}${fontSize} ${fontFamily}`;
+            ctx.fillStyle = style.color;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
 
-        const chromeLineMetrics = useDesktopChromiumMetrics ? ctx.measureText('Hg') : null;
-        const chromeLineAscent = chromeLineMetrics
-            ? chromeLineMetrics.actualBoundingBoxAscent || chromeLineMetrics.fontBoundingBoxAscent || fontSizePx * 0.8 || 0
-            : 0;
-        const chromeLineDescent = chromeLineMetrics
-            ? chromeLineMetrics.actualBoundingBoxDescent || chromeLineMetrics.fontBoundingBoxDescent || fontSizePx * 0.2 || 0
-            : 0;
-        const chromeBaselineOffset = (chromeLineAscent - chromeLineDescent) / 2;
+            for (let i = 0; i < rawText.length; i++) {
+                const char = transformedText[i] ?? rawText[i];
 
-        for (let i = 0; i < rawText.length; i++) {
-            const char = transformedText[i] ?? rawText[i];
+                if (!char || /\s/.test(char)) continue;
 
-            if (!char || /\s/.test(char)) continue;
+                range.setStart(textNode, i);
+                range.setEnd(textNode, i + 1);
 
-            const range = document.createRange();
-            range.setStart(textNode, i);
-            range.setEnd(textNode, i + 1);
+                const rect = range.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) continue;
 
-            const rect = range.getBoundingClientRect();
-            if (rect.width === 0 || rect.height === 0) continue;
+                const x = rect.left - rootRect.left + padding;
+                const y = rect.top - rootRect.top + padding;
 
-            const x = rect.left - rootRect.left + padding;
-
-            if (useDesktopChromiumMetrics) {
-                const baselineY = rect.top - rootRect.top + padding + rect.height / 2 + chromeBaselineOffset;
-
-                ctx.fillText(char, x, baselineY);
-                continue;
+                ctx.fillText(char, x, y);
             }
-
-            const y = rect.top - rootRect.top + padding;
-
-            ctx.fillText(char, x, y);
         }
+    } finally {
+        range.detach();
     }
+}
+
+function drawAlignedGlyphLayer(
+    ctx: CanvasRenderingContext2D,
+    canvasWidth: number,
+    canvasHeight: number,
+    element: HTMLElement,
+    rootRect: DOMRect,
+    padding: number,
+    dpr: number,
+) {
+    const layer = document.createElement('canvas');
+    layer.width = canvasWidth;
+    layer.height = canvasHeight;
+
+    const layerCtx = layer.getContext('2d', {willReadFrequently: true});
+    if (!layerCtx) return;
+
+    layerCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    layerCtx.clearRect(0, 0, canvasWidth / dpr, canvasHeight / dpr);
+    drawGlyphsToCanvas(layerCtx, element, rootRect, padding);
+
+    const bounds = getAlphaBounds(layerCtx, canvasWidth, canvasHeight);
+    let shiftY = 0;
+
+    if (bounds) {
+        const elementRect = element.getBoundingClientRect();
+        const targetCenterY = elementRect.top - rootRect.top + elementRect.height / 2;
+        const maskTop = bounds.minY / dpr - padding;
+        const maskBottom = (bounds.maxY + 1) / dpr - padding;
+        const maskCenterY = (maskTop + maskBottom) / 2;
+        const deltaY = targetCenterY - maskCenterY;
+
+        shiftY = Number.isFinite(deltaY) ? Math.round(deltaY * dpr) : 0;
+    }
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(layer, 0, shiftY);
+    ctx.restore();
 }
 
 async function createSnapshot(
@@ -190,8 +241,8 @@ async function createSnapshot(
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width + padding * 2, height + padding * 2);
 
-    drawGlyphsToCanvas(ctx, titleElement, rootRect, padding);
-    drawGlyphsToCanvas(ctx, textElement, rootRect, padding);
+    drawAlignedGlyphLayer(ctx, canvas.width, canvas.height, titleElement, rootRect, padding, dpr);
+    drawAlignedGlyphLayer(ctx, canvas.width, canvas.height, textElement, rootRect, padding, dpr);
 
     if (lineElement) {
         const lineRect = lineElement.getBoundingClientRect();
@@ -214,7 +265,7 @@ async function createSnapshot(
     }
 
     const image = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    const densityStep = width < 900 ? 1 : 1;
+    const densityStep = width < 900 ? 1 : 2;
     const positions: number[] = [];
     const colors: number[] = [];
     const alphas: number[] = [];
@@ -334,11 +385,11 @@ export function HeroDustText({
 
         try {
             renderer = new THREE.WebGLRenderer({
-                alpha: true,
-                antialias: true,
-                powerPreference: 'high-performance',
-                premultipliedAlpha: false,
-            });
+            alpha: true,
+            antialias: true,
+            powerPreference: 'high-performance',
+            premultipliedAlpha: false,
+        });
         } catch {
             onLoadStateChange?.('error');
             return;
@@ -495,12 +546,11 @@ export function HeroDustText({
             state.height = nextSnapshot.height;
 
             for (let i = 0; i < nextSnapshot.count; i++) {
-                const i2 = i * 2;
                 state.phases[i] = Math.random() * Math.PI * 2;
-                state.drifts[i2] = (Math.random() - 0.5) * 0.95;
-                state.drifts[i2 + 1] = (Math.random() - 0.5) * 0.95;
+                state.drifts[i * 2] = 0.05 + Math.random() * 0.1;
+                state.drifts[i * 2 + 1] = 0.05 + Math.random() * 0.1;
                 state.angles[i] = Math.random() * Math.PI * 2;
-                state.randoms[i] = 0.75 + Math.random() * 0.75;
+                state.randoms[i] = 0.85 + Math.random() * 0.35;
             }
 
             geometry.setAttribute('position', new THREE.BufferAttribute(state.positions, 3));
@@ -508,18 +558,19 @@ export function HeroDustText({
             geometry.setAttribute('alpha', new THREE.BufferAttribute(nextSnapshot.alphas, 1));
             geometry.computeBoundingSphere();
 
-            syncViewportBounds(nextSnapshot.width, nextSnapshot.height);
+            material.uniforms.uSize.value = nextSnapshot.width < 640 ? MOBILE_POINT_SIZE : DESKTOP_POINT_SIZE;
 
-            material.uniforms.uSize.value = nextSnapshot.width < 768 ? MOBILE_POINT_SIZE : DESKTOP_POINT_SIZE;
+            syncViewportBounds(nextSnapshot.width, nextSnapshot.height);
         };
 
         const scheduleRebuild = () => {
-            if (disposed) return;
-            window.cancelAnimationFrame(resizeFrame);
-            resizeFrame = window.requestAnimationFrame(() => {
-                void rebuild();
+            if (resizeFrame !== 0) return;
+            resizeFrame = window.requestAnimationFrame(async () => {
+                resizeFrame = 0;
+                await rebuild();
             });
         };
+
 
         const resizeObserver = new ResizeObserver(() => {
             scheduleRebuild();

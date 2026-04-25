@@ -432,6 +432,8 @@ export function JellyContainer({
 
     const rafRef = useRef<number | null>(null);
     const lastTRef = useRef<number>(0);
+    const lastSyncTRef = useRef<number>(-1);
+    const syncRef = useRef<((t: number) => void) | null>(null);
 
     const supportsPath = useMemo(() => {
         if (typeof CSS === 'undefined' || !CSS.supports) return false;
@@ -687,12 +689,12 @@ export function JellyContainer({
         const blob = blobRef.current;
         if (!blob || !active) return;
 
-        const step = (t: number) => {
+        const advance = (t: number) => {
+            if (lastSyncTRef.current === t) return;
+            lastSyncTRef.current = t;
+
             const nodes = nodesRef.current;
-            if (!nodes.length) {
-                rafRef.current = requestAnimationFrame(step);
-                return;
-            }
+            if (!nodes.length) return;
 
             const dt = Math.min(0.033, Math.max(0.008, (t - (lastTRef.current || t)) / 1000));
             lastTRef.current = t;
@@ -972,11 +974,18 @@ export function JellyContainer({
             }
             if (pathRef.current) pathRef.current.setAttribute('d', d);
 
+        };
+
+        syncRef.current = advance;
+
+        const step = (t: number) => {
+            advance(t);
             rafRef.current = requestAnimationFrame(step);
         };
 
         rafRef.current = requestAnimationFrame(step);
         return () => {
+            syncRef.current = null;
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
             rafRef.current = null;
         };
@@ -1047,7 +1056,7 @@ export function JellyContainer({
     ]);
 
     return (
-        <JellyShapeProvider value={{blobRef, pointsRef, countRef, padRef}}>
+        <JellyShapeProvider value={{blobRef, pointsRef, countRef, padRef, syncRef}}>
             <div ref={wrapRef} className="relative inline-block overflow-visible">
                 <div ref={blobRef} className={['absolute', className].filter(Boolean).join(' ')} />
 
