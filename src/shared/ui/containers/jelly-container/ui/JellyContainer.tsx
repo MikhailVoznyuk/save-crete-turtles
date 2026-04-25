@@ -446,7 +446,7 @@ export function JellyContainer({
 
         const interactiveEnabled = hoverIndent !== 0 || clickIndent !== 0 || clickWave !== 0;
 
-        wrap.style.touchAction = interactiveEnabled ? 'none' : 'auto';
+        wrap.style.touchAction = interactiveEnabled ? 'pan-y' : 'auto';
         wrap.style.transform = 'translateZ(0)';
 
         const toLocal = (e: PointerEvent): V2 => {
@@ -647,7 +647,9 @@ export function JellyContainer({
 
             applyIndentImpulse(pr.p, clickRadius, clickIndent, clickWave);
 
-            try { wrap.setPointerCapture(e.pointerId); } catch {}
+            if (e.pointerType !== 'touch') {
+                try { wrap.setPointerCapture(e.pointerId); } catch {}
+            }
         };
 
         const onUp = (e: PointerEvent) => {
