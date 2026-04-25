@@ -24,17 +24,6 @@ type Snapshot = {
     count: number;
 }
 
-type TextDrawTarget = {
-    text: string;
-    width: number;
-    x: number;
-    y: number;
-    font: string;
-    lineHeight: number;
-    align: CanvasTextAlign;
-    color: string;
-}
-
 type LocalRepulsor = {
     x: number;
     y: number;
@@ -45,7 +34,6 @@ type LocalRepulsor = {
     dy: number;
     speed: number;
 };
-
 
 const SAFE_BUBBLE_GAP_PX = 10;
 const COLLISION_EPSILON_PX = 0.75;
@@ -59,18 +47,12 @@ const POINT_EDGE_SOFTNESS = 0.16;
 const REPULSOR_SPEED_SMOOTHING = 18;
 const MAX_REPULSOR_SPEED_PX_PER_FRAME = 14;
 
-function parseLineHeight(style: CSSStyleDeclaration, fontSize: number) {
-    const raw = style.lineHeight;
-    if (!raw || raw === 'normal') {
-        return fontSize * 1.1;
-    }
+function isDesktopChromium() {
+    const userAgent = navigator.userAgent;
+    const isDesktop = !/Mobile|iPhone|iPad|Android/i.test(userAgent);
+    const isChromium = /\b(?:Chrome|Chromium|Edg|OPR)\//.test(userAgent);
 
-    if (raw.endsWith('px')) {
-        return Number.parseFloat(raw);
-    }
-
-    const numeric = Number.parseFloat(raw);
-    return Number.isFinite(numeric) ? numeric * fontSize : fontSize * 1.1;
+    return isDesktop && isChromium;
 }
 
 function applyTextTransform(text: string, transform: string) {
@@ -83,74 +65,103 @@ function applyTextTransform(text: string, transform: string) {
     return text;
 }
 
-function getTextTarget(element: HTMLElement, rootRect: DOMRect): TextDrawTarget {
-    const rect = element.getBoundingClientRect();
-    const style = window.getComputedStyle(element);
-    const fontSize = Number.parseFloat(style.fontSize);
-
-    return {
-        text: applyTextTransform(element.textContent?.trim() ?? '', style.textTransform),
-        width: rect.width,
-        x: rect.left - rootRect.left,
-        y: rect.top - rootRect.top,
-        font: `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`,
-        lineHeight: parseLineHeight(style, fontSize),
-        align: (style.textAlign === 'center' ? 'center' : 'left'),
-        color: style.color,
-    };
+function parseRadius(value: string) {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
-    const paragraphs = text.split('\n');
-    const lines: string[] = [];
+function drawRoundedRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number,
+) {
+    const safeRadius = Math.max(0, Math.min(radius, width / 2, height / 2));
 
-    for (const paragraph of paragraphs) {
-        const words = paragraph.split(/\s+/).filter(Boolean);
+    ctx.beginPath();
+    ctx.moveTo(x + safeRadius, y);
+    ctx.lineTo(x + width - safeRadius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+    ctx.lineTo(x + width, y + height - safeRadius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+    ctx.lineTo(x + safeRadius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+    ctx.lineTo(x, y + safeRadius);
+    ctx.quadraticCurveTo(x, y, x + safeRadius, y);
+    ctx.closePath();
+}
 
-        if (words.length === 0) {
-            lines.push('');
-            continue;
-        }
+function drawGlyphsToCanvas(
+    ctx: CanvasRenderingContext2D,
+    element: HTMLElement,
+    rootRect: DOMRect,
+    padding: number,
+) {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const useDesktopChromiumMetrics = isDesktopChromium();
 
-        let line = words[0];
+    while (walker.nextNode()) {
+        const textNode = walker.currentNode as Text;
+        const rawText = textNode.textContent ?? '';
 
-        for (let i = 1; i < words.length; i++) {
-            const word = words[i];
-            const nextLine = `${line} ${word}`;
+        if (!rawText.trim()) continue;
 
-            if (ctx.measureText(nextLine).width <= maxWidth) {
-                line = nextLine;
+        const styleSource = textNode.parentElement ?? element;
+        const style = window.getComputedStyle(styleSource);
+        const transformedText = applyTextTransform(rawText, style.textTransform);
+
+        const fontStyle = style.fontStyle && style.fontStyle !== 'normal' ? `${style.fontStyle} ` : '';
+        const fontVariant = style.fontVariant && style.fontVariant !== 'normal' ? `${style.fontVariant} ` : '';
+        const fontWeight = style.fontWeight ? `${style.fontWeight} ` : '';
+        const fontSize = style.fontSize || '16px';
+        const fontFamily = style.fontFamily || 'sans-serif';
+        const fontSizePx = Number.parseFloat(fontSize);
+
+        ctx.font = `${fontStyle}${fontVariant}${fontWeight}${fontSize} ${fontFamily}`;
+        ctx.fillStyle = style.color;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = useDesktopChromiumMetrics ? 'alphabetic' : 'top';
+
+        const chromeLineMetrics = useDesktopChromiumMetrics ? ctx.measureText('Hg') : null;
+        const chromeLineAscent = chromeLineMetrics
+            ? chromeLineMetrics.actualBoundingBoxAscent || chromeLineMetrics.fontBoundingBoxAscent || fontSizePx * 0.8 || 0
+            : 0;
+        const chromeLineDescent = chromeLineMetrics
+            ? chromeLineMetrics.actualBoundingBoxDescent || chromeLineMetrics.fontBoundingBoxDescent || fontSizePx * 0.2 || 0
+            : 0;
+        const chromeBaselineOffset = (chromeLineAscent - chromeLineDescent) / 2;
+
+        for (let i = 0; i < rawText.length; i++) {
+            const char = transformedText[i] ?? rawText[i];
+
+            if (!char || /\s/.test(char)) continue;
+
+            const range = document.createRange();
+            range.setStart(textNode, i);
+            range.setEnd(textNode, i + 1);
+
+            const rect = range.getBoundingClientRect();
+            if (rect.width === 0 || rect.height === 0) continue;
+
+            const x = rect.left - rootRect.left + padding;
+
+            if (useDesktopChromiumMetrics) {
+                const baselineY = rect.top - rootRect.top + padding + rect.height / 2 + chromeBaselineOffset;
+
+                ctx.fillText(char, x, baselineY);
                 continue;
             }
 
-            lines.push(line);
-            line = word;
+            const y = rect.top - rootRect.top + padding;
+
+            ctx.fillText(char, x, y);
         }
-
-        lines.push(line);
     }
-
-    return lines;
 }
 
-function drawText(ctx: CanvasRenderingContext2D, target: TextDrawTarget) {
-    ctx.save();
-    ctx.font = target.font;
-    ctx.textBaseline = 'top';
-    ctx.textAlign = target.align;
-    ctx.fillStyle = target.color;
-
-    const lines = wrapText(ctx, target.text, target.width);
-    const x = target.align === 'center' ? target.x + target.width / 2 : target.x;
-
-    lines.forEach((line, index) => {
-        ctx.fillText(line, x, target.y + target.lineHeight * index);
-    });
-
-    ctx.restore();
-}
-
-function createSnapshot(
+async function createSnapshot(
     root: HTMLElement,
     titleRoot: HTMLElement,
     textRoot: HTMLElement,
@@ -167,30 +178,39 @@ function createSnapshot(
     const width = Math.max(1, Math.ceil(rootRect.width));
     const height = Math.max(1, Math.ceil(rootRect.height));
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const padding = 48;
 
     const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.ceil(width * dpr));
-    canvas.height = Math.max(1, Math.ceil(height * dpr));
+    canvas.width = Math.max(1, Math.ceil((width + padding * 2) * dpr));
+    canvas.height = Math.max(1, Math.ceil((height + padding * 2) * dpr));
 
     const ctx = canvas.getContext('2d', {willReadFrequently: true});
     if (!ctx) return null;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, width, height);
+    ctx.clearRect(0, 0, width + padding * 2, height + padding * 2);
 
-    drawText(ctx, getTextTarget(titleElement, rootRect));
-    drawText(ctx, getTextTarget(textElement, rootRect));
+    drawGlyphsToCanvas(ctx, titleElement, rootRect, padding);
+    drawGlyphsToCanvas(ctx, textElement, rootRect, padding);
 
     if (lineElement) {
         const lineRect = lineElement.getBoundingClientRect();
         const lineStyle = window.getComputedStyle(lineElement);
-        ctx.fillStyle = lineStyle.backgroundColor;
-        ctx.fillRect(
-            lineRect.left - rootRect.left,
-            lineRect.top - rootRect.top,
-            Math.max(2, lineRect.width),
-            Math.max(2, lineRect.height),
+        const x = lineRect.left - rootRect.left + padding;
+        const y = lineRect.top - rootRect.top + padding;
+        const lineWidth = Math.max(2, lineRect.width);
+        const lineHeight = Math.max(2, lineRect.height);
+        const radius = Math.max(
+            parseRadius(lineStyle.borderTopLeftRadius),
+            parseRadius(lineStyle.borderTopRightRadius),
+            parseRadius(lineStyle.borderBottomRightRadius),
+            parseRadius(lineStyle.borderBottomLeftRadius),
+            Math.min(lineWidth, lineHeight) / 2,
         );
+
+        ctx.fillStyle = lineStyle.backgroundColor;
+        drawRoundedRect(ctx, x, y, lineWidth, lineHeight, radius);
+        ctx.fill();
     }
 
     const image = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
@@ -206,9 +226,12 @@ function createSnapshot(
 
             if (alpha < EDGE_ALPHA_THRESHOLD) continue;
 
+            const localX = x / dpr - padding;
+            const localY = y / dpr - padding;
+
             positions.push(
-                x / dpr - width / 2,
-                height / 2 - y / dpr,
+                localX - width / 2,
+                height / 2 - localY,
                 0,
             );
 
@@ -302,17 +325,20 @@ export function HeroDustText({
         const titleRoot = titleRef.current;
         const textRoot = textRef.current;
 
-        if (!mount || !root || !titleRoot || !textRoot) return;
+        if (!mount || !root || !titleRoot || !textRoot) {
+            onLoadStateChange?.('error');
+            return;
+        }
 
         let renderer: THREE.WebGLRenderer;
 
         try {
             renderer = new THREE.WebGLRenderer({
-            alpha: true,
-            antialias: true,
-            powerPreference: 'high-performance',
-            premultipliedAlpha: false,
-        });
+                alpha: true,
+                antialias: true,
+                powerPreference: 'high-performance',
+                premultipliedAlpha: false,
+            });
         } catch {
             onLoadStateChange?.('error');
             return;
@@ -441,12 +467,22 @@ export function HeroDustText({
 
             if (disposed || currentToken !== rebuildToken) return;
 
-            const nextSnapshot = createSnapshot(root, titleRoot, textRoot);
-            if (!nextSnapshot || nextSnapshot.count === 0) return;
+            let nextSnapshot: Snapshot | null = null;
+
+            try {
+                nextSnapshot = await createSnapshot(root, titleRoot, textRoot);
+            } catch {
+                nextSnapshot = null;
+            }
+
+            if (!nextSnapshot || nextSnapshot.count === 0) {
+                onLoadStateChange?.('error');
+                return;
+            }
 
             firstSnapshotReady = true;
 
-            state.basePositions = nextSnapshot.positions;
+            state.basePositions = new Float32Array(nextSnapshot.positions);
             state.positions = new Float32Array(nextSnapshot.positions);
             state.velocities = new Float32Array(nextSnapshot.count * 2);
             state.phases = new Float32Array(nextSnapshot.count);
@@ -459,11 +495,12 @@ export function HeroDustText({
             state.height = nextSnapshot.height;
 
             for (let i = 0; i < nextSnapshot.count; i++) {
+                const i2 = i * 2;
                 state.phases[i] = Math.random() * Math.PI * 2;
-                state.drifts[i * 2] = 0.05 + Math.random() * 0.1;
-                state.drifts[i * 2 + 1] = 0.05 + Math.random() * 0.1;
+                state.drifts[i2] = (Math.random() - 0.5) * 0.95;
+                state.drifts[i2 + 1] = (Math.random() - 0.5) * 0.95;
                 state.angles[i] = Math.random() * Math.PI * 2;
-                state.randoms[i] = 0.85 + Math.random() * 0.35;
+                state.randoms[i] = 0.75 + Math.random() * 0.75;
             }
 
             geometry.setAttribute('position', new THREE.BufferAttribute(state.positions, 3));
@@ -471,19 +508,18 @@ export function HeroDustText({
             geometry.setAttribute('alpha', new THREE.BufferAttribute(nextSnapshot.alphas, 1));
             geometry.computeBoundingSphere();
 
-            material.uniforms.uSize.value = nextSnapshot.width < 640 ? MOBILE_POINT_SIZE : DESKTOP_POINT_SIZE;
-
             syncViewportBounds(nextSnapshot.width, nextSnapshot.height);
+
+            material.uniforms.uSize.value = nextSnapshot.width < 768 ? MOBILE_POINT_SIZE : DESKTOP_POINT_SIZE;
         };
 
         const scheduleRebuild = () => {
-            if (resizeFrame !== 0) return;
-            resizeFrame = window.requestAnimationFrame(async () => {
-                resizeFrame = 0;
-                await rebuild();
+            if (disposed) return;
+            window.cancelAnimationFrame(resizeFrame);
+            resizeFrame = window.requestAnimationFrame(() => {
+                void rebuild();
             });
         };
-
 
         const resizeObserver = new ResizeObserver(() => {
             scheduleRebuild();
@@ -739,7 +775,7 @@ export function HeroDustText({
         <div
             ref={mountRef}
             aria-hidden
-            className={twMerge('pointer-events-none absolute', className)}
+            className={twMerge('pointer-events-none absolute inset-0', className)}
         />
     );
 }
