@@ -432,6 +432,8 @@ export function JellyContainer({
 
     const rafRef = useRef<number | null>(null);
     const lastTRef = useRef<number>(0);
+    const shapeTickTRef = useRef<number>(-1);
+    const syncRef = useRef<((time: number) => void) | null>(null);
 
     const supportsPath = useMemo(() => {
         if (typeof CSS === 'undefined' || !CSS.supports) return false;
@@ -687,10 +689,11 @@ export function JellyContainer({
         const blob = blobRef.current;
         if (!blob || !active) return;
 
-        const step = (t: number) => {
+        const syncShape = (t: number) => {
+            if (shapeTickTRef.current === t) return;
+            shapeTickTRef.current = t;
             const nodes = nodesRef.current;
             if (!nodes.length) {
-                rafRef.current = requestAnimationFrame(step);
                 return;
             }
 
@@ -971,12 +974,18 @@ export function JellyContainer({
                 (blob.style as CSSStyleDeclaration & {webkitClipPath?: string}).webkitClipPath = `path("${d}")`;
             }
             if (pathRef.current) pathRef.current.setAttribute('d', d);
+        };
 
+        syncRef.current = syncShape;
+
+        const step = (t: number) => {
+            syncShape(t);
             rafRef.current = requestAnimationFrame(step);
         };
 
         rafRef.current = requestAnimationFrame(step);
         return () => {
+            syncRef.current = null;
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
             rafRef.current = null;
         };
@@ -1047,7 +1056,7 @@ export function JellyContainer({
     ]);
 
     return (
-        <JellyShapeProvider value={{blobRef, pointsRef, countRef, padRef}}>
+        <JellyShapeProvider value={{blobRef, pointsRef, countRef, padRef, syncRef}}>
             <div ref={wrapRef} className="relative inline-block overflow-visible">
                 <div ref={blobRef} className={['absolute', className].filter(Boolean).join(' ')} />
 
