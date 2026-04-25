@@ -214,7 +214,7 @@ async function createSnapshot(
     }
 
     const image = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    const densityStep = width < 900 ? 1 : 2;
+    const densityStep = width < 900 ? 1 : 1;
     const positions: number[] = [];
     const colors: number[] = [];
     const alphas: number[] = [];
