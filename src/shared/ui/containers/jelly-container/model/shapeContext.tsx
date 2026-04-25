@@ -8,6 +8,7 @@ export type JellyShapeApi = {
     countRef: React.RefObject<number>;
     padRef: React.RefObject<number>;
     syncRef: React.RefObject<((timestamp?: number) => void) | null>;
+    visualSyncRef?: React.RefObject<((rect: DOMRect, timestamp?: number) => void) | null>;
 }
 
 const JellyShapeContext = createContext<JellyShapeApi | null>(null);
