@@ -193,18 +193,22 @@ function drawAlignedGlyphLayer(
     drawGlyphsToCanvas(layerCtx, element, rootRect, padding);
 
     const bounds = getAlphaBounds(layerCtx, canvasWidth, canvasHeight);
-    if (!bounds) return;
+    let shiftY = 0;
 
-    const elementRect = element.getBoundingClientRect();
-    const targetCenterY = elementRect.top - rootRect.top + elementRect.height / 2;
-    const maskTop = bounds.minY / dpr - padding;
-    const maskBottom = (bounds.maxY + 1) / dpr - padding;
-    const maskCenterY = (maskTop + maskBottom) / 2;
-    const deltaY = targetCenterY - maskCenterY;
+    if (bounds) {
+        const elementRect = element.getBoundingClientRect();
+        const targetCenterY = elementRect.top - rootRect.top + elementRect.height / 2;
+        const maskTop = bounds.minY / dpr - padding;
+        const maskBottom = (bounds.maxY + 1) / dpr - padding;
+        const maskCenterY = (maskTop + maskBottom) / 2;
+        const deltaY = targetCenterY - maskCenterY;
+
+        shiftY = Number.isFinite(deltaY) ? Math.round(deltaY * dpr) : 0;
+    }
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(layer, 0, Math.round(deltaY * dpr));
+    ctx.drawImage(layer, 0, shiftY);
     ctx.restore();
 }
 
