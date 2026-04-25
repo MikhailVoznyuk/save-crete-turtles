@@ -29,6 +29,7 @@ export type LiquidGlassHandle = {
     padRef: React.RefObject<number>;
     orderRef: React.RefObject<number>;
     syncRef?: React.RefObject<((timestamp?: number) => void) | null>;
+    visualSyncRef?: React.RefObject<((rect: DOMRect, timestamp?: number) => void) | null>;
 };
 
 export type RegisterLiquidGlass = (h: LiquidGlassHandle) => () => void;

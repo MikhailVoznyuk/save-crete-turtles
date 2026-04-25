@@ -9,7 +9,7 @@ type ModalToggleButtonProps = {
 
 const base = 'rounded-full border overflow-hidden backdrop-blur-xs cursor-pointer transition-all duration-300 group/fs-btn';
 const size = 'size-12'
-const tone = 'bg-black/10 border-white/50';
+const tone = 'bg-black/10 border-cold-white/50';
 const hover = 'hover:border-turk'
 
 export function ModalToggleButton({variant='primary', onClick, className}: ModalToggleButtonProps) {

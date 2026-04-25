@@ -834,6 +834,10 @@ export function LiquidGlassProvider({
                 visibleLenses.push({ h, rect });
             }
 
+            for (const { h, rect } of visibleLenses) {
+                h.visualSyncRef?.current?.(rect, t);
+            }
+
             if (visibleLenses.length === 0 || document.hidden) {
                 rafRef.current = requestAnimationFrame(loop);
                 return;
