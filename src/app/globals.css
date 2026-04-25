@@ -7,6 +7,10 @@
   --app-vh: 1vh;
 }
 
+html {
+  background: var(--background);
+}
+
 @theme {
   --color-turk: #00EEFF;
   --color-cloud: #E9E9E9;
@@ -103,4 +107,48 @@ video {
   will-change: transform, opacity, left, top;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+.fixed-video-bg {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  pointer-events: none;
+  contain: paint;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+@supports (height: 100lvh) {
+  .fixed-video-bg {
+    height: 100lvh;
+  }
+}
+
+.fixed-video-bg__video {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+@media (max-width: 639px) {
+  .fixed-video-bg {
+    top: -64px;
+    height: calc(100vh + 128px);
+  }
+
+  @supports (height: 100lvh) {
+    .fixed-video-bg {
+      height: calc(100lvh + 128px);
+    }
+}
+
+  .fixed-video-bg__video {
+    transform: translate3d(0, 0, 0) scale(1.02);
+    transform-origin: center;
+  }
 }
