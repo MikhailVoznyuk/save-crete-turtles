@@ -276,12 +276,21 @@ type Cords = {x: number, y: number};
 type Sizes = {width: number, height: number};
 
 function getViewportSize() {
-    const visualViewport = window.visualViewport;
+    const bg = document.querySelector<HTMLElement>('.fixed-video-bg');
+    const rect = bg?.getBoundingClientRect();
+
+    if (rect && rect.width > 1 && rect.height > 1) {
+        return {
+            width: Math.max(1, Math.round(rect.width)),
+            height: Math.max(1, Math.round(rect.height)),
+        };
+    }
+
     const docEl = document.documentElement;
 
     return {
-        width: Math.max(1, Math.round(visualViewport?.width ?? 0), Math.round(docEl.clientWidth || 0), Math.round(window.innerWidth || 0)),
-        height: Math.max(1, Math.round(visualViewport?.height ?? 0), Math.round(docEl.clientHeight || 0), Math.round(window.innerHeight || 0)),
+        width: Math.max(1, Math.round(Math.max(docEl.clientWidth || 0, window.innerWidth || 0))),
+        height: Math.max(1, Math.round(Math.max(docEl.clientHeight || 0, window.innerHeight || 0))),
     };
 }
 
@@ -301,7 +310,6 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
     const ticking = useRef<boolean>(false);
     const resizeRafRef = useRef<number | null>(null);
     const layoutRafRef = useRef<number | null>(null);
-    const lastLayoutKeyRef = useRef<string>('');
     const hasReportedReadyRef = useRef(false);
 
     useEffect(() => {
@@ -311,19 +319,8 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
     useEffect(() => {
         if (bubblesRef.current.length === 0 || anchor === null) return;
 
-        const visualViewport = window.visualViewport;
-
         const updateSteps = () => {
             const viewport = getViewportSize();
-            const layoutKey = JSON.stringify({
-                viewport,
-                anchor,
-                isMobile,
-                bubbleSizes,
-            });
-
-            if (layoutKey === lastLayoutKeyRef.current) return;
-            lastLayoutKeyRef.current = layoutKey;
             const pointAnchor = new VideoPointAnchor(
                 {
                     anchor,
@@ -410,13 +407,11 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
         window.addEventListener('resize', scheduleUpdateSteps, {passive: true});
         window.addEventListener('orientationchange', scheduleUpdateSteps);
         window.addEventListener('pageshow', scheduleUpdateSteps);
-        visualViewport?.addEventListener('resize', scheduleUpdateSteps);
 
         return () => {
             window.removeEventListener('resize', scheduleUpdateSteps);
             window.removeEventListener('orientationchange', scheduleUpdateSteps);
             window.removeEventListener('pageshow', scheduleUpdateSteps);
-            visualViewport?.removeEventListener('resize', scheduleUpdateSteps);
 
             if (layoutRafRef.current !== null) {
                 cancelAnimationFrame(layoutRafRef.current);

@@ -404,6 +404,7 @@ export function JellyContainer({
     const pointsRef = useRef<Float32Array>(new Float32Array(0));
     const countRef = useRef<number>(0);
     const padRef = useRef<number>(0);
+    const syncRef = useRef<((timestamp?: number) => void) | null>(null);
 
     const nodesRef = useRef<Node[]>([]);
     const restRef = useRef<number[]>([]);
@@ -432,8 +433,6 @@ export function JellyContainer({
 
     const rafRef = useRef<number | null>(null);
     const lastTRef = useRef<number>(0);
-    const lastSyncTRef = useRef<number>(-1);
-    const syncRef = useRef<((t: number) => void) | null>(null);
 
     const supportsPath = useMemo(() => {
         if (typeof CSS === 'undefined' || !CSS.supports) return false;
@@ -656,7 +655,9 @@ export function JellyContainer({
 
         const onUp = (e: PointerEvent) => {
             pointerRef.current.down = false;
-            try { wrap.releasePointerCapture(e.pointerId); } catch {}
+            if (e.pointerType !== 'touch') {
+                try { wrap.releasePointerCapture(e.pointerId); } catch {}
+            }
         };
 
         wrap.addEventListener('pointerenter', onEnter);
@@ -689,12 +690,17 @@ export function JellyContainer({
         const blob = blobRef.current;
         if (!blob || !active) return;
 
-        const advance = (t: number) => {
-            if (lastSyncTRef.current === t) return;
-            lastSyncTRef.current = t;
-
+        const step = (t: number, scheduleNext = true) => {
             const nodes = nodesRef.current;
-            if (!nodes.length) return;
+            if (!nodes.length) {
+                if (scheduleNext) rafRef.current = requestAnimationFrame(step);
+                return;
+            }
+
+            if (lastTRef.current && t <= lastTRef.current + 0.5) {
+                if (scheduleNext) rafRef.current = requestAnimationFrame(step);
+                return;
+            }
 
             const dt = Math.min(0.033, Math.max(0.008, (t - (lastTRef.current || t)) / 1000));
             lastTRef.current = t;
@@ -955,6 +961,16 @@ export function JellyContainer({
                 }
             }
 
+            for (const n of nodes) {
+                const off = v2.sub(n.p, n.b);
+                const out = v2.norm(v2.sub(n.b, c0));
+                const radial = v2.dot(off, out);
+                const radialClamped = Math.max(-maxIn, Math.min(maxOut, radial));
+                const tang = v2.sub(off, v2.mul(out, radial));
+                const tangClamped = v2.clampLen(tang, maxOffBase);
+                n.p = v2.add(n.b, v2.add(v2.mul(out, radialClamped), tangClamped));
+            }
+
             const N = nodes.length;
             const M = N * MASK_STEPS;
             countRef.current = M;
@@ -974,20 +990,15 @@ export function JellyContainer({
             }
             if (pathRef.current) pathRef.current.setAttribute('d', d);
 
+            if (scheduleNext) rafRef.current = requestAnimationFrame(step);
         };
 
-        syncRef.current = advance;
-
-        const step = (t: number) => {
-            advance(t);
-            rafRef.current = requestAnimationFrame(step);
-        };
-
+        syncRef.current = (timestamp = performance.now()) => step(timestamp, false);
         rafRef.current = requestAnimationFrame(step);
         return () => {
-            syncRef.current = null;
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
             rafRef.current = null;
+            syncRef.current = null;
         };
     }, [
         supportsPath,
