@@ -22,8 +22,14 @@ function getViewportMetrics() {
     const docEl = document.documentElement;
 
     return {
-        w: Math.max(1, Math.round(visualViewport?.width ?? docEl.clientWidth ?? window.innerWidth)),
-        h: Math.max(1, Math.round(visualViewport?.height ?? docEl.clientHeight ?? window.innerHeight)),
+        w: Math.max(
+            1,
+            Math.round(Math.max(visualViewport?.width ?? 0, docEl.clientWidth || 0, window.innerWidth || 0))
+        ),
+        h: Math.max(
+            1,
+            Math.round(Math.max(visualViewport?.height ?? 0, docEl.clientHeight || 0, window.innerHeight || 0))
+        ),
         dpr: Math.min(window.devicePixelRatio || 1, 4),
     };
 }
@@ -519,6 +525,7 @@ export function LiquidGlassProvider({
 
     const mapRef = useRef(new Map<string, LiquidGlassHandle>());
     const rafRef = useRef<number | null>(null);
+    const runningRef = useRef(false);
 
     const fbScaleRef = useRef(1);
     const vpCssRef = useRef({ w: 1, h: 1 });
@@ -768,13 +775,30 @@ export function LiquidGlassProvider({
         lastVideoLayoutRef.current = null;
 
         // reallocate FBO textures
-        if (texBgRef.current) gl.deleteTexture(texBgRef.current);
-        if (fboBgRef.current) gl.deleteFramebuffer(fboBgRef.current);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+
+        if (fboBgRef.current) {
+            gl.deleteFramebuffer(fboBgRef.current);
+            fboBgRef.current = null;
+        }
+        if (texBgRef.current) {
+            gl.deleteTexture(texBgRef.current);
+            texBgRef.current = null;
+        }
+
         texBgRef.current = setupTex(gl, bgW, bgH);
         fboBgRef.current = setupFbo(gl, texBgRef.current);
 
-        if (texBlurRef.current) gl.deleteTexture(texBlurRef.current);
-        if (fboBlurRef.current) gl.deleteFramebuffer(fboBlurRef.current);
+        if (fboBlurRef.current) {
+            gl.deleteFramebuffer(fboBlurRef.current);
+            fboBlurRef.current = null;
+        }
+        if (texBlurRef.current) {
+            gl.deleteTexture(texBlurRef.current);
+            texBlurRef.current = null;
+        }
+
         texBlurRef.current = setupTex(gl, blurW, blurH);
         fboBlurRef.current = setupFbo(gl, texBlurRef.current);
     }, [quality, dprCap, zIndex]);
@@ -795,24 +819,15 @@ export function LiquidGlassProvider({
 
     const start = useCallback(() => {
         if (rafRef.current) return;
+        runningRef.current = true;
 
         const loop = (t: number) => {
+            if (!runningRef.current) return;
+
             const gl = glRef.current;
             const canvas = canvasRef.current;
-            const progBg = progBgRef.current;
-            const progBlur = progBlurRef.current;
-            const progMask = progMaskRef.current;
-            const progLens = progLensRef.current;
-            const vaoFull = vaoFullRef.current;
-            const vaoFan = vaoFanRef.current;
-            const vboFan = vboFanRef.current;
-            const texVideo = texVideoRef.current;
-            const fboBg = fboBgRef.current;
-            const texBg = texBgRef.current;
-            const fboBlur = fboBlurRef.current;
-            const texBlur = texBlurRef.current;
 
-            if (!gl || !canvas || !progBg || !progBlur || !progMask || !progLens || !vaoFull || !vaoFan || !vboFan || !texVideo || !fboBg || !texBg || !fboBlur || !texBlur) {
+            if (!gl || !canvas) {
                 rafRef.current = requestAnimationFrame(loop);
                 return;
             }
@@ -827,6 +842,26 @@ export function LiquidGlassProvider({
                 Math.abs(nextScale - fbScaleRef.current) > 0.0001
             ) {
                 resize();
+                rafRef.current = requestAnimationFrame(loop);
+                return;
+            }
+
+            const progBg = progBgRef.current;
+            const progBlur = progBlurRef.current;
+            const progMask = progMaskRef.current;
+            const progLens = progLensRef.current;
+            const vaoFull = vaoFullRef.current;
+            const vaoFan = vaoFanRef.current;
+            const vboFan = vboFanRef.current;
+            const texVideo = texVideoRef.current;
+            const fboBg = fboBgRef.current;
+            const texBg = texBgRef.current;
+            const fboBlur = fboBlurRef.current;
+            const texBlur = texBlurRef.current;
+
+            if (!progBg || !progBlur || !progMask || !progLens || !vaoFull || !vaoFan || !vboFan || !texVideo || !fboBg || !texBg || !fboBlur || !texBlur) {
+                rafRef.current = requestAnimationFrame(loop);
+                return;
             }
 
             const vp = vpCssRef.current;
@@ -841,6 +876,7 @@ export function LiquidGlassProvider({
 
             const visibleLenses: Array<{ h: LiquidGlassHandle; rect: DOMRect }> = [];
             for (const h of orderedLenses) {
+                h.syncRef?.current?.(t);
                 const rect = h.el.getBoundingClientRect();
                 if (rect.width < 1 || rect.height < 1) continue;
                 if (
@@ -1121,6 +1157,7 @@ export function LiquidGlassProvider({
     }, [videoRef, dprCap, quality, resize]);
 
     const stop = useCallback(() => {
+        runningRef.current = false;
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
     }, []);
@@ -1303,12 +1340,15 @@ export function LiquidGlassProvider({
 
             mapRef.current.clear();
 
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+
+            if (fboBgRef.current) gl.deleteFramebuffer(fboBgRef.current);
+            if (fboBlurRef.current) gl.deleteFramebuffer(fboBlurRef.current);
             if (texVideoRef.current) gl.deleteTexture(texVideoRef.current);
             if (shapeTexRef.current) gl.deleteTexture(shapeTexRef.current);
             if (texBgRef.current) gl.deleteTexture(texBgRef.current);
             if (texBlurRef.current) gl.deleteTexture(texBlurRef.current);
-            if (fboBgRef.current) gl.deleteFramebuffer(fboBgRef.current);
-            if (fboBlurRef.current) gl.deleteFramebuffer(fboBlurRef.current);
 
             if (vboFullRef.current) gl.deleteBuffer(vboFullRef.current);
             if (vaoFullRef.current) gl.deleteVertexArray(vaoFullRef.current);
@@ -1320,6 +1360,20 @@ export function LiquidGlassProvider({
             if (progMaskRef.current) gl.deleteProgram(progMaskRef.current);
             if (progLensRef.current) gl.deleteProgram(progLensRef.current);
 
+            fboBgRef.current = null;
+            fboBlurRef.current = null;
+            texVideoRef.current = null;
+            shapeTexRef.current = null;
+            texBgRef.current = null;
+            texBlurRef.current = null;
+            vboFullRef.current = null;
+            vaoFullRef.current = null;
+            vboFanRef.current = null;
+            vaoFanRef.current = null;
+            progBgRef.current = null;
+            progBlurRef.current = null;
+            progMaskRef.current = null;
+            progLensRef.current = null;
             glRef.current = null;
         };
     }, [resize, scheduleResize, stop, emitLoadState]);
