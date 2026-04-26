@@ -192,7 +192,9 @@ uniform vec2  uRectPosCss;
 uniform vec2  uRectSizeCss;
 uniform float uScale;
 
-uniform vec2  uLight;       // -1..1 (pointer)
+uniform vec2  uLight;
+uniform vec2  uPointerCss;
+uniform float uPointerActive;
 uniform float uTime;
 
 uniform float uIntensity;
@@ -212,16 +214,12 @@ uniform sampler2D uShapePolar;
 uniform vec2  uCenterCss;
 uniform float uShapeMaxRadius;
 
+float saturate(float x){ return clamp(x, 0.0, 1.0); }
+
 float hash12(vec2 p){
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
   p3 += dot(p3, p3.yzx + 33.33);
   return fract((p3.x + p3.y) * p3.z);
-}
-
-float boundaryRadius(vec2 dir){
-  float ang = atan(dir.y, dir.x);
-  float u = (ang + 3.141592653589793) / 6.283185307179586;
-  return max(1.0, texture(uShapePolar, vec2(fract(u), 0.5)).r * uShapeMaxRadius);
 }
 
 float hash21(vec2 p){
@@ -254,13 +252,17 @@ float fbm4(vec2 p){
   return v;
 }
 
+float boundaryRadius(vec2 dir){
+  float ang = atan(dir.y, dir.x);
+  float u = (ang + 3.141592653589793) / 6.283185307179586;
+  return max(1.0, texture(uShapePolar, vec2(fract(u), 0.5)).r * uShapeMaxRadius);
+}
+
 float filmPhase(float lambdaNm, float thicknessNm, float cosTheta){
   return 4.0 * 3.141592653589793 * 1.33 * thicknessNm * cosTheta / lambdaNm + 3.141592653589793;
 }
 
 vec3 thinFilmSpectrum(float thicknessNm, float cosTheta){
-  // несколько спектральных линий вместо тупого RGB-cos.
-  // это всё ещё аппроксимация, но выглядит заметно правдоподобнее.
   float i650 = 0.5 + 0.5 * cos(filmPhase(650.0, thicknessNm, cosTheta));
   float i580 = 0.5 + 0.5 * cos(filmPhase(580.0, thicknessNm, cosTheta));
   float i530 = 0.5 + 0.5 * cos(filmPhase(530.0, thicknessNm, cosTheta));
@@ -269,221 +271,183 @@ vec3 thinFilmSpectrum(float thicknessNm, float cosTheta){
 
   vec3 rgb = vec3(0.0);
   rgb += i650 * vec3(1.00, 0.08, 0.00);
-  rgb += i580 * vec3(1.00, 0.58, 0.00);
-  rgb += i530 * vec3(0.20, 1.00, 0.16);
-  rgb += i490 * vec3(0.00, 0.76, 1.00);
-  rgb += i440 * vec3(0.24, 0.12, 1.00);
+  rgb += i580 * vec3(1.00, 0.56, 0.00);
+  rgb += i530 * vec3(0.18, 1.00, 0.16);
+  rgb += i490 * vec3(0.00, 0.72, 1.00);
+  rgb += i440 * vec3(0.25, 0.13, 1.00);
 
-  rgb /= 2.55;
-  rgb = clamp(rgb, 0.0, 1.0);
-  rgb = pow(rgb, vec3(0.92));
+  rgb /= 2.72;
+  return pow(clamp(rgb, 0.0, 1.0), vec3(0.94));
+}
 
-  return rgb;
+vec3 sampleBgChromatic(vec2 uv, vec2 caUv){
+  vec3 c;
+  c.r = texture(uBg, clamp(uv + caUv, vec2(0.001), vec2(0.999))).r;
+  c.g = texture(uBg, clamp(uv, vec2(0.001), vec2(0.999))).g;
+  c.b = texture(uBg, clamp(uv - caUv, vec2(0.001), vec2(0.999))).b;
+  return c;
 }
 
 void main(){
   float cssX = gl_FragCoord.x / uScale;
-  float cssY = ((uViewportCss.y*uScale) - gl_FragCoord.y) / uScale;
+  float cssY = ((uViewportCss.y * uScale) - gl_FragCoord.y) / uScale;
   vec2 css = vec2(cssX, cssY);
 
   vec2 dCss = css - uCenterCss;
-float r = length(dCss);
-vec2 dir = (r > 1e-5) ? (dCss / r) : vec2(1.0, 0.0);
+  float r = length(dCss);
+  vec2 dir = (r > 1e-5) ? (dCss / r) : vec2(1.0, 0.0);
+  vec2 tangent = vec2(-dir.y, dir.x);
 
-float rb = boundaryRadius(dir);
-float rho = r / max(rb, 1.0);
-float rho01 = clamp(rho, 0.0, 1.2);
-if (rho > 1.006) discard;
+  float rb = boundaryRadius(dir);
+  float rho = r / max(rb, 1.0);
+  if (rho > 1.008) discard;
 
-float edge = smoothstep(0.72, 1.02, rho01);
-float body = 1.0 - smoothstep(0.0, 0.82, rho01);
-float shoulder =
-  smoothstep(0.10, 0.82, rho01) *
-  (1.0 - smoothstep(0.58, 1.02, rho01));
+  float rhoC = clamp(rho, 0.0, 1.0);
+  float minDim = max(1.0, min(uRectSizeCss.x, uRectSizeCss.y));
+  float maxDim = max(1.0, max(uRectSizeCss.x, uRectSizeCss.y));
+  float aspect = clamp(minDim / maxDim, 0.38, 1.0);
 
-// рефракция теперь живет не только на краю, а по большей части линзы
-float mag = uMagnify * (0.68 * body + 0.52 * shoulder + 0.18 * edge);
-float r2 = r * (1.0 - mag);
+  float compactK = clamp(230.0 / minDim, 0.58, 1.34);
+  float panelK = clamp(620.0 / maxDim, 0.62, 1.08);
+  float sizeK = clamp(mix(compactK, panelK, 0.46), 0.58, 1.34);
 
-float rhoC = clamp(rho, 0.0, 0.995);
-float e0 = smoothstep(0.25, 1.0, rhoC);
-float hard = pow(e0, max(1.0, uEdgePower));
-float singular = 1.0 / max(uEdgeSingularity, 1.0 - rhoC);
+  float edgeWidthPx = clamp(28.0 + minDim * 0.10, 30.0, 92.0);
+  float edgeWidth = clamp(edgeWidthPx / max(rb, 1.0), 0.18, 0.46);
 
-// край всё ещё работает, но уже не монопольно
-float pull = uIntensity * uEdgePull * (0.00008 + 0.00048 * singular) * (0.30 + 0.70 * hard);
-r2 += pull * rb;
+  float edge = smoothstep(1.0 - edgeWidth, 1.0, rhoC);
+  float lip = smoothstep(1.0 - edgeWidth * 0.58, 1.0, rhoC);
+  float rimCore = smoothstep(0.885, 0.985, rhoC) * (1.0 - smoothstep(0.988, 1.006, rhoC));
+  float body = 1.0 - smoothstep(0.04, 0.72, rhoC);
+  float middle = smoothstep(0.16, 0.76, rhoC) * (1.0 - smoothstep(0.86, 1.0, rhoC));
+  float skin = smoothstep(0.32, 0.94, rhoC) * (1.0 - smoothstep(0.985, 1.004, rhoC));
 
-float wob = (
-  sin(uTime * 1.1 + dir.x * 7.0 + dir.y * 3.0) +
-  sin(uTime * 0.8 + dir.y * 11.0)
-) * 0.5;
+  float edgeExp = max(0.70, uEdgePower * 0.17);
+  float singularBoost = clamp(1.0 / max(0.34, (1.0 - rhoC) + uEdgeSingularity * 13.0), 0.85, 2.35);
+  float baseRefPx = clamp((uEdgePull * 0.92 + uIntensity * 18.0) * sizeK, 18.0, min(124.0, minDim * 0.46));
 
-// делаем wob тише, чтобы не было ощущения мутной массы
-r2 += wob * (0.0014 * uIntensity) * (0.25 + 0.75 * hard) * rb;
+  float time = uTime;
+  float wobA = fbm4(dir * vec2(1.7, 2.4) + vec2(time * 0.030, -time * 0.043));
+  float wobB = sin(time * 0.86 + atan(dir.y, dir.x) * 3.0 + wobA * 2.5);
+  float liquid = ((wobA - 0.5) * 2.0 + wobB * 0.18) * sizeK;
 
-vec2 css2 = uCenterCss + dir * r2;
-vec2 uv = css2 / max(uViewportCss, vec2(1.0));
-uv = clamp(uv, vec2(0.001), vec2(0.999));
+  float domePx = r * uMagnify * sizeK * (0.18 + body * 0.36 + middle * 0.16);
+  float edgeRefractPx = baseRefPx * (0.12 * middle + 0.92 * pow(lip, edgeExp) + 0.34 * rimCore) * singularBoost;
+  edgeRefractPx += liquid * (2.6 + 10.5 * edge) * skin;
 
-// лёгкая CA, без жирной радужной грязи
-float ca = uChromatic * pow(edge, 1.35) * 0.0012;
-vec2 caOff = dir * ca;
+  float sampleR = r - domePx + edgeRefractPx;
+  float tangentPx = (wobA - 0.5) * baseRefPx * 0.18 * lip;
+  tangentPx += sin(time * 0.52 + rhoC * 8.8) * baseRefPx * 0.035 * edge;
+  tangentPx += uDirMode * baseRefPx * 0.035 * (1.0 - aspect) * edge;
 
-vec3 sharp;
-sharp.r = texture(uBg, uv + caOff).r;
-sharp.g = texture(uBg, uv).g;
-sharp.b = texture(uBg, uv - caOff).b;
+  vec2 primaryCss = uCenterCss + dir * sampleR + tangent * tangentPx;
+  vec2 primaryUv = clamp(primaryCss / max(uViewportCss, vec2(1.0)), vec2(0.001), vec2(0.999));
 
-vec3 blur = texture(uBlur, uv).rgb;
+  vec2 outsideCss = uCenterCss + dir * (r + baseRefPx * (1.14 + 0.30 * lip)) + tangent * tangentPx * 1.25;
+  vec2 outsideUv = clamp(outsideCss / max(uViewportCss, vec2(1.0)), vec2(0.001), vec2(0.999));
 
-// blur оставляем, но уже как тонкую мягкость, а не матовость
-float frost = clamp(uBlurAmt, 0.0, 1.0);
-float mixW = frost * (0.10 + 0.12 * body + 0.04 * edge);
-vec3 col = mix(sharp, blur, mixW);
+  vec2 innerCss = uCenterCss + dir * max(0.0, r - baseRefPx * (0.32 + 0.16 * body));
+  vec2 innerUv = clamp(innerCss / max(uViewportCss, vec2(1.0)), vec2(0.001), vec2(0.999));
 
-float bgLum = dot(sharp, vec3(0.2126, 0.7152, 0.0722));
+  vec2 caPx = dir * (uChromatic * (5.0 + 62.0 * pow(lip, 1.20) + 18.0 * rimCore) * sizeK);
+  vec2 caUv = caPx / max(uViewportCss, vec2(1.0));
 
-// На ярком фоне стекло должно чуть плотнеть и меньше "светиться".
-// На тёмном можно позволить больше блика.
-float brightBg = smoothstep(0.45, 0.82, bgLum);
-float darkBg = 1.0 - brightBg;
+  vec3 sharp = sampleBgChromatic(primaryUv, caUv);
+  vec3 outerSharp = sampleBgChromatic(outsideUv, caUv * 1.35);
+  vec3 innerSharp = texture(uBg, innerUv).rgb;
+  vec3 blur = texture(uBlur, primaryUv).rgb;
 
-// Лёгкая адаптивная плотность материала.
-// Это не грязная серость, а мягкое удержание формы на ярком видео.
-col *= mix(1.0, 0.88, brightBg * (0.35 + 0.65 * body));
+  vec3 col = sharp;
+  col = mix(col, outerSharp, clamp(0.14 * lip + 0.30 * rimCore, 0.0, 0.42));
+  col = mix(col, innerSharp, 0.055 * body);
 
-// холодный глянец, а не синяя молочная заливка
-vec3 blue = vec3(0.18, 0.56, 1.0);
-float tintAmt = (0.008 + 0.028 * uTint) * (0.16 + 0.18 * body + 0.16 * edge);
-tintAmt *= mix(1.0, 0.55, brightBg);
-col += blue * tintAmt;
+  float frost = clamp(uBlurAmt, 0.0, 1.0);
+  float frostMix = frost * (0.045 + 0.090 * body + 0.150 * edge + 0.080 * rimCore);
+  col = mix(col, blur, clamp(frostMix, 0.0, 0.32));
 
-// нормаль для glossy-стекла
-vec2 pr = dir * clamp(rho, 0.0, 1.0);
-float rr = clamp(length(pr), 0.0, 1.0);
-float z = sqrt(max(0.0, 1.0 - rr * rr));
-vec3 n = normalize(vec3(pr.x, pr.y, z));
-vec3 V = vec3(0.0, 0.0, 1.0);
+  float bgLum = dot(col, vec3(0.2126, 0.7152, 0.0722));
+  float brightBg = smoothstep(0.56, 0.88, bgLum);
+  float darkBg = 1.0 - brightBg;
 
-// фиксированный холодный свет, без белого блика от курсора
-vec3 L = normalize(vec3(-0.22, -0.12, 0.97));
-vec3 H = normalize(L + V);
+  col = (col - vec3(0.5)) * (1.035 + 0.115 * skin + 0.075 * rimCore) + vec3(0.5);
+  col *= 1.0 - (0.022 * body + 0.048 * edge) * brightBg;
 
-float NoV = max(dot(n, V), 0.0);
-float fres = pow(1.0 - NoV, 3.2);
+  vec3 ice = vec3(0.67, 0.90, 1.0);
+  vec3 blue = vec3(0.18, 0.52, 1.0);
+  vec3 glassTint = mix(ice, blue, 0.34 + 0.16 * darkBg);
+  col += glassTint * (0.018 + 0.040 * uTint) * (0.22 * body + 0.52 * skin + 0.82 * edge) * mix(0.55, 1.0, darkBg);
 
-float s1 = pow(max(dot(n, H), 0.0), 120.0);
-float s2 = pow(max(dot(n, H), 0.0), 34.0);
+  vec2 light2 = normalize(vec2(-0.56, -0.68) + uLight * 0.16);
+  vec3 V = vec3(0.0, 0.0, 1.0);
+  float domeZ = sqrt(max(0.0, 1.0 - rhoC * rhoC));
+  vec3 N = normalize(vec3(dir.x * (0.86 + 0.70 * edge), dir.y * (0.86 + 0.70 * edge), domeZ * 1.02 + 0.10));
+  vec3 L = normalize(vec3(light2.x, light2.y, 0.86));
+  vec3 H = normalize(L + V);
 
-vec2 sd = normalize(vec2(-0.72, 0.70));
-float along = dot(pr, sd);
-float across = dot(pr, vec2(sd.y, -sd.x));
-float streak = exp(-(across * across) / 0.10) * smoothstep(-0.15, 0.75, along);
+  float NoV = max(dot(N, V), 0.0);
+  float NoL = max(dot(N, L), 0.0);
+  float NoH = max(dot(N, H), 0.0);
+  float fres = pow(1.0 - NoV, 1.72);
 
-// основной glossy-стеклянный слой НЕ ТРОГАЕМ по сути
-vec3 gloss = vec3(0.70, 0.86, 1.0);
-vec3 rimCol = blue * fres * uRim * (0.05 + 0.24 * edge);
-vec3 specCol = gloss * s1 * (0.12 * uSpec) * (0.10 + 0.90 * streak);
-vec3 specCol2 = blue * s2 * (0.07 * uSpec);
+  vec2 pr = dir * rhoC;
+  vec2 streakDir = normalize(vec2(-0.70, 0.72));
+  float along = dot(pr, streakDir);
+  float across = dot(pr, vec2(streakDir.y, -streakDir.x));
+  float longStreak = exp(-(across * across) / 0.050) * smoothstep(-0.46, 0.78, along) * (1.0 - smoothstep(0.97, 1.02, rhoC));
+  float smallStreak = exp(-pow(across + 0.20, 2.0) / 0.018) * smoothstep(-0.10, 0.55, along) * (1.0 - smoothstep(0.88, 1.02, rhoC));
 
-// --------------------------------------------------
-// отдельная внутренняя thin-film оболочка
-// она живёт не как наклейка на rim, а как своя пленка
-// --------------------------------------------------
+  float lightFacing = smoothstep(-0.22, 0.86, dot(dir, -light2));
+  float lowerFacing = smoothstep(0.05, 0.94, dot(dir, normalize(vec2(0.22, 0.98))));
 
-// немного сдвинутая и чуть отличающаяся оболочка,
-// чтобы блик не выглядел пришитым к основной границе
-vec2 prFilm = pr * vec2(0.96, 1.03) + vec2(0.0, -0.035);
+  float outerLine = smoothstep(0.935, 0.991, rhoC) * (1.0 - smoothstep(0.994, 1.006, rhoC));
+  float innerLine = exp(-pow((rhoC - 0.735) / 0.075, 2.0)) * skin;
+  float causticLine = exp(-pow((rhoC - (0.66 + 0.045 * sin(time * 0.36 + along * 5.0))) / 0.035, 2.0)) * skin * lightFacing;
 
-float rrF = clamp(length(prFilm), 0.0, 1.0);
-float zF = sqrt(max(0.0, 1.0 - rrF * rrF));
-vec3 nFilm = normalize(vec3(prFilm.x, prFilm.y, zF));
+  float bottomAbsorb = lowerFacing * (0.065 * edge + 0.090 * rimCore) * (0.55 + 0.45 * brightBg);
+  col *= 1.0 - bottomAbsorb;
 
-float NoVf = max(dot(nFilm, V), 0.0);
-float NoHf = max(dot(nFilm, H), 0.0);
+  vec3 rimCol = ice * uRim * (
+      0.115 * fres * skin +
+      0.120 * outerLine * mix(1.0, 0.58, brightBg) +
+      0.105 * lightFacing * rimCore +
+      0.048 * innerLine * darkBg
+  );
+  rimCol += vec3(1.0) * uRim * (0.070 * outerLine * lightFacing + 0.035 * causticLine) * mix(1.0, 0.55, brightBg);
+  rimCol += blue * uRim * 0.042 * innerLine * darkBg;
 
-// собственное поле толщины пленки.
-// это и есть главное: не рисованная дуга, а живая толщина,
-// которая медленно "стекает" как у мыльного пузыря.
-vec2 flowUv = prFilm * vec2(1.12, 1.84);
-float t = uTime * 0.036;
+  float specCore = pow(NoH, 62.0) * (0.55 + 0.45 * longStreak);
+  float specWide = pow(NoH, 13.5) * (0.40 * longStreak + 0.28 * smallStreak + 0.16 * rimCore);
+  vec3 specCol = vec3(0.88, 0.97, 1.0) * uSpec * (0.175 * specCore + 0.112 * specWide) * mix(1.0, 0.54, brightBg);
 
-float d1 = fbm4(vec2(flowUv.x * 0.85 + 0.04 * t, flowUv.y * 1.18 - t));
-float d2 = fbm4(vec2(flowUv.x * 2.10 - 0.03 * t, flowUv.y * 2.75 - 1.55 * t));
+  vec2 pointerDelta = (css - uPointerCss) / max(vec2(minDim * 0.48), vec2(1.0));
+  float pointerGlow = exp(-dot(pointerDelta, pointerDelta) * 3.4) * uPointerActive;
+  pointerGlow *= (0.18 + 0.44 * skin + 0.52 * edge) * (0.42 + 0.58 * NoL);
+  specCol += vec3(0.73, 0.91, 1.0) * pointerGlow * uSpec * 0.19;
 
-float topness = clamp(0.5 - 0.5 * prFilm.y, 0.0, 1.0);
+  vec2 filmUv = pr * vec2(1.04, 1.52) + vec2(0.02 * sin(time * 0.2), -0.045);
+  float filmR = clamp(length(filmUv), 0.0, 1.0);
+  float filmZone = smoothstep(0.55, 0.94, filmR) * (1.0 - smoothstep(0.980, 1.01, filmR));
+  float topness = clamp(0.52 - 0.48 * filmUv.y, 0.0, 1.0);
+  float f1 = fbm4(filmUv * vec2(1.2, 2.0) + vec2(time * 0.020, -time * 0.042));
+  float f2 = fbm4(filmUv * vec2(2.6, 4.1) + vec2(-time * 0.016, time * 0.031));
+  float thicknessNm = clamp(mix(690.0, 255.0, topness) + (f1 - 0.5) * 170.0 + (f2 - 0.5) * 62.0, 185.0, 780.0);
+  float cosTheta = clamp(0.55 * NoV + 0.45 * NoH, 0.06, 1.0);
+  vec3 film = thinFilmSpectrum(thicknessNm, cosTheta);
+  float chroma = max(max(film.r, film.g), film.b) - min(min(film.r, film.g), film.b);
+  float filmMask = filmZone * (0.22 + 0.78 * fres) * (0.30 + 0.70 * topness) * smoothstep(0.04, 0.18, chroma);
+  filmMask *= clamp(0.32 + uChromatic * 7.2, 0.0, 1.0);
+  vec3 filmCol = film * filmMask * (0.034 + 0.080 * uSpec) * mix(1.0, 0.50, brightBg);
 
-// пленка заметнее в плечевой зоне и ближе к краю, но не на самой кромке
-float filmZone =
-    smoothstep(0.58, 0.90, rrF) *
-    (1.0 - smoothstep(0.97, 1.04, rrF));
+  col += rimCol + specCol + filmCol;
+  col += ice * causticLine * (0.028 + 0.020 * uSpec) * mix(1.0, 0.55, brightBg);
+  col += blue * causticLine * 0.018 * uTint * darkBg;
 
-// физически-похожий drainage:
-// сверху пленка тоньше, снизу толще, плюс медленная неоднородность
-float thicknessNm =
-    mix(760.0, 250.0, topness)
-  - 120.0 * filmZone
-  + 150.0 * (d1 - 0.5)
-  + 55.0  * (d2 - 0.5);
+  float vignette = smoothstep(0.00, 0.30, rhoC) * (1.0 - smoothstep(0.88, 1.0, rhoC));
+  col += glassTint * vignette * 0.008 * uTint * darkBg;
 
-thicknessNm = clamp(thicknessNm, 170.0, 900.0);
+  float grain = hash12(gl_FragCoord.xy + uTime * 41.0) - 0.5;
+  col += grain * 0.0015;
 
-// угол для интерференции
-float cosFilm = clamp(0.55 * NoVf + 0.45 * NoHf, 0.05, 1.0);
-
-// спектральный цвет пленки
-vec3 film = thinFilmSpectrum(thicknessNm, cosFilm);
-
-// насыщенность интерференции.
-// если chroma низкая, блик не надо насильно тащить наружу.
-float chroma =
-    max(max(film.r, film.g), film.b) -
-    min(min(film.r, film.g), film.b);
-
-// маска thin-film слоя:
-// в верхней части и на скользящих углах он сильнее,
-// поэтому получаются те самые живые дуги
-float filmMask =
-    smoothstep(0.46, 0.92, rrF) *
-    (1.0 - smoothstep(0.985, 1.03, rrF)) *
-    (0.50 + 0.50 * topness) *
-    (0.35 + 0.65 * sqrt(fres + 1e-4)) *
-    smoothstep(0.02, 0.10, chroma);
-
-float filmBroad = pow(NoHf, 8.0);
-float filmSharp = pow(NoHf, 20.0);
-
-vec3 filmRim    = film * (0.09 + 0.1 * uSpec) * filmMask;
-vec3 filmSheen  = film * (0.14 + 0.18 * uSpec) * filmBroad * filmMask;
-vec3 filmAccent = film * (0.1 + 0.13 * uSpec) * filmSharp * filmMask * (0.45 + 0.55 * streak);
-
-float glareCut = mix(1.0, 0.58, brightBg);
-float filmCut  = mix(1.0, 0.64, brightBg);
-
-rimCol     *= glareCut;
-specCol    *= glareCut;
-specCol2   *= glareCut;
-filmRim    *= filmCut;
-filmSheen  *= filmCut;
-filmAccent *= filmCut;
-
-vec3 glassAdd = rimCol + specCol + specCol2;
-vec3 filmAdd = filmRim + filmSheen + filmAccent;
-
-col += glassAdd;
-col = mix(col, col + filmAdd, 0.72);
-
-// почти убираем внутреннюю "грязную" тень
-float formHold = 0.018 * shoulder + 0.030 * edge;
-col *= 1.0 - formHold * (0.55 + 0.45 * brightBg);
-
-// шум сильно тише, чтобы не было ощущения матового пластика
-float nse = hash12(gl_FragCoord.xy + uTime * 60.0);
-col += (nse - 0.5) * 0.0025;
-
-  // лёгкая гамма (без агрессивного tonemap)
-  col = max(col, 0.0);
+  col = clamp(col, 0.0, 1.25);
   o = vec4(col, clamp(uAlpha, 0.0, 1.0));
 }
 `;
@@ -553,6 +517,8 @@ export function LiquidGlassProvider({
         uRectSizeCss: null as any,
         uScale: null as any,
         uTime: null as any,
+        uPointerCss: null as any,
+        uPointerActive: null as any,
         uIntensity: null as any,
         uMagnify: null as any,
         uBlurAmt: null as any,
@@ -572,6 +538,7 @@ export function LiquidGlassProvider({
     });
 
     const lightRef = useRef({x: 0.15, y: -0.10});
+    const pointerRef = useRef({x: -10000, y: -10000, active: 0, lastT: 0});
 
     const SHAPE_SAMPLES = 256;
 
@@ -1055,7 +1022,12 @@ export function LiquidGlassProvider({
                 gl.uniform2f(uniLens.current.uViewportCss, vp.w, vp.h);
                 gl.uniform2f(uniLens.current.uRectPosCss, innerLeft, innerTop);
                 gl.uniform2f(uniLens.current.uRectSizeCss, innerW, innerH);
+                const pointerAge = Math.max(0, t - pointerRef.current.lastT);
+                const pointerActive = pointerRef.current.active * Math.exp(-pointerAge / 900);
+
                 gl.uniform2f(uniLens.current.uLight, lightRef.current.x, lightRef.current.y);
+                gl.uniform2f(uniLens.current.uPointerCss, pointerRef.current.x, pointerRef.current.y);
+                gl.uniform1f(uniLens.current.uPointerActive, pointerActive);
                 gl.uniform1f(uniLens.current.uScale, scale);
 
                 gl.uniform1f(uniLens.current.uTime, t * 0.001);
@@ -1237,6 +1209,8 @@ export function LiquidGlassProvider({
         uniLens.current.uRectSizeCss = gl.getUniformLocation(progLens, 'uRectSizeCss');
         uniLens.current.uScale = gl.getUniformLocation(progLens, 'uScale');
         uniLens.current.uTime = gl.getUniformLocation(progLens, 'uTime');
+        uniLens.current.uPointerCss = gl.getUniformLocation(progLens, 'uPointerCss');
+        uniLens.current.uPointerActive = gl.getUniformLocation(progLens, 'uPointerActive');
         uniLens.current.uIntensity = gl.getUniformLocation(progLens, 'uIntensity');
         uniLens.current.uMagnify = gl.getUniformLocation(progLens, 'uMagnify');
         uniLens.current.uBlurAmt = gl.getUniformLocation(progLens, 'uBlurAmt');
@@ -1263,7 +1237,32 @@ export function LiquidGlassProvider({
             emitLoadState('error');
         };
 
+        const handlePointerMove = (e: PointerEvent) => {
+            const vp = vpCssRef.current;
+            pointerRef.current.x = e.clientX;
+            pointerRef.current.y = e.clientY;
+            pointerRef.current.active = e.pointerType === 'touch' ? 0.85 : 0.55;
+            pointerRef.current.lastT = performance.now();
+
+            lightRef.current.x = Math.max(-1, Math.min(1, (e.clientX / Math.max(1, vp.w)) * 2 - 1));
+            lightRef.current.y = Math.max(-1, Math.min(1, (e.clientY / Math.max(1, vp.h)) * 2 - 1));
+        };
+
+        const handlePointerDown = (e: PointerEvent) => {
+            const vp = vpCssRef.current;
+            pointerRef.current.x = e.clientX;
+            pointerRef.current.y = e.clientY;
+            pointerRef.current.active = 1;
+            pointerRef.current.lastT = performance.now();
+
+            lightRef.current.x = Math.max(-1, Math.min(1, (e.clientX / Math.max(1, vp.w)) * 2 - 1));
+            lightRef.current.y = Math.max(-1, Math.min(1, (e.clientY / Math.max(1, vp.h)) * 2 - 1));
+        };
+
         canvas.addEventListener('webglcontextlost', handleContextLost as EventListener, false);
+
+        window.addEventListener('pointermove', handlePointerMove, { passive: true });
+        window.addEventListener('pointerdown', handlePointerDown, { passive: true });
 
         resize();
         emitLoadState('ready');
@@ -1278,6 +1277,8 @@ export function LiquidGlassProvider({
             window.removeEventListener('orientationchange', scheduleResize);
             window.removeEventListener('pageshow', scheduleResize);
             visualViewport?.removeEventListener('resize', scheduleResize);
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerdown', handlePointerDown);
             canvas.removeEventListener('webglcontextlost', handleContextLost as EventListener, false);
             if (resizeRafRef.current !== null) cancelAnimationFrame(resizeRafRef.current);
             stop();

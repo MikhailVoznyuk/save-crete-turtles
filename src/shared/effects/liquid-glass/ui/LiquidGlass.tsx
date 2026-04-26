@@ -29,19 +29,19 @@ type Props = {
 
 export function LiquidGlass({
         enabled = true,
-        intensity = 0.95,
-        magnify = 0.10,
-        blur = 0.55,
-        chromatic = 0.22,
-        rim = 0.55,
-        spec = 0.35,
-        tint = 0.65,
+        intensity = 2.18,
+        magnify = 0.48,
+        blur = 0.26,
+        chromatic = 0.095,
+        rim = 1.08,
+        spec = 1.22,
+        tint = 0.42,
         alpha = 1.0,
         overlay = false,
-        edgePull = 10,
-        edgePower = 8,
-        edgeSingularity = 0.015,
-        dirMode = 1,
+        edgePull = 58,
+        edgePower = 5.8,
+        edgeSingularity = 0.018,
+        dirMode = 0,
         order = 0
     }: Props) {
     const id = useId();
@@ -111,11 +111,18 @@ export function LiquidGlass({
                     position: 'absolute',
                     inset: 0,
                     pointerEvents: 'none',
-                    // эти слои выглядят дороже, чем "синий градиент"
-                    boxShadow:
-                        'inset 0 1px 1px rgba(255,255,255,0.22), inset 0 -6px 16px rgba(0,0,0,0.14)',
-                    background:
-                        'radial-gradient(120% 120% at 25% 20%, rgba(255,255,255,0.16), rgba(255,255,255,0.00) 45%)',
+                    borderRadius: 'inherit',
+                    boxShadow: [
+                        'inset 0 0 0 1px rgba(255,255,255,0.22)',
+                        'inset 0 1px 2px rgba(255,255,255,0.30)',
+                        'inset 10px 14px 38px rgba(255,255,255,0.12)',
+                        'inset -12px -18px 34px rgba(0,24,55,0.18)',
+                    ].join(', '),
+                    background: [
+                        'radial-gradient(92% 80% at 24% 16%, rgba(255,255,255,0.24), rgba(255,255,255,0.045) 34%, rgba(255,255,255,0.00) 58%)',
+                        'radial-gradient(120% 100% at 78% 92%, rgba(0,62,155,0.18), rgba(0,62,155,0.00) 52%)',
+                        'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.00) 42%, rgba(255,255,255,0.07))',
+                    ].join(', '),
                     mixBlendMode: 'screen',
                 }}
             />

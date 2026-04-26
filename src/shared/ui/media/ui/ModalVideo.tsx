@@ -11,6 +11,7 @@ type ModalVideoProps = {
     className?: string;
     videoClassName?: string;
     btnNeeded?: boolean;
+    poster?: string;
 }
 
 type InlineVideoProps = {
@@ -21,6 +22,8 @@ type InlineVideoProps = {
     muted?: boolean;
     controls?: boolean;
     keepPlaying?: boolean;
+    preload?: 'none' | 'metadata' | 'auto';
+    poster?: string;
 };
 
 function InlineVideo({
@@ -31,6 +34,8 @@ function InlineVideo({
     muted = false,
     controls = false,
     keepPlaying = false,
+    preload,
+    poster
 }: InlineVideoProps) {
     const ref = useRef<HTMLVideoElement | null>(null);
 
@@ -50,14 +55,15 @@ function InlineVideo({
             loop={loop}
             controls={controls}
             playsInline
-            preload={keepPlaying ? 'auto' : 'metadata'}
+            preload={preload ?? (keepPlaying ? 'auto' : 'metadata')}
+            poster={poster}
             disablePictureInPicture
             className={className}
         />
     );
 }
 
-export function ModalVideo({src, className, videoClassName, btnNeeded=true}: ModalVideoProps) {
+export function ModalVideo({src, poster, className, videoClassName, btnNeeded=true}: ModalVideoProps) {
     return (
         <MediaModal
             previewClassName={twMerge(
@@ -68,6 +74,8 @@ export function ModalVideo({src, className, videoClassName, btnNeeded=true}: Mod
                 <>
                     <InlineVideo
                         src={src}
+                        poster={poster}
+                        preload='auto'
                         muted
                         autoPlay
                         loop
@@ -82,6 +90,7 @@ export function ModalVideo({src, className, videoClassName, btnNeeded=true}: Mod
             content={(
                 <InlineVideo
                     src={src}
+                    preload='auto'
                     controls
                     className='w-full max-h-[85vh]'
                 />
