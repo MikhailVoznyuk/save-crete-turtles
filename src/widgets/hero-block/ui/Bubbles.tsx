@@ -274,13 +274,16 @@ const BUBBLE_STAGES_MOB: StageProps[][] = [
 
 type Cords = {x: number, y: number};
 type Sizes = {width: number, height: number};
+type ViewportRect = Sizes & {left: number, top: number};
 
-function getViewportSize() {
+function getViewportRect(): ViewportRect {
     const bg = document.querySelector<HTMLElement>('.fixed-video-bg');
     const rect = bg?.getBoundingClientRect();
 
     if (rect && rect.width > 1 && rect.height > 1) {
         return {
+            left: Math.round(rect.left),
+            top: Math.round(rect.top),
             width: Math.max(1, Math.round(rect.width)),
             height: Math.max(1, Math.round(rect.height)),
         };
@@ -289,9 +292,16 @@ function getViewportSize() {
     const docEl = document.documentElement;
 
     return {
+        left: 0,
+        top: 0,
         width: Math.max(1, Math.round(Math.max(docEl.clientWidth || 0, window.innerWidth || 0))),
         height: Math.max(1, Math.round(Math.max(docEl.clientHeight || 0, window.innerHeight || 0))),
     };
+}
+
+function getViewportSize() {
+    const {width, height} = getViewportRect();
+    return {width, height};
 }
 
 type BubblesProps = {
@@ -320,7 +330,7 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
         if (bubblesRef.current.length === 0 || anchor === null) return;
 
         const updateSteps = () => {
-            const viewport = getViewportSize();
+            const viewport = getViewportRect();
             const pointAnchor = new VideoPointAnchor(
                 {
                     anchor,
@@ -353,8 +363,8 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
                     })
 
                     const initStyle = {
-                        left: `${initCoords.x - bubbleSizes[i].width / 2}px`,
-                        top: `${initCoords.y - bubbleSizes[i].height / 2}px`,
+                        left: `${viewport.left + initCoords.x - bubbleSizes[i].width / 2}px`,
+                        top: `${viewport.top + initCoords.y - bubbleSizes[i].height / 2}px`,
                         ...initStage.style
                     }
 
@@ -368,8 +378,8 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
                         y: -(stage.offsetY ?? 0),
                     })
                     const stageStyle = {
-                        left: `${coords.x}px`,
-                        top: `${coords.y - bubbleSizes[i].height}px`,
+                        left: `${viewport.left + coords.x}px`,
+                        top: `${viewport.top + coords.y - bubbleSizes[i].height}px`,
                         ...stage.style
                     };
 
@@ -409,12 +419,14 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
         window.addEventListener('resize', scheduleUpdateSteps, {passive: true});
         window.addEventListener('orientationchange', scheduleUpdateSteps);
         window.addEventListener('pageshow', scheduleUpdateSteps);
+        window.addEventListener('appviewportchange', scheduleUpdateSteps);
         visualViewport?.addEventListener('resize', scheduleUpdateSteps);
 
         return () => {
             window.removeEventListener('resize', scheduleUpdateSteps);
             window.removeEventListener('orientationchange', scheduleUpdateSteps);
             window.removeEventListener('pageshow', scheduleUpdateSteps);
+            window.removeEventListener('appviewportchange', scheduleUpdateSteps);
             visualViewport?.removeEventListener('resize', scheduleUpdateSteps);
 
             if (layoutRafRef.current !== null) {
@@ -479,11 +491,13 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
         update();
         window.addEventListener('resize', onResize);
         window.addEventListener('orientationchange', onResize);
+        window.addEventListener('appviewportchange', onResize);
         visualViewport?.addEventListener('resize', onResize);
 
         return () => {
             window.removeEventListener('resize', onResize);
             window.removeEventListener('orientationchange', onResize);
+            window.removeEventListener('appviewportchange', onResize);
             visualViewport?.removeEventListener('resize', onResize);
             if (resizeRafRef.current !== null) {
                 cancelAnimationFrame(resizeRafRef.current);

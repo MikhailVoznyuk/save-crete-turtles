@@ -1,6 +1,7 @@
 'use client';
 
 import {useEffect, useRef} from 'react';
+import {motion} from 'framer-motion';
 import {twMerge} from "tailwind-merge";
 import {MediaModal} from "@/shared/ui/media-modal";
 import {ModalToggleButton} from "@/shared/ui/buttons/modal-toggle-button";
@@ -22,6 +23,7 @@ type InlineVideoProps = {
     muted?: boolean;
     controls?: boolean;
     keepPlaying?: boolean;
+    layoutId?: string;
     preload?: 'none' | 'metadata' | 'auto';
     poster?: string;
 };
@@ -34,6 +36,7 @@ function InlineVideo({
     muted = false,
     controls = false,
     keepPlaying = false,
+    layoutId,
     preload,
     poster
 }: InlineVideoProps) {
@@ -47,8 +50,9 @@ function InlineVideo({
     }, [keepPlaying, src]);
 
     return (
-        <video
+        <motion.video
             ref={ref}
+            layoutId={layoutId}
             src={src}
             muted={muted}
             autoPlay={autoPlay}
@@ -59,6 +63,12 @@ function InlineVideo({
             poster={poster}
             disablePictureInPicture
             className={className}
+            transition={{
+                type: 'spring',
+                stiffness: 260,
+                damping: 30,
+                mass: 0.9
+            }}
         />
     );
 }
@@ -70,9 +80,10 @@ export function ModalVideo({src, poster, className, videoClassName, btnNeeded=tr
                 'relative rounded-2xl border-2 border-cold-white/50 cursor-pointer hover:border-turk/80 overflow-hidden duration-300',
                 className
             )}
-            preview={(
+            preview={({layoutId}) => (
                 <>
                     <InlineVideo
+                        layoutId={layoutId}
                         src={src}
                         poster={poster}
                         preload='auto'
@@ -87,9 +98,11 @@ export function ModalVideo({src, poster, className, videoClassName, btnNeeded=tr
                     )}
                 </>
             )}
-            content={(
+            content={({layoutId}) => (
                 <InlineVideo
+                    layoutId={layoutId}
                     src={src}
+                    poster={poster}
                     preload='auto'
                     controls
                     className='w-full max-h-[85vh]'

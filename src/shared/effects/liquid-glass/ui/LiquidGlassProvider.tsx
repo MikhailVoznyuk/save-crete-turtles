@@ -1270,12 +1270,14 @@ export function LiquidGlassProvider({
         window.addEventListener('resize', scheduleResize, { passive: true });
         window.addEventListener('orientationchange', scheduleResize);
         window.addEventListener('pageshow', scheduleResize);
+        window.addEventListener('appviewportchange', scheduleResize);
         visualViewport?.addEventListener('resize', scheduleResize);
 
         return () => {
             window.removeEventListener('resize', scheduleResize);
             window.removeEventListener('orientationchange', scheduleResize);
             window.removeEventListener('pageshow', scheduleResize);
+            window.removeEventListener('appviewportchange', scheduleResize);
             visualViewport?.removeEventListener('resize', scheduleResize);
             window.removeEventListener('pointermove', handlePointerMove);
             window.removeEventListener('pointerdown', handlePointerDown);

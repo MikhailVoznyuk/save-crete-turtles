@@ -2,22 +2,43 @@
 
 import {ReactNode, useEffect, useId, useState} from "react";
 import {createPortal} from "react-dom";
-import {AnimatePresence, motion} from "framer-motion";
+import {LayoutGroup, AnimatePresence, motion} from "framer-motion";
 import {twMerge} from "tailwind-merge";
 import {CloseButton} from "@/shared/ui/buttons/close-button";
 
+type MediaModalRenderArgs = {
+    layoutId: string;
+    opened: boolean;
+    open: () => void;
+    close: () => void;
+}
+
 type Props = {
-    preview: ReactNode;
-    content: ReactNode;
+    preview: (args: MediaModalRenderArgs) => ReactNode;
+    content: (args: MediaModalRenderArgs) => ReactNode;
     previewClassName?: string;
     contentClassName?: string;
 }
 
 export function MediaModal({preview, content, previewClassName, contentClassName}: Props) {
     const [opened, setOpened] = useState<boolean>(false);
+    const [hidePreview, setHidePreview] = useState<boolean>(false);
 
     const id = useId();
     const layoutId = `media-${id}`;
+
+    const open = () => {
+        setHidePreview(true);
+        setOpened(true);
+    }
+    const close = () => setOpened(false);
+
+    const args: MediaModalRenderArgs = {
+        layoutId,
+        opened,
+        open,
+        close
+    }
 
     useEffect(() => {
         if (!opened) return;
@@ -45,25 +66,30 @@ export function MediaModal({preview, content, previewClassName, contentClassName
     }, [opened]);
 
     return (
-        <>
+        <LayoutGroup id={layoutId}>
             <motion.div
-                layoutId={layoutId}
                 className={twMerge(previewClassName)}
                 onClick={() => setOpened(true)}
+                style={{
+                    visibility: (hidePreview) ? 'hidden' : 'visible',
+                    opacity: opened ? 0 : 1,
+                }}
             >
-                {preview}
+                {preview(args)}
             </motion.div>
 
             {typeof window !== 'undefined' && createPortal(
-                <AnimatePresence>
+                <AnimatePresence
+                    onExitComplete={() => setHidePreview(false)}
+                >
                     {opened ? (
                         <motion.div
                             layoutRoot
-                            className='fixed inset-0 flex items-center justify-center p-2'
+                            className='fixed inset-0 z-50 flex items-center justify-center p-2'
                             initial={{opacity: 0}}
                             animate={{opacity: 1}}
                             exit={{opacity: 0}}
-                            onClick={() => setOpened(false)}
+                            onClick={close}
                         >
                             <motion.div
                                 className='absolute inset-0 bg-black/60'
@@ -71,29 +97,28 @@ export function MediaModal({preview, content, previewClassName, contentClassName
                                 animate={{opacity: 1, backdropFilter: 'blur(4px)'}}
                                 exit={{opacity: 0, backdropFilter: 'blur(0px)'}}
                             />
-                            <motion.div
+                            <div
                                 className='relative inset-0 z-10 flex items-center justify-center p-4 sm:p-2'
-                                onClick={() => setOpened(false)}
+                                onClick={close}
                             >
                                 <div className='relative w-full max-w-6xl'>
-                                    <motion.div
-                                        layoutId={layoutId}
-                                        className={twMerge('overflow-hidden rounded-2xl', contentClassName)}
+                                    <div
+                                        className={twMerge('overflow-hidden rounded-2xl',  contentClassName)}
                                         onClick={(e) => e.stopPropagation()}
                                     >
-                                        {content}
+                                        {content(args)}
                                         <CloseButton
-                                            onClick={() => setOpened(false)}
+                                            onClick={close}
                                             className='absolute top-2 right-2'
                                         />
-                                    </motion.div>
+                                    </div>
                                 </div>
-                            </motion.div>
+                            </div>
                         </motion.div>
                     ) : null}
                 </AnimatePresence>,
                 document.body
             )}
-        </>
+        </LayoutGroup>
     );
 }
