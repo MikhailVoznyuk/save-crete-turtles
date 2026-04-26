@@ -1,9 +1,11 @@
 'use client';
 
 
-import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import {createPortal} from 'react-dom';
 import {JellyShapeProvider} from "@/shared/ui/containers/jelly-container/model/shapeContext";
+import {useLiquidGlassVisualRoot} from "@/shared/effects/liquid-glass/model/context";
+import type {LiquidGlassGeometry} from "@/shared/effects/liquid-glass/model/context";
 
 type V2 = { x: number; y: number };
 type Node = { p: V2; v: V2; b: V2 };
@@ -100,7 +102,9 @@ type JellyContainerProps = {
     idleInteractMul?: number;     // 0..1 idle amount during hover
 
     active?: boolean;
-    syncVisualToLens?: boolean;
+    visible?: boolean;
+    pointerEvents?: React.CSSProperties['pointerEvents'];
+    visualTransformMode?: 'none' | 'host';
     children: React.ReactNode;
 };
 
@@ -125,43 +129,6 @@ const v2 = {
 const MASK_STEPS = 100;
 
 const TAU = Math.PI * 2;
-
-function getEffectiveOpacity(el: HTMLElement): number {
-    let opacity = 1;
-    let node: HTMLElement | null = el;
-
-    while (node && node !== document.body) {
-        const value = Number.parseFloat(getComputedStyle(node).opacity);
-        if (Number.isFinite(value)) opacity *= value;
-        node = node.parentElement;
-    }
-
-    return Math.max(0, Math.min(1, opacity));
-}
-
-function getEffectiveZIndex(el: HTMLElement): string {
-    let node: HTMLElement | null = el;
-
-    while (node && node !== document.body) {
-        const cs = getComputedStyle(node);
-        if (cs.position !== 'static' && cs.zIndex !== 'auto') return cs.zIndex;
-        node = node.parentElement;
-    }
-
-    return '1';
-}
-
-function hasPointerEventsNone(el: HTMLElement): boolean {
-    let node: HTMLElement | null = el;
-
-    while (node && node !== document.body) {
-        if (getComputedStyle(node).pointerEvents === 'none') return true;
-        node = node.parentElement;
-    }
-
-    return false;
-}
-
 const fract = (x: number) => x - Math.floor(x);
 const hash1 = (i: number) => fract(Math.sin(i * 127.1) * 43758.5453123);
 
@@ -432,11 +399,19 @@ export function JellyContainer({
                                    idleInteractMul = 0.25,
 
                                    active = true,
-                                   syncVisualToLens = false,
+                                   visible = true,
+                                   pointerEvents = 'auto',
+                                   visualTransformMode = 'none',
                                    children,
                                }: JellyContainerProps) {
     const id = useId();
 
+    const visualRootRef = useLiquidGlassVisualRoot();
+    const [mounted, setMounted] = useState(false);
+    const [placeholderSize, setPlaceholderSize] = useState({w: 0, h: 0});
+
+    const layoutRef = useRef<HTMLDivElement | null>(null);
+    const visualOuterRef = useRef<HTMLDivElement | null>(null);
     const wrapRef = useRef<HTMLDivElement | null>(null);
     const blobRef = useRef<HTMLDivElement | null>(null);
     const svgRef = useRef<SVGSVGElement | null>(null);
@@ -444,11 +419,10 @@ export function JellyContainer({
     const pointsRef = useRef<Float32Array>(new Float32Array(0));
     const countRef = useRef<number>(0);
     const padRef = useRef<number>(0);
-    const visualRef = useRef<HTMLDivElement | null>(null);
-    const placeholderRef = useRef<HTMLDivElement | null>(null);
-    const visualSyncRef = useRef<((rect: DOMRect, timestamp?: number) => void) | null>(null);
-    const [portalHost, setPortalHost] = useState<HTMLElement | null>(null);
+    const geometryRef = useRef<LiquidGlassGeometry | null>(null);
     const syncRef = useRef<((timestamp?: number) => void) | null>(null);
+    const visualSizeRef = useRef({w: 0, h: 0});
+    const visualRafRef = useRef<number | null>(null);
 
     const nodesRef = useRef<Node[]>([]);
     const restRef = useRef<number[]>([]);
@@ -478,160 +452,117 @@ export function JellyContainer({
     const rafRef = useRef<number | null>(null);
     const lastTRef = useRef<number>(0);
 
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const updateVisualGeometry = useCallback(() => {
+        const layout = layoutRef.current;
+        const outer = visualOuterRef.current;
+        const wrap = wrapRef.current;
+        if (!layout || !outer || !wrap) return;
+
+        const layoutRect = layout.getBoundingClientRect();
+        const measured = wrap.getBoundingClientRect();
+        const inheritHostTransform = visualTransformMode === 'host';
+
+        const baseW = Math.max(
+            1,
+            Math.round(wrap.offsetWidth || wrap.scrollWidth || visualSizeRef.current.w || measured.width || 1)
+        );
+        const baseH = Math.max(
+            1,
+            Math.round(wrap.offsetHeight || wrap.scrollHeight || visualSizeRef.current.h || measured.height || 1)
+        );
+
+        const w = inheritHostTransform
+            ? baseW
+            : Math.max(1, Math.round(measured.width || baseW || 1));
+        const h = inheritHostTransform
+            ? baseH
+            : Math.max(1, Math.round(measured.height || baseH || 1));
+
+        if (
+            Math.abs(w - visualSizeRef.current.w) >= 1 ||
+            Math.abs(h - visualSizeRef.current.h) >= 1
+        ) {
+            visualSizeRef.current = {w, h};
+            setPlaceholderSize((prev) => {
+                if (Math.abs(prev.w - w) < 1 && Math.abs(prev.h - h) < 1) return prev;
+                return {w, h};
+            });
+        }
+
+        const layoutBaseW = Math.max(1, layout.offsetWidth || w);
+        const layoutBaseH = Math.max(1, layout.offsetHeight || h);
+        const scaleX = inheritHostTransform && layoutBaseW > 0 ? layoutRect.width / layoutBaseW : 1;
+        const scaleY = inheritHostTransform && layoutBaseH > 0 ? layoutRect.height / layoutBaseH : 1;
+        const safeScaleX = Number.isFinite(scaleX) ? scaleX : 1;
+        const safeScaleY = Number.isFinite(scaleY) ? scaleY : 1;
+
+        const nextTransform = inheritHostTransform
+            ? `translate3d(${layoutRect.left}px, ${layoutRect.top}px, 0) scale(${safeScaleX}, ${safeScaleY})`
+            : `translate3d(${layoutRect.left}px, ${layoutRect.top}px, 0)`;
+        if (outer.style.transform !== nextTransform) {
+            outer.style.transform = nextTransform;
+        }
+
+        const pad = padRef.current || 0;
+        const baseWidth = w + pad * 2;
+        const baseHeight = h + pad * 2;
+        const left = layoutRect.left - pad * safeScaleX;
+        const top = layoutRect.top - pad * safeScaleY;
+        const width = baseWidth * safeScaleX;
+        const height = baseHeight * safeScaleY;
+
+        geometryRef.current = {
+            rect: {
+                left,
+                top,
+                width,
+                height,
+                right: left + width,
+                bottom: top + height,
+            },
+            baseWidth: Math.max(1, baseWidth),
+            baseHeight: Math.max(1, baseHeight),
+        };
+    }, [visualTransformMode]);
+
+    useEffect(() => {
+        if (!mounted) return;
+
+        const loop = () => {
+            updateVisualGeometry();
+            visualRafRef.current = requestAnimationFrame(loop);
+        };
+
+        visualRafRef.current = requestAnimationFrame(loop);
+
+        return () => {
+            if (visualRafRef.current !== null) cancelAnimationFrame(visualRafRef.current);
+            visualRafRef.current = null;
+        };
+    }, [mounted, updateVisualGeometry]);
+
     const supportsPath = useMemo(() => {
         if (typeof CSS === 'undefined' || !CSS.supports) return false;
         return CSS.supports('clip-path', `path("M 0 0 L 1 0 L 1 1 L 0 1 Z")`);
     }, []);
 
-    useLayoutEffect(() => {
-        if (!syncVisualToLens) {
-            setPortalHost(null);
-            return;
-        }
-
-        setPortalHost(document.body);
-    }, [syncVisualToLens]);
-
-    useEffect(() => {
-        if (!syncVisualToLens) return;
-
-        const visual = visualRef.current;
-        const placeholder = placeholderRef.current;
-        if (!visual || !placeholder) return;
-
-        let frame: number | null = null;
-
-        const updatePlaceholder = () => {
-            frame = null;
-
-            const w = Math.max(
-                1,
-                Math.ceil(visual.offsetWidth || visual.scrollWidth || visual.getBoundingClientRect().width)
-            );
-            const h = Math.max(
-                1,
-                Math.ceil(visual.offsetHeight || visual.scrollHeight || visual.getBoundingClientRect().height)
-            );
-
-            placeholder.style.display = 'block';
-            placeholder.style.width = `${w}px`;
-            placeholder.style.height = `${h}px`;
-        };
-
-        const schedule = () => {
-            if (frame !== null) return;
-            frame = requestAnimationFrame(updatePlaceholder);
-        };
-
-        updatePlaceholder();
-
-        const ro = new ResizeObserver(schedule);
-        ro.observe(visual);
-
-        window.addEventListener('resize', schedule);
-        window.visualViewport?.addEventListener('resize', schedule);
-
-        return () => {
-            if (frame !== null) cancelAnimationFrame(frame);
-            ro.disconnect();
-            window.removeEventListener('resize', schedule);
-            window.visualViewport?.removeEventListener('resize', schedule);
-        };
-    }, [syncVisualToLens, portalHost]);
-
-    useEffect(() => {
-        if (!syncVisualToLens) return;
-
-        const visual = visualRef.current;
-        if (!visual) return;
-
-        if (!active) {
-            visual.style.opacity = '0';
-            visual.style.pointerEvents = 'none';
-            visual.style.visibility = 'hidden';
-        }
-    }, [active, syncVisualToLens, portalHost]);
-
-    useEffect(() => {
-        if (!syncVisualToLens) {
-            visualSyncRef.current = null;
-            return;
-        }
-
-        visualSyncRef.current = (rect: DOMRect) => {
-            const visual = visualRef.current;
-            const placeholder = placeholderRef.current;
-            const wrap = wrapRef.current;
-            if (!visual || !placeholder || !wrap) return;
-
-            if (!active) {
-                visual.style.opacity = '0';
-                visual.style.pointerEvents = 'none';
-                visual.style.visibility = 'hidden';
-                return;
-            }
-
-            const { w, h, pad } = blobSizeRef.current;
-            const scaleX = rect.width / Math.max(1, w);
-            const scaleY = rect.height / Math.max(1, h);
-            const left = rect.left + pad * scaleX;
-            const top = rect.top + pad * scaleY;
-
-            const naturalW = Math.max(
-                1,
-                Math.ceil(visual.offsetWidth || visual.scrollWidth || Math.max(1, w - pad * 2))
-            );
-            const naturalH = Math.max(
-                1,
-                Math.ceil(visual.offsetHeight || visual.scrollHeight || Math.max(1, h - pad * 2))
-            );
-
-            placeholder.style.display = 'block';
-            placeholder.style.width = `${naturalW}px`;
-            placeholder.style.height = `${naturalH}px`;
-
-            visual.style.position = 'fixed';
-            visual.style.display = 'inline-block';
-            visual.style.left = `${left}px`;
-            visual.style.top = `${top}px`;
-            visual.style.width = '';
-            visual.style.height = '';
-            visual.style.maxWidth = 'none';
-            visual.style.maxHeight = 'none';
-            visual.style.margin = '0';
-            visual.style.transformOrigin = '0 0';
-            visual.style.transform = `translate3d(0, 0, 0) scale(${scaleX}, ${scaleY})`;
-            visual.style.willChange = 'transform, left, top, opacity';
-            visual.style.backfaceVisibility = 'hidden';
-            (visual.style as CSSStyleDeclaration & {webkitBackfaceVisibility?: string}).webkitBackfaceVisibility = 'hidden';
-            visual.style.visibility = 'visible';
-            visual.style.opacity = String(getEffectiveOpacity(wrap));
-            visual.style.zIndex = getEffectiveZIndex(wrap);
-            visual.style.pointerEvents = hasPointerEventsNone(wrap) ? 'none' : 'auto';
-        };
-
-        return () => {
-            visualSyncRef.current = null;
-        };
-    }, [active, syncVisualToLens]);
-
     useEffect(() => {
         const wrap = wrapRef.current;
         const blob = blobRef.current;
         const svg = svgRef.current;
-        if (!wrap || !blob) return;
+        if (!mounted || !wrap || !blob) return;
 
         const interactiveEnabled = hoverIndent !== 0 || clickIndent !== 0 || clickWave !== 0;
 
         wrap.style.touchAction = interactiveEnabled ? 'pan-y' : 'auto';
         wrap.style.transform = 'translateZ(0)';
 
-        const visual = visualRef.current;
-        const eventTarget = syncVisualToLens && visual ? visual : wrap;
-        eventTarget.style.touchAction = interactiveEnabled ? 'pan-y' : 'auto';
-
         const toLocal = (e: PointerEvent): V2 => {
-            const r = eventTarget.getBoundingClientRect();
+            const r = wrap.getBoundingClientRect();
             return { x: e.clientX - r.left, y: e.clientY - r.top };
         };
 
@@ -709,6 +640,7 @@ export function JellyContainer({
                 (blob.style as CSSStyleDeclaration & {webkitClipPath?: string}).webkitClipPath = `path("${d}")`;
             }
             if (pathRef.current) pathRef.current.setAttribute('d', d);
+            updateVisualGeometry();
         };
 
         const ro = new ResizeObserver((entries) => {
@@ -831,29 +763,29 @@ export function JellyContainer({
             applyIndentImpulse(pr.p, clickRadius, clickIndent, clickWave);
 
             if (e.pointerType !== 'touch') {
-                try { eventTarget.setPointerCapture(e.pointerId); } catch {}
+                try { wrap.setPointerCapture(e.pointerId); } catch {}
             }
         };
 
         const onUp = (e: PointerEvent) => {
             pointerRef.current.down = false;
             if (e.pointerType !== 'touch') {
-                try { eventTarget.releasePointerCapture(e.pointerId); } catch {}
+                try { wrap.releasePointerCapture(e.pointerId); } catch {}
             }
         };
 
-        eventTarget.addEventListener('pointerenter', onEnter);
-        eventTarget.addEventListener('pointerleave', onLeave);
-        eventTarget.addEventListener('pointermove', onMove, { capture: true });
-        eventTarget.addEventListener('pointerdown', onDown, { capture: true });
+        wrap.addEventListener('pointerenter', onEnter);
+        wrap.addEventListener('pointerleave', onLeave);
+        wrap.addEventListener('pointermove', onMove, { capture: true });
+        wrap.addEventListener('pointerdown', onDown, { capture: true });
         window.addEventListener('pointerup', onUp);
 
         return () => {
             ro.disconnect();
-            eventTarget.removeEventListener('pointerenter', onEnter);
-            eventTarget.removeEventListener('pointerleave', onLeave);
-            eventTarget.removeEventListener('pointermove', onMove, { capture: true } as any);
-            eventTarget.removeEventListener('pointerdown', onDown, { capture: true } as any);
+            wrap.removeEventListener('pointerenter', onEnter);
+            wrap.removeEventListener('pointerleave', onLeave);
+            wrap.removeEventListener('pointermove', onMove, { capture: true } as any);
+            wrap.removeEventListener('pointerdown', onDown, { capture: true } as any);
             window.removeEventListener('pointerup', onUp);
         };
     }, [
@@ -866,13 +798,13 @@ export function JellyContainer({
         clickWave,
         pathTension,
         hoverIndent,
-        syncVisualToLens,
-        portalHost,
+        mounted,
+        updateVisualGeometry,
     ]);
 
     useEffect(() => {
         const blob = blobRef.current;
-        if (!blob || !active) return;
+        if (!mounted || !blob || !active) return;
 
         const step = (t: number, scheduleNext = true) => {
             const nodes = nodesRef.current;
@@ -1173,11 +1105,16 @@ export function JellyContainer({
                 (blob.style as CSSStyleDeclaration & {webkitClipPath?: string}).webkitClipPath = `path("${d}")`;
             }
             if (pathRef.current) pathRef.current.setAttribute('d', d);
+            updateVisualGeometry();
 
             if (scheduleNext) rafRef.current = requestAnimationFrame(step);
         };
 
-        syncRef.current = (timestamp = performance.now()) => step(timestamp, false);
+        syncRef.current = (timestamp = performance.now()) => {
+            updateVisualGeometry();
+            step(timestamp, false);
+            updateVisualGeometry();
+        };
         rafRef.current = requestAnimationFrame(step);
         return () => {
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -1241,6 +1178,8 @@ export function JellyContainer({
         idleTangential,
         idleInteractMul,
         active,
+        mounted,
+        updateVisualGeometry,
         bendK,
         smoothK,
         smoothIters,
@@ -1250,68 +1189,75 @@ export function JellyContainer({
         clickWave,
     ]);
 
+    const visualTarget = visualRootRef?.current ?? (mounted && typeof document !== 'undefined' ? document.body : null);
+
     const visualNode = (
         <div
-            ref={visualRef}
-            className="relative"
-            style={syncVisualToLens ? {
-                position: portalHost ? 'fixed' : 'relative',
-                display: 'inline-block',
+            ref={visualOuterRef}
+            data-liquid-surface='jelly'
+            style={{
+                position: 'fixed',
                 left: 0,
                 top: 0,
-                width: 'auto',
-                height: 'auto',
-                maxWidth: 'none',
-                maxHeight: 'none',
-                visibility: portalHost ? 'hidden' : 'visible',
-                pointerEvents: portalHost ? 'auto' : 'none',
+                width: 'max-content',
+                height: 'max-content',
+                pointerEvents: 'none',
+                opacity: visible ? 1 : 0,
+                transition: 'opacity 500ms ease',
+                willChange: 'transform, opacity',
                 transformOrigin: '0 0',
-            } : undefined}
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                zIndex: 0,
+            }}
         >
-            {outline && (
-                <svg ref={svgRef} className="pointer-events-none" aria-hidden>
-                    <path
-                        ref={pathRef}
-                        className={outlineClassName}
-                        fill="none"
-                        strokeWidth={1.5}
-                        vectorEffect="non-scaling-stroke"
-                    />
-                </svg>
-            )}
-
             <div
-                className={['relative z-10', innerClassName].filter(Boolean).join(' ')}
-                style={innerStyle}
+                ref={wrapRef}
+                className='relative inline-block overflow-visible'
+                style={{
+                    pointerEvents: visible ? pointerEvents : 'none',
+                    contain: 'layout style',
+                }}
             >
-                {children}
+                <div ref={blobRef} className={['absolute', className].filter(Boolean).join(' ')} />
+
+                {outline && (
+                    <svg ref={svgRef} className='pointer-events-none' aria-hidden>
+                        <path
+                            ref={pathRef}
+                            className={outlineClassName}
+                            fill='none'
+                            strokeWidth={1.5}
+                            vectorEffect='non-scaling-stroke'
+                        />
+                    </svg>
+                )}
+
+                <div
+                    className={['relative z-10', innerClassName].filter(Boolean).join(' ')}
+                    style={innerStyle}
+                >
+                    {children}
+                </div>
             </div>
         </div>
     );
 
-    if (!syncVisualToLens) {
-        return (
-            <JellyShapeProvider value={{blobRef, pointsRef, countRef, padRef, syncRef}}>
-                <div ref={wrapRef} className="relative inline-block overflow-visible">
-                    <div ref={blobRef} className={['absolute', className].filter(Boolean).join(' ')} />
-                    {visualNode}
-                </div>
-            </JellyShapeProvider>
-        );
-    }
-
     return (
-        <JellyShapeProvider value={{blobRef, pointsRef, countRef, padRef, syncRef, visualSyncRef}}>
-            <div ref={wrapRef} className="relative inline-block overflow-visible">
-                <div
-                    ref={placeholderRef}
-                    aria-hidden
-                    style={{display: portalHost ? 'block' : 'none', pointerEvents: 'none'}}
-                />
-                <div ref={blobRef} className={['absolute', className].filter(Boolean).join(' ')} />
-                {!portalHost && visualNode}
-            </div>
-            {portalHost ? createPortal(visualNode, portalHost) : null}
+        <JellyShapeProvider value={{blobRef, pointsRef, countRef, padRef, geometryRef, syncRef}}>
+            <div
+                ref={layoutRef}
+                aria-hidden
+                className='relative inline-block overflow-visible'
+                style={{
+                    width: placeholderSize.w > 0 ? `${placeholderSize.w}px` : undefined,
+                    height: placeholderSize.h > 0 ? `${placeholderSize.h}px` : undefined,
+                    flex: '0 0 auto',
+                    pointerEvents: 'none',
+                    visibility: 'hidden',
+                }}
+            />
+            {mounted && visualTarget ? createPortal(visualNode, visualTarget) : null}
         </JellyShapeProvider>
     );
 }

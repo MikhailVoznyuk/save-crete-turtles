@@ -1,9 +1,12 @@
 'use client';
 
-import React, {useEffect, useMemo, useRef} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
 import {twMerge} from 'tailwind-merge';
 import {LiquidGlass} from '@/shared/effects/liquid-glass';
 import {JellyShapeProvider} from '@/shared/ui/containers/jelly-container/model/shapeContext';
+import {useLiquidGlassVisualRoot} from '@/shared/effects/liquid-glass/model/context';
+import type {LiquidGlassGeometry} from '@/shared/effects/liquid-glass/model/context';
 
 type Corner = {rx: number; ry: number};
 type Radii = {tl: Corner; tr: Corner; br: Corner; bl: Corner};
@@ -184,6 +187,12 @@ export function GlassPanel({
                                      liquid,
                                      children,
                                  }: StaticGlassPanelProps) {
+    const visualRootRef = useLiquidGlassVisualRoot();
+    const [mounted, setMounted] = useState(false);
+    const [placeholderSize, setPlaceholderSize] = useState({w: 0, h: 0});
+
+    const layoutRef = useRef<HTMLDivElement | null>(null);
+    const visualOuterRef = useRef<HTMLDivElement | null>(null);
     const wrapRef = useRef<HTMLDivElement | null>(null);
     const blobRef = useRef<HTMLDivElement | null>(null);
     const svgRef = useRef<SVGSVGElement | null>(null);
@@ -191,7 +200,10 @@ export function GlassPanel({
     const pointsRef = useRef<Float32Array>(new Float32Array(0));
     const countRef = useRef<number>(0);
     const padRef = useRef<number>(0);
+    const geometryRef = useRef<LiquidGlassGeometry | null>(null);
     const syncRef = useRef<((timestamp?: number) => void) | null>(null);
+    const visualSizeRef = useRef({w: 0, h: 0});
+    const visualRafRef = useRef<number | null>(null);
 
     const liquidParams = useMemo(
         () => ({...DEFAULT_LIQUID, ...liquid}),
@@ -199,10 +211,78 @@ export function GlassPanel({
     );
 
     useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const updateVisualGeometry = useCallback(() => {
+        const layout = layoutRef.current;
+        const outer = visualOuterRef.current;
+        const wrap = wrapRef.current;
+        if (!layout || !outer || !wrap) return;
+
+        const layoutRect = layout.getBoundingClientRect();
+        const measured = wrap.getBoundingClientRect();
+        const w = Math.max(1, Math.round(measured.width || wrap.offsetWidth || visualSizeRef.current.w || 1));
+        const h = Math.max(1, Math.round(measured.height || wrap.offsetHeight || visualSizeRef.current.h || 1));
+
+        if (
+            Math.abs(w - visualSizeRef.current.w) >= 1 ||
+            Math.abs(h - visualSizeRef.current.h) >= 1
+        ) {
+            visualSizeRef.current = {w, h};
+            setPlaceholderSize((prev) => {
+                if (Math.abs(prev.w - w) < 1 && Math.abs(prev.h - h) < 1) return prev;
+                return {w, h};
+            });
+        }
+
+        const nextTransform = `translate3d(${layoutRect.left}px, ${layoutRect.top}px, 0)`;
+        if (outer.style.transform !== nextTransform) {
+            outer.style.transform = nextTransform;
+        }
+
+        geometryRef.current = {
+            rect: {
+                left: layoutRect.left,
+                top: layoutRect.top,
+                width: w,
+                height: h,
+                right: layoutRect.left + w,
+                bottom: layoutRect.top + h,
+            },
+            baseWidth: Math.max(1, w),
+            baseHeight: Math.max(1, h),
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!mounted) return;
+
+        const loop = () => {
+            updateVisualGeometry();
+            visualRafRef.current = requestAnimationFrame(loop);
+        };
+
+        visualRafRef.current = requestAnimationFrame(loop);
+
+        return () => {
+            if (visualRafRef.current !== null) cancelAnimationFrame(visualRafRef.current);
+            visualRafRef.current = null;
+        };
+    }, [mounted, updateVisualGeometry]);
+
+    useEffect(() => {
+        syncRef.current = updateVisualGeometry;
+        return () => {
+            syncRef.current = null;
+        };
+    }, [updateVisualGeometry]);
+
+    useEffect(() => {
         const wrap = wrapRef.current;
         const blob = blobRef.current;
         const svg = svgRef.current;
-        if (!wrap || !blob) return;
+        if (!mounted || !wrap || !blob) return;
 
         const rebuild = (w: number, h: number) => {
             if (w < 1 || h < 1) return;
@@ -235,6 +315,7 @@ export function GlassPanel({
             if (pathRef.current) {
                 pathRef.current.setAttribute('d', roundedRectPath(w, h, radii));
             }
+            updateVisualGeometry();
         };
 
         const rect = wrap.getBoundingClientRect();
@@ -246,17 +327,38 @@ export function GlassPanel({
 
         ro.observe(wrap);
         return () => ro.disconnect();
-    }, [boundaryPoints]);
+    }, [boundaryPoints, mounted, updateVisualGeometry]);
 
-    return (
-        <JellyShapeProvider value={{blobRef, pointsRef, countRef, padRef, syncRef}}>
+    const visualTarget = visualRootRef?.current ?? (mounted && typeof document !== 'undefined' ? document.body : null);
+
+    const visualNode = (
+        <div
+            ref={visualOuterRef}
+            data-liquid-surface='panel'
+            style={{
+                position: 'fixed',
+                left: 0,
+                top: 0,
+                width: 'max-content',
+                height: 'max-content',
+                pointerEvents: 'none',
+                opacity: visible ? 1 : 0,
+                transition: 'opacity 500ms ease',
+                willChange: 'transform, opacity',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                zIndex: 0,
+            }}
+        >
             <div
                 ref={wrapRef}
                 className={twMerge(
                     'relative overflow-hidden transition-all duration-500',
-                    visible ? 'scale-100 opacity-100' : 'scale-0 opacity-0',
                     className,
                 )}
+                style={{
+                    pointerEvents: visible ? 'auto' : 'none',
+                }}
             >
                 <div
                     ref={blobRef}
@@ -300,6 +402,23 @@ export function GlassPanel({
                     {children}
                 </div>
             </div>
+        </div>
+    );
+
+    return (
+        <JellyShapeProvider value={{blobRef, pointsRef, countRef, padRef, geometryRef, syncRef}}>
+            <div
+                ref={layoutRef}
+                aria-hidden
+                style={{
+                    width: placeholderSize.w > 0 ? `${placeholderSize.w}px` : undefined,
+                    height: placeholderSize.h > 0 ? `${placeholderSize.h}px` : undefined,
+                    flex: '0 0 auto',
+                    pointerEvents: 'none',
+                    visibility: 'hidden',
+                }}
+            />
+            {mounted && visualTarget ? createPortal(visualNode, visualTarget) : null}
         </JellyShapeProvider>
     );
 }

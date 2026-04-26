@@ -1,14 +1,15 @@
 'use client';
 
 import React, {createContext, useContext} from "react";
+import type {LiquidGlassGeometry} from "@/shared/effects/liquid-glass/model/context";
 
 export type JellyShapeApi = {
     blobRef: React.RefObject<HTMLDivElement | null>;
     pointsRef: React.RefObject<Float32Array>;
     countRef: React.RefObject<number>;
     padRef: React.RefObject<number>;
+    geometryRef: React.RefObject<LiquidGlassGeometry | null>;
     syncRef: React.RefObject<((timestamp?: number) => void) | null>;
-    visualSyncRef?: React.RefObject<((rect: DOMRect, timestamp?: number) => void) | null>;
 }
 
 const JellyShapeContext = createContext<JellyShapeApi | null>(null);
