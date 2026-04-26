@@ -15,7 +15,7 @@ type GlassBubbleProps = {
     interactive?: boolean,
     effectStrength?: 'xs' | 'sm' | 'md',
     glassOrder?: number;
-    syncVisualToLens?: boolean;
+    visualTransformMode?: 'none' | 'host';
     children?: React.ReactNode;
 }
 
@@ -152,7 +152,7 @@ export function GlassBubble({
     idle= true,
     interactive = true,
     effectStrength = 'md',
-    syncVisualToLens = true,
+    visualTransformMode = 'none',
     children,}: GlassBubbleProps
 ) {
 
@@ -181,7 +181,9 @@ export function GlassBubble({
                 outline={outline}
                 idle={idle}
                 active={visible && active}
-                syncVisualToLens={syncVisualToLens}
+                visible={visible}
+                pointerEvents={containerClassName?.includes('pointer-events-none') ? 'none' : 'auto'}
+                visualTransformMode={visualTransformMode}
             >
             <LiquidGlass
                 enabled={visible && active}

@@ -17,6 +17,15 @@ type Props = {
     onLoadStateChange?: (state: LoadState) => void;
 };
 
+type RectLike = {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    right?: number;
+    bottom?: number;
+};
+
 function getViewportMetrics() {
     const bg = document.querySelector<HTMLElement>('.fixed-video-bg');
     const rect = bg?.getBoundingClientRect();
@@ -488,6 +497,7 @@ export function LiquidGlassProvider({
     onLoadStateChange,
 }: Props) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const visualRootRef = useRef<HTMLDivElement | null>(null);
     const loadStateRef = useRef<LoadState>('pending');
 
     const emitLoadState = useCallback((state: LoadState) => {
@@ -577,7 +587,7 @@ export function LiquidGlassProvider({
     const buildPolarShape = (
         pts: Float32Array,
         N: number,
-        rect: DOMRect,
+        rect: { left: number; top: number; width: number; height: number },
         scaleX: number,
         scaleY: number
     ) => {
@@ -821,9 +831,25 @@ export function LiquidGlassProvider({
                 }
             }
 
-            const visibleLenses: Array<{ h: LiquidGlassHandle; rect: DOMRect }> = [];
+            const visibleLenses: Array<{
+                h: LiquidGlassHandle;
+                rect: { left: number; top: number; width: number; height: number; right: number; bottom: number };
+                baseWidth: number;
+                baseHeight: number;
+            }> = [];
+
             for (const h of orderedLenses) {
-                const rect = h.el.getBoundingClientRect();
+                const geometry = h.geometryRef?.current;
+                const domRect = (geometry?.rect ?? h.el.getBoundingClientRect()) as RectLike;
+                const rect = {
+                    left: domRect.left,
+                    top: domRect.top,
+                    width: domRect.width,
+                    height: domRect.height,
+                    right: domRect.right ?? domRect.left + domRect.width,
+                    bottom: domRect.bottom ?? domRect.top + domRect.height,
+                };
+
                 if (rect.width < 1 || rect.height < 1) continue;
                 if (
                     rect.right < -viewportMargin ||
@@ -831,11 +857,13 @@ export function LiquidGlassProvider({
                     rect.left > vp.w + viewportMargin ||
                     rect.top > vp.h + viewportMargin
                 ) continue;
-                visibleLenses.push({ h, rect });
-            }
 
-            for (const { h, rect } of visibleLenses) {
-                h.visualSyncRef?.current?.(rect, t);
+                visibleLenses.push({
+                    h,
+                    rect,
+                    baseWidth: Math.max(1, geometry?.baseWidth ?? h.el.offsetWidth),
+                    baseHeight: Math.max(1, geometry?.baseHeight ?? h.el.offsetHeight),
+                });
             }
 
             if (visibleLenses.length === 0 || document.hidden) {
@@ -931,13 +959,13 @@ export function LiquidGlassProvider({
 
             let ref = 1;
 
-            for (const { h, rect } of visibleLenses) {
+            for (const { h, rect, baseWidth, baseHeight } of visibleLenses) {
 
                 const pad = h.padRef.current || 0;
 
-// исходный размер blob ДО css transform
-                const baseW = Math.max(1, h.el.offsetWidth);
-                const baseH = Math.max(1, h.el.offsetHeight);
+// исходный размер blob ДО css transform / owner geometry
+                const baseW = baseWidth;
+                const baseH = baseHeight;
 
 // фактический scale по осям
                 const scaleX = rect.width / baseW;
@@ -1280,10 +1308,20 @@ export function LiquidGlassProvider({
     const ctxValue = useMemo(() => register, [register]);
 
     return (
-        <LiquidGlassRegistryProvider register={ctxValue}>
+        <LiquidGlassRegistryProvider register={ctxValue} visualRootRef={visualRootRef}>
             <canvas ref={canvasRef} aria-hidden />
             <div style={{ position: 'relative', zIndex: zIndex + 1 }}>
                 {children}
+                <div
+                    ref={visualRootRef}
+                    aria-hidden={false}
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        pointerEvents: 'none',
+                        zIndex: 0,
+                    }}
+                />
             </div>
         </LiquidGlassRegistryProvider>
     );

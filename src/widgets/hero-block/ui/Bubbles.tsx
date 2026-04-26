@@ -545,6 +545,7 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
                     active={visible}
                     interactive={false}
                     effectStrength='sm'
+                    visualTransformMode='host'
                 />
             </div>
             <div
@@ -566,6 +567,7 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
                     active={visible}
                     interactive={false}
                     effectStrength='sm'
+                    visualTransformMode='host'
                 />
             </div>
             <div
@@ -588,6 +590,7 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
                     active={visible}
                     interactive={false}
                     effectStrength='md'
+                    visualTransformMode='host'
                 >
                     <div className='rounded-full flex items-center justify-center'
                          style={{

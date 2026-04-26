@@ -46,7 +46,7 @@ export function LiquidGlass({
     }: Props) {
     const id = useId();
     const register = useRegisterLiquidGlass();
-    const { blobRef, pointsRef, countRef, padRef, syncRef, visualSyncRef } = useJellyShape();
+    const { blobRef, pointsRef, countRef, padRef, geometryRef, syncRef } = useJellyShape();
 
     const enabledRef = useRef(enabled);
     enabledRef.current = enabled;
@@ -95,12 +95,12 @@ export function LiquidGlass({
             paramsRef,
             padRef,
             orderRef,
-            syncRef,
-            visualSyncRef
+            geometryRef,
+            syncRef
         });
 
         return () => un();
-    }, [register, id, blobRef, pointsRef, countRef, padRef, syncRef, visualSyncRef]);
+    }, [register, id, blobRef, pointsRef, countRef, padRef, geometryRef, syncRef]);
 
     const overlayNode = useMemo(() => {
         if (!overlay) return null;

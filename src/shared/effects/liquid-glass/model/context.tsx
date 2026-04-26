@@ -19,6 +19,21 @@ export type LiquidGlassParams = {
     dirMode: number;
 };
 
+export type LiquidGlassRect = {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    right: number;
+    bottom: number;
+};
+
+export type LiquidGlassGeometry = {
+    rect: LiquidGlassRect;
+    baseWidth: number;
+    baseHeight: number;
+};
+
 export type LiquidGlassHandle = {
     id: string;
     el: HTMLElement;
@@ -28,23 +43,32 @@ export type LiquidGlassHandle = {
     paramsRef: React.RefObject<LiquidGlassParams>;
     padRef: React.RefObject<number>;
     orderRef: React.RefObject<number>;
+    geometryRef?: React.RefObject<LiquidGlassGeometry | null>;
     syncRef?: React.RefObject<((timestamp?: number) => void) | null>;
-    visualSyncRef?: React.RefObject<((rect: DOMRect, timestamp?: number) => void) | null>;
 };
 
 export type RegisterLiquidGlass = (h: LiquidGlassHandle) => () => void;
 
 const LiquidGlassRegistryContext = createContext<RegisterLiquidGlass | null>(null);
+const LiquidGlassVisualRootContext = createContext<React.RefObject<HTMLDivElement | null> | null>(null);
 
 export function LiquidGlassRegistryProvider(
     {
         register,
+        visualRootRef,
         children,
     }: {
     register: RegisterLiquidGlass;
+    visualRootRef?: React.RefObject<HTMLDivElement | null>;
     children: React.ReactNode;
     }) {
-    return <LiquidGlassRegistryContext.Provider value={register}>{children}</LiquidGlassRegistryContext.Provider>
+    return (
+        <LiquidGlassRegistryContext.Provider value={register}>
+            <LiquidGlassVisualRootContext.Provider value={visualRootRef ?? null}>
+                {children}
+            </LiquidGlassVisualRootContext.Provider>
+        </LiquidGlassRegistryContext.Provider>
+    );
 }
 
 export function useRegisterLiquidGlass() {
@@ -54,4 +78,8 @@ export function useRegisterLiquidGlass() {
     }
 
     return v;
+}
+
+export function useLiquidGlassVisualRoot() {
+    return useContext(LiquidGlassVisualRootContext);
 }
