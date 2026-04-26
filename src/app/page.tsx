@@ -39,35 +39,58 @@ export default function Home() {
     useEffect(() => {
         const visualViewport = window.visualViewport;
         let frame = 0;
-        let lastHeight = -1;
+        let lastSafeHeight = -1;
+        let lastFullHeight = -1;
 
-        const setAppVh = () => {
-            const height = Math.round(visualViewport?.height ?? window.innerHeight);
-            if (height === lastHeight) return;
-            lastHeight = height;
-            document.documentElement.style.setProperty('--app-vh', `${height * 0.01}px`);
+        const getPositiveNumber = (value: number | undefined | null) => (
+            typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0
+        );
+
+        const setAppViewportVars = () => {
+            const safeHeight = Math.round(
+                getPositiveNumber(visualViewport?.height) ||
+                getPositiveNumber(window.innerHeight) ||
+                getPositiveNumber(document.documentElement.clientHeight)
+            );
+
+            const fullHeight = Math.round(Math.max(
+                getPositiveNumber(window.innerHeight),
+                getPositiveNumber(document.documentElement.clientHeight),
+                getPositiveNumber(visualViewport?.height),
+                safeHeight
+            ));
+
+            if (safeHeight > 0 && safeHeight !== lastSafeHeight) {
+                lastSafeHeight = safeHeight;
+                document.documentElement.style.setProperty('--app-vh', `${safeHeight * 0.01}px`);
+            }
+
+            if (fullHeight > 0 && fullHeight !== lastFullHeight) {
+                lastFullHeight = fullHeight;
+                document.documentElement.style.setProperty('--app-full-vh', `${fullHeight * 0.01}px`);
+            }
         };
 
-        const scheduleSetAppVh = () => {
+        const scheduleSetAppViewportVars = () => {
             if (frame !== 0) return;
 
             frame = window.requestAnimationFrame(() => {
                 frame = 0;
-                setAppVh();
+                setAppViewportVars();
             });
         };
 
-        setAppVh();
-        window.addEventListener('resize', scheduleSetAppVh, {passive: true});
-        window.addEventListener('orientationchange', scheduleSetAppVh);
-        window.addEventListener('pageshow', scheduleSetAppVh);
-        visualViewport?.addEventListener('resize', scheduleSetAppVh);
+        setAppViewportVars();
+        window.addEventListener('resize', scheduleSetAppViewportVars, {passive: true});
+        window.addEventListener('orientationchange', scheduleSetAppViewportVars);
+        window.addEventListener('pageshow', scheduleSetAppViewportVars);
+        visualViewport?.addEventListener('resize', scheduleSetAppViewportVars);
 
         return () => {
-            window.removeEventListener('resize', scheduleSetAppVh);
-            window.removeEventListener('orientationchange', scheduleSetAppVh);
-            window.removeEventListener('pageshow', scheduleSetAppVh);
-            visualViewport?.removeEventListener('resize', scheduleSetAppVh);
+            window.removeEventListener('resize', scheduleSetAppViewportVars);
+            window.removeEventListener('orientationchange', scheduleSetAppViewportVars);
+            window.removeEventListener('pageshow', scheduleSetAppViewportVars);
+            visualViewport?.removeEventListener('resize', scheduleSetAppViewportVars);
 
             if (frame !== 0) {
                 window.cancelAnimationFrame(frame);
