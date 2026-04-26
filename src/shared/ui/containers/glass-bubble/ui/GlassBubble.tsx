@@ -187,19 +187,20 @@ export function GlassBubble({
             >
             <LiquidGlass
                 enabled={visible && active}
-                intensity={1.35}
-                magnify={0.30}
-                blur={0.18}
-                chromatic={0.03}
-                rim={0.24}
-                spec={0.42}
-                tint={0.22}
+                intensity={2.28}
+                magnify={0.50}
+                blur={0.24}
+                chromatic={0.105}
+                rim={1.14}
+                spec={1.30}
+                tint={0.44}
                 alpha={1}
-                edgePull={22}
-                edgePower={10}
-                edgeSingularity={0.035}
+                edgePull={64}
+                edgePower={5.6}
+                edgeSingularity={0.016}
                 dirMode={0}
                 order={glassOrder}
+                overlay
             />
                 {children}
         </JellyContainer>

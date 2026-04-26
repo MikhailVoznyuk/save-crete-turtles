@@ -160,17 +160,17 @@ function roundedRectPath(w: number, h: number, r: Radii) {
 }
 
 const DEFAULT_LIQUID: Required<LiquidGlassConfig> = {
-    intensity: 1.35,
-    magnify: 0.3,
-    blur: 0.18,
-    chromatic: 0.03,
-    rim: 0.24,
-    spec: 0.42,
-    tint: 0.22,
+    intensity: 2.18,
+    magnify: 0.48,
+    blur: 0.26,
+    chromatic: 0.095,
+    rim: 1.08,
+    spec: 1.22,
+    tint: 0.42,
     alpha: 1,
-    edgePull: 22,
-    edgePower: 10,
-    edgeSingularity: 0.035,
+    edgePull: 58,
+    edgePower: 5.8,
+    edgeSingularity: 0.018,
     dirMode: 0,
 };
 
@@ -396,6 +396,7 @@ export function GlassPanel({
                     edgePower={liquidParams.edgePower}
                     edgeSingularity={liquidParams.edgeSingularity}
                     dirMode={liquidParams.dirMode}
+                    overlay
                 />
 
                 <div className={twMerge('relative z-10', innerClassName)} style={innerStyle}>
