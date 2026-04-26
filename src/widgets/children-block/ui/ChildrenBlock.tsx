@@ -20,7 +20,7 @@ export function ChildrenBlock() {
                     titleClassName='text-turk font-normal translate-y-1/12'
                     centered
                     lined={false}
-                >For Children</Title>
+                >Dear Children</Title>
                 <TextBlock size={'md'} centered >{BLOCK_CONTENT}</TextBlock>
             </div>
 
