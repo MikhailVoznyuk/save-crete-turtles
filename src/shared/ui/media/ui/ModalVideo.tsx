@@ -102,6 +102,7 @@ export function ModalVideo({src, poster, className, videoClassName, btnNeeded=tr
                 <InlineVideo
                     layoutId={layoutId}
                     src={src}
+                    poster={poster}
                     preload='auto'
                     controls
                     className='w-full max-h-[85vh]'
