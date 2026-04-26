@@ -8,7 +8,7 @@ export function ChildrenBlock() {
     return (
         <GlassPanel
             outline={false}
-            className='relative rounded-4xl border-2 border-cold-white/50 w-[90vw] sm:w-[480px] md:w-[640px] '
+            className='relative rounded-4xl border-2 border-cold-white/50 w-[96vw] sm:w-[480px] md:w-[640px] '
             innerClassName='w-full'
         >
             <div className='flex flex-col gap-8 items-center py-8 px-4 sm:px-8'>
