@@ -17,6 +17,15 @@ type Props = {
     onLoadStateChange?: (state: LoadState) => void;
 };
 
+type RectLike = {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    right?: number;
+    bottom?: number;
+};
+
 function getViewportMetrics() {
     const bg = document.querySelector<HTMLElement>('.fixed-video-bg');
     const rect = bg?.getBoundingClientRect();
@@ -831,14 +840,14 @@ export function LiquidGlassProvider({
 
             for (const h of orderedLenses) {
                 const geometry = h.geometryRef?.current;
-                const domRect = geometry?.rect ?? h.el.getBoundingClientRect();
+                const domRect = (geometry?.rect ?? h.el.getBoundingClientRect()) as RectLike;
                 const rect = {
                     left: domRect.left,
                     top: domRect.top,
                     width: domRect.width,
                     height: domRect.height,
-                    right: 'right' in domRect ? domRect.right : domRect.left + domRect.width,
-                    bottom: 'bottom' in domRect ? domRect.bottom : domRect.top + domRect.height,
+                    right: domRect.right ?? domRect.left + domRect.width,
+                    bottom: domRect.bottom ?? domRect.top + domRect.height,
                 };
 
                 if (rect.width < 1 || rect.height < 1) continue;
