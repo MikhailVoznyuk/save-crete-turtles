@@ -1,6 +1,6 @@
 'use client';
 
-import {useRef} from 'react';
+import {useCallback, useRef, useState} from 'react';
 import {useSectionNavigation} from '@/app/_model/section-navigation/section-navigation.context';
 import {Title} from '@/shared/ui/text-blocks/ui/Title';
 import {TextBlock} from '@/shared/ui/text-blocks';
@@ -27,13 +27,20 @@ export function HeroBlock({onBubblesLoadStateChange, onParticlesLoadStateChange}
     const titleRef = useRef<HTMLDivElement | null>(null);
     const textRef = useRef<HTMLDivElement | null>(null);
     const repulsorsRef = useRef<BubbleRepulsor[]>([]);
+    const [particlesLoadState, setParticlesLoadState] = useState<LoadState>('pending');
+    const showTextFallback = particlesLoadState === 'error' || particlesLoadState === 'skipped';
+
+    const handleParticlesLoadStateChange = useCallback((state: LoadState) => {
+        setParticlesLoadState(state);
+        onParticlesLoadStateChange?.(state);
+    }, [onParticlesLoadStateChange]);
 
     return (
         <section ref={registerSection('hero')} className='relative w-full hero-screen'>
             <div className='flex flex-col size-full p-4 justify-center  sm:p-10 text-9'>
                 <div className='flex flex-col gap-4  max-w-[740px] items-center sm:items-start'>
                     <div ref={textParticleRootRef} className='relative w-full'>
-                        <div className='opacity-0 select-none flex flex-col items-center gap-5'>
+                        <div className={`select-none flex flex-col items-center gap-5 ${showTextFallback ? 'opacity-100' : 'opacity-0'}`}>
                             <div ref={titleRef}>
                                 <Title as='h1' size='xl' lined centered={isMobile}>
                                     {HERO_TITLE}
@@ -50,7 +57,7 @@ export function HeroBlock({onBubblesLoadStateChange, onParticlesLoadStateChange}
                             titleRef={titleRef}
                             textRef={textRef}
                             repulsorsRef={repulsorsRef}
-                            onLoadStateChange={onParticlesLoadStateChange}
+                            onLoadStateChange={handleParticlesLoadStateChange}
                         />
                     </div>
                     <div className='flex flex-col sm:flex-row gap-4 items-center sm:items-center'>
@@ -59,7 +66,10 @@ export function HeroBlock({onBubblesLoadStateChange, onParticlesLoadStateChange}
                     </div>
                 </div>
             </div>
-            <Bubbles repulsorsRef={repulsorsRef} onLoadStateChange={onBubblesLoadStateChange}/>
+            <Bubbles
+                repulsorsRef={repulsorsRef}
+                onLoadStateChange={onBubblesLoadStateChange}
+            />
 
             <ArrowButton
                 onClick={() => {}}
