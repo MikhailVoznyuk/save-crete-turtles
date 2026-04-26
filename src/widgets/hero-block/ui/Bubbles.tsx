@@ -276,6 +276,11 @@ type Cords = {x: number, y: number};
 type Sizes = {width: number, height: number};
 type ViewportRect = Sizes & {left: number, top: number};
 
+function readRootPxVar(name: string) {
+    const value = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+    return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
 function getViewportRect(): ViewportRect {
     const bg = document.querySelector<HTMLElement>('.fixed-video-bg');
     const rect = bg?.getBoundingClientRect();
@@ -286,6 +291,18 @@ function getViewportRect(): ViewportRect {
             top: Math.round(rect.top),
             width: Math.max(1, Math.round(rect.width)),
             height: Math.max(1, Math.round(rect.height)),
+        };
+    }
+
+    const cssFullW = readRootPxVar('--app-full-viewport-width');
+    const cssFullH = readRootPxVar('--app-full-viewport-height');
+
+    if (cssFullW > 1 && cssFullH > 1) {
+        return {
+            left: 0,
+            top: 0,
+            width: Math.max(1, Math.round(cssFullW)),
+            height: Math.max(1, Math.round(cssFullH)),
         };
     }
 
@@ -320,6 +337,7 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
     const ticking = useRef<boolean>(false);
     const resizeRafRef = useRef<number | null>(null);
     const layoutRafRef = useRef<number | null>(null);
+    const lastLayoutSignatureRef = useRef<string>('');
     const hasReportedReadyRef = useRef(false);
 
     useEffect(() => {
@@ -329,8 +347,23 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
     useEffect(() => {
         if (bubblesRef.current.length === 0 || anchor === null) return;
 
-        const updateSteps = () => {
+        const updateSteps = (force = false) => {
             const viewport = getViewportRect();
+            const layoutSignature = [
+                viewport.left,
+                viewport.top,
+                viewport.width,
+                viewport.height,
+                isMobile ? 'mobile' : 'desktop',
+                ...bubbleSizes.flatMap(({width, height}) => [width, height]),
+            ].join('|');
+
+            if (!force && layoutSignature === lastLayoutSignatureRef.current) {
+                return;
+            }
+
+            lastLayoutSignatureRef.current = layoutSignature;
+
             const pointAnchor = new VideoPointAnchor(
                 {
                     anchor,
@@ -350,24 +383,25 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
                 }
 
                 const stages = adaptiveStages[i];
+                const initStage = stages[0];
+                const initCoords = pointAnchor.getAnchorPos({
+                    x: initStage.offsetX ?? 0,
+                    y: -(initStage.offsetY ?? 0),
+                })
+
+                const initStyle = {
+                    left: `${viewport.left + initCoords.x - bubbleSizes[i].width / 2}px`,
+                    top: `${viewport.top + initCoords.y - bubbleSizes[i].height / 2}px`,
+                    ...initStage.style
+                }
 
                 let tl;
                 if (timelinesRef.current[i]) {
                     tl = timelinesRef.current[i];
                     tl.clear(false);
+                    tl.initStyle = initStyle;
+                    tl.applyStyles(initStyle, true);
                 } else {
-                    const initStage = stages[0];
-                    const initCoords = pointAnchor.getAnchorPos({
-                        x: initStage.offsetX ?? 0,
-                        y: -(initStage.offsetY ?? 0),
-                    })
-
-                    const initStyle = {
-                        left: `${viewport.left + initCoords.x - bubbleSizes[i].width / 2}px`,
-                        top: `${viewport.top + initCoords.y - bubbleSizes[i].height / 2}px`,
-                        ...initStage.style
-                    }
-
                     tl = new Timeline({el, loop: true, initStyle});
                 }
 
@@ -412,7 +446,7 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
             });
         };
 
-        updateSteps();
+        updateSteps(true);
         reportReady();
         const visualViewport = window.visualViewport;
 
@@ -433,6 +467,10 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
                 cancelAnimationFrame(layoutRafRef.current);
                 layoutRafRef.current = null;
             }
+
+            timelinesRef.current.forEach((timeline) => timeline.destroy());
+            timelinesRef.current = [];
+            lastLayoutSignatureRef.current = '';
         };
     }, [anchor, bubbleSizes, isMobile, onLoadStateChange]);
 
