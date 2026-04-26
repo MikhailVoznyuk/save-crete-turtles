@@ -48,6 +48,24 @@ const DESKTOP_POINT_SIZE = 1.9;
 const POINT_EDGE_SOFTNESS = 0.16;
 const REPULSOR_SPEED_SMOOTHING = 18;
 const MAX_REPULSOR_SPEED_PX_PER_FRAME = 14;
+const FONT_READY_TIMEOUT_MS = 2400;
+const SNAPSHOT_RETRY_DELAY_MS = 140;
+const SNAPSHOT_FALLBACK_AFTER_MS = 5000;
+
+function delay(ms: number) {
+    return new Promise<void>((resolve) => {
+        window.setTimeout(resolve, ms);
+    });
+}
+
+async function waitForRenderableFonts() {
+    if (!('fonts' in document)) return;
+
+    await Promise.race([
+        document.fonts.ready.catch(() => undefined),
+        delay(FONT_READY_TIMEOUT_MS),
+    ]);
+}
 
 function applyTextTransform(text: string, transform: string) {
     if (transform === 'uppercase') return text.toUpperCase();
@@ -478,6 +496,31 @@ export function HeroDustText({
         let rebuildToken = 0;
         let firstSnapshotReady = false;
         let firstFrameRendered = false;
+        let snapshotRetryTimeout = 0;
+        let firstSnapshotAttemptTime = 0;
+        let fallbackReported = false;
+        let renderFailed = false;
+
+        const clearSnapshotRetry = () => {
+            if (snapshotRetryTimeout !== 0) {
+                window.clearTimeout(snapshotRetryTimeout);
+                snapshotRetryTimeout = 0;
+            }
+        };
+
+        const reportFallbackOnce = () => {
+            if (fallbackReported || firstFrameRendered) return;
+            fallbackReported = true;
+            onLoadStateChange?.('error');
+        };
+
+        const handleRendererContextLost = (event: Event) => {
+            event.preventDefault();
+            renderFailed = true;
+            reportFallbackOnce();
+        };
+
+        renderer.domElement.addEventListener('webglcontextlost', handleRendererContextLost, false);
 
         const syncViewportBounds = (snapshotWidth = state.width, snapshotHeight = state.height) => {
             if (snapshotWidth < 1 || snapshotHeight < 1) return;
@@ -513,7 +556,7 @@ export function HeroDustText({
             const currentToken = ++rebuildToken;
 
             if ('fonts' in document) {
-                await document.fonts.ready;
+                await waitForRenderableFonts();
             }
 
             if (disposed || currentToken !== rebuildToken) return;
@@ -527,10 +570,23 @@ export function HeroDustText({
             }
 
             if (!nextSnapshot || nextSnapshot.count === 0) {
-                onLoadStateChange?.('error');
+                if (firstSnapshotAttemptTime === 0) {
+                    firstSnapshotAttemptTime = performance.now();
+                }
+
+                if (performance.now() - firstSnapshotAttemptTime >= SNAPSHOT_FALLBACK_AFTER_MS) {
+                    reportFallbackOnce();
+                }
+
+                clearSnapshotRetry();
+                snapshotRetryTimeout = window.setTimeout(() => {
+                    snapshotRetryTimeout = 0;
+                    void rebuild();
+                }, SNAPSHOT_RETRY_DELAY_MS);
                 return;
             }
 
+            clearSnapshotRetry();
             firstSnapshotReady = true;
 
             state.basePositions = new Float32Array(nextSnapshot.positions);
@@ -595,7 +651,7 @@ export function HeroDustText({
         let previousTime = 0;
 
         const tick = (time: number) => {
-            if (disposed) return;
+            if (disposed || renderFailed) return;
             animationFrame = window.requestAnimationFrame(tick);
 
             if (state.count === 0) return;
@@ -794,7 +850,13 @@ export function HeroDustText({
                 positionAttr.needsUpdate = true;
             }
 
-            renderer.render(scene, camera);
+            try {
+                renderer.render(scene, camera);
+            } catch {
+                renderFailed = true;
+                reportFallbackOnce();
+                return;
+            }
 
             if (firstSnapshotReady && !firstFrameRendered) {
                 firstFrameRendered = true;
@@ -811,6 +873,8 @@ export function HeroDustText({
             window.removeEventListener('pageshow', scheduleRebuild);
             visualViewport?.removeEventListener('resize', scheduleRebuild);
             resizeObserver.disconnect();
+            renderer.domElement.removeEventListener('webglcontextlost', handleRendererContextLost, false);
+            clearSnapshotRetry();
             window.cancelAnimationFrame(animationFrame);
             window.cancelAnimationFrame(resizeFrame);
             window.cancelAnimationFrame(initFrame1);

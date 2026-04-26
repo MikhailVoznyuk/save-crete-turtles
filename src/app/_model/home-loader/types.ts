@@ -3,9 +3,9 @@ import type {LoadState} from '@/shared/types/load-state';
 
 export const HOME_READY_TASKS = [
     'backgroundVideo',
+    'heroGlass',
     'heroBubbles',
     'heroParticles',
-    'heroGlass',
 ] as const;
 
 export type HomeReadyTask = typeof HOME_READY_TASKS[number];
