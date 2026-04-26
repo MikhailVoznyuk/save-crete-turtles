@@ -1,5 +1,6 @@
 import {useState} from "react";
 import {useSectionNavigation} from "@/app/_model/section-navigation/section-navigation.context";
+import {ChildrenBlock} from "@/widgets/children-block";
 import {Title, TextBlock, TextMediaRow} from "@/shared/ui/text-blocks";
 import type {TextMediaRowProps} from "@/shared/ui/media/types/types";
 import {Toggler} from "@/shared/ui/buttons/toggler/Toggler";
@@ -150,6 +151,7 @@ export function StepsSection() {
                 How you can help
             </Title>
             <TextBlock size={'xl'} centered>{HOW_YOU_CAN_HELP_INTRO}</TextBlock>
+            <ChildrenBlock />
             <Toggler sides={[{header: 'Beach visitors'}, {header: 'Boaters & fishers'}]} onClick={setActionsType} />
 
             <div className='flex flex-col items-center gap-36 max-w-[1200px]'>

@@ -1,0 +1,1 @@
+export {ChildrenBlock} from "@/widgets/children-block/ui/ChildrenBlock";
