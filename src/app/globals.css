@@ -5,6 +5,7 @@
   --foreground: #F5FAFF;
   --bounce-amplitude: 20%;
   --app-vh: 1vh;
+  --app-full-vh: 1vh;
 }
 
 html {
@@ -111,10 +112,13 @@ video {
 
 .fixed-video-bg {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: auto;
+  left: 0;
   width: 100vw;
-  height: 100vh;
-  min-height: 100vh;
+  height: calc(var(--app-full-vh, 1vh) * 100);
+  min-height: calc(var(--app-full-vh, 1vh) * 100);
   overflow: hidden;
   pointer-events: none;
   contain: paint;
@@ -123,10 +127,23 @@ video {
   -webkit-backface-visibility: hidden;
 }
 
+@supports (width: 100lvw) {
+  .fixed-video-bg {
+    width: 100lvw;
+  }
+}
+
 @supports (height: 100lvh) {
   .fixed-video-bg {
     height: 100lvh;
     min-height: 100lvh;
+  }
+}
+
+@supports (height: max(100vh, 100lvh)) {
+  .fixed-video-bg {
+    height: max(calc(var(--app-full-vh, 1vh) * 100), 100lvh);
+    min-height: max(calc(var(--app-full-vh, 1vh) * 100), 100lvh);
   }
 }
 

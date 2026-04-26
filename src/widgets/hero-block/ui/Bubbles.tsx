@@ -404,14 +404,18 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
 
         updateSteps();
         reportReady();
+        const visualViewport = window.visualViewport;
+
         window.addEventListener('resize', scheduleUpdateSteps, {passive: true});
         window.addEventListener('orientationchange', scheduleUpdateSteps);
         window.addEventListener('pageshow', scheduleUpdateSteps);
+        visualViewport?.addEventListener('resize', scheduleUpdateSteps);
 
         return () => {
             window.removeEventListener('resize', scheduleUpdateSteps);
             window.removeEventListener('orientationchange', scheduleUpdateSteps);
             window.removeEventListener('pageshow', scheduleUpdateSteps);
+            visualViewport?.removeEventListener('resize', scheduleUpdateSteps);
 
             if (layoutRafRef.current !== null) {
                 cancelAnimationFrame(layoutRafRef.current);
@@ -470,13 +474,17 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
             resizeRafRef.current = requestAnimationFrame(update);
         }
 
+        const visualViewport = window.visualViewport;
+
         update();
         window.addEventListener('resize', onResize);
         window.addEventListener('orientationchange', onResize);
+        visualViewport?.addEventListener('resize', onResize);
 
         return () => {
             window.removeEventListener('resize', onResize);
             window.removeEventListener('orientationchange', onResize);
+            visualViewport?.removeEventListener('resize', onResize);
             if (resizeRafRef.current !== null) {
                 cancelAnimationFrame(resizeRafRef.current);
             }
