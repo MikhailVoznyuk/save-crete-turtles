@@ -104,14 +104,9 @@ export default function Home() {
         );
 
         const roundPx = (value: number) => Math.round(Math.max(0, value) * 100) / 100;
-        const roundSignedPx = (value: number) => Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
 
         const setPxVar = (name: string, value: number) => {
             root.style.setProperty(name, `${roundPx(value)}px`);
-        };
-
-        const setSignedPxVar = (name: string, value: number) => {
-            root.style.setProperty(name, `${roundSignedPx(value)}px`);
         };
 
         const readProbe = (el: HTMLElement) => {
@@ -168,46 +163,27 @@ export default function Home() {
                 getPositiveNumber(window.innerHeight)
             );
 
-            const fullWidthCandidate = Math.round(maxPositive(
+            const safeTopInset = isTouchLike ? roundPx(Math.max(safeOffsetTop, safeAreaInsets.top)) : 0;
+            const safeLeftInset = isTouchLike ? roundPx(Math.max(safeOffsetLeft, safeAreaInsets.left)) : 0;
+            const safeRightInset = isTouchLike ? roundPx(safeAreaInsets.right) : 0;
+            const safeBottomInset = isTouchLike ? roundPx(safeAreaInsets.bottom) : 0;
+
+            const fullWidth = Math.round(maxPositive(
                 viewportRect.width,
                 largeRect.width,
                 getPositiveNumber(window.innerWidth),
                 getPositiveNumber(root.clientWidth),
                 outerWidth,
-                safeWidth + safeOffsetLeft,
+                safeWidth + safeLeftInset + safeRightInset,
             ));
 
-            const fullHeightCandidate = Math.round(maxPositive(
+            const fullHeight = Math.round(maxPositive(
                 viewportRect.height,
                 largeRect.height,
                 getPositiveNumber(window.innerHeight),
                 getPositiveNumber(root.clientHeight),
                 outerHeight,
-                safeHeight + safeOffsetTop,
-            ));
-
-            const topBleed = isTouchLike
-                ? roundPx(Math.max(safeOffsetTop, safeAreaInsets.top))
-                : 0;
-            const leftBleed = isTouchLike
-                ? roundPx(Math.max(safeOffsetLeft, safeAreaInsets.left))
-                : 0;
-            const rightBleed = isTouchLike ? roundPx(safeAreaInsets.right) : 0;
-            const fullWidth = Math.round(maxPositive(
-                fullWidthCandidate,
-                safeWidth + leftBleed + rightBleed,
-            ));
-            const fullHeight = Math.round(maxPositive(
-                fullHeightCandidate,
-                safeHeight + topBleed,
-            ));
-            const fullLayerWidth = Math.round(maxPositive(
-                fullWidth,
-                safeWidth + leftBleed + rightBleed,
-            ));
-            const fullLayerHeight = Math.round(maxPositive(
-                fullHeight,
-                safeHeight + topBleed,
+                safeHeight + safeTopInset + safeBottomInset,
             ));
 
             const signature = [
@@ -215,13 +191,12 @@ export default function Home() {
                 safeHeight,
                 safeOffsetLeft,
                 safeOffsetTop,
-                topBleed,
-                leftBleed,
-                rightBleed,
+                safeTopInset,
+                safeLeftInset,
+                safeRightInset,
+                safeBottomInset,
                 fullWidth,
                 fullHeight,
-                fullLayerWidth,
-                fullLayerHeight,
             ].map(roundPx).join('|');
 
             if (signature === lastSignature) return;
@@ -241,15 +216,15 @@ export default function Home() {
             setPxVar('--app-safe-viewport-offset-top', safeOffsetTop);
             setPxVar('--app-full-viewport-width', fullWidth);
             setPxVar('--app-full-viewport-height', fullHeight);
-            setPxVar('--app-full-layer-width', fullLayerWidth);
-            setPxVar('--app-full-layer-height', fullLayerHeight);
-            setSignedPxVar('--app-full-layer-top', -topBleed);
-            setSignedPxVar('--app-full-layer-left', -leftBleed);
+            setPxVar('--app-full-layer-width', fullWidth);
+            setPxVar('--app-full-layer-height', fullHeight);
+            setPxVar('--app-full-layer-top', 0);
+            setPxVar('--app-full-layer-left', 0);
 
-            setPxVar('--full-viewport-bleed-top', topBleed);
-            setPxVar('--full-viewport-bleed-right', rightBleed);
-            setPxVar('--full-viewport-bleed-bottom', Math.max(0, fullLayerHeight - safeHeight - topBleed));
-            setPxVar('--full-viewport-bleed-left', leftBleed);
+            setPxVar('--full-viewport-bleed-top', 0);
+            setPxVar('--full-viewport-bleed-right', Math.max(0, fullWidth - safeWidth - safeLeftInset));
+            setPxVar('--full-viewport-bleed-bottom', Math.max(0, fullHeight - safeHeight - safeTopInset));
+            setPxVar('--full-viewport-bleed-left', 0);
 
             setAppScrollVar();
 

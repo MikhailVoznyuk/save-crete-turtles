@@ -159,8 +159,8 @@ video {
 
 .fixed-video-bg {
   position: fixed;
-  top: var(--app-full-layer-top);
-  left: var(--app-full-layer-left);
+  top: 0;
+  left: 0;
   right: auto;
   bottom: auto;
   width: var(--app-full-layer-width);
@@ -169,11 +169,11 @@ video {
   min-height: 0;
   overflow: hidden;
   pointer-events: none;
-  contain: paint;
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
+
 
 .app-loading-overlay {
   width: var(--app-full-layer-width);
