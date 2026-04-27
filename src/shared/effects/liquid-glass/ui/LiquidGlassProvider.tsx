@@ -43,8 +43,8 @@ function getViewportMetrics() {
         };
     }
 
-    const cssFullW = readRootPxVar('--app-full-viewport-width');
-    const cssFullH = readRootPxVar('--app-full-viewport-height');
+    const cssFullW = readRootPxVar('--app-edge-viewport-width') || readRootPxVar('--app-full-viewport-width');
+    const cssFullH = readRootPxVar('--app-edge-viewport-height') || readRootPxVar('--app-full-viewport-height');
 
     if (cssFullW > 1 && cssFullH > 1) {
         return {
@@ -63,6 +63,13 @@ function getViewportMetrics() {
     };
 }
 
+function toCanvasX(value: number, canvasRect: DOMRect) {
+    return value - canvasRect.left;
+}
+
+function toCanvasY(value: number, canvasRect: DOMRect) {
+    return value - canvasRect.top;
+}
 function parseObjectPositionPart(part: string | undefined, fallback: number) {
     if (!part) return fallback;
 
@@ -703,17 +710,11 @@ export function LiquidGlassProvider({
         vpCssRef.current = { w: wCss, h: hCss };
         fbScaleRef.current = scale;
 
-        canvas.style.position = 'fixed';
-        canvas.style.left = '0px';
-        canvas.style.top = '0px';
         canvas.style.width = `${wCss}px`;
         canvas.style.height = `${hCss}px`;
         canvas.style.pointerEvents = 'none';
         canvas.style.zIndex = String(zIndex);
-        canvas.style.background = 'transparent';
         canvas.style.display = 'block';
-        canvas.style.transform = 'translate3d(0px, 0px, 0)';
-        canvas.style.willChange = 'transform';
         canvas.style.backfaceVisibility = 'hidden';
         canvas.style.webkitBackfaceVisibility = 'hidden';
 
@@ -796,6 +797,7 @@ export function LiquidGlassProvider({
             }
 
             const vp = vpCssRef.current;
+            const canvasRect = canvas.getBoundingClientRect();
             const viewportMargin = 96;
             const orderedLenses = [...mapRef.current.values()]
                 .filter((h) => h.enabledRef.current)
@@ -824,13 +826,17 @@ export function LiquidGlassProvider({
             for (const h of orderedLenses) {
                 const geometry = h.geometryRef?.current;
                 const domRect = (geometry?.rect ?? h.el.getBoundingClientRect()) as RectLike;
+                const rawLeft = domRect.left;
+                const rawTop = domRect.top;
+                const rawRight = domRect.right ?? domRect.left + domRect.width;
+                const rawBottom = domRect.bottom ?? domRect.top + domRect.height;
                 const rect = {
-                    left: domRect.left,
-                    top: domRect.top,
+                    left: toCanvasX(rawLeft, canvasRect),
+                    top: toCanvasY(rawTop, canvasRect),
                     width: domRect.width,
                     height: domRect.height,
-                    right: domRect.right ?? domRect.left + domRect.width,
-                    bottom: domRect.bottom ?? domRect.top + domRect.height,
+                    right: toCanvasX(rawRight, canvasRect),
+                    bottom: toCanvasY(rawBottom, canvasRect),
                 };
 
                 if (rect.width < 1 || rect.height < 1) continue;
@@ -864,7 +870,13 @@ export function LiquidGlassProvider({
                 const videoSizeChanged =
                     vid.videoWidth !== lastVideoSizeRef.current.w ||
                     vid.videoHeight !== lastVideoSizeRef.current.h;
-                const videoRect = getVideoMediaRect(vid);
+                const videoRectInViewport = getVideoMediaRect(vid);
+                const videoRect = {
+                    left: toCanvasX(videoRectInViewport.left, canvasRect),
+                    top: toCanvasY(videoRectInViewport.top, canvasRect),
+                    width: videoRectInViewport.width,
+                    height: videoRectInViewport.height,
+                };
                 const videoRectChanged = !nearlySameRect(videoRect, lastBgRectRef.current);
 
                 if (videoFrameChanged || videoSizeChanged || videoRectChanged || bgDirtyRef.current) {
@@ -918,10 +930,6 @@ export function LiquidGlassProvider({
             // pass 3: lenses to screen with stencil masks
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             gl.viewport(0, 0, canvas.width, canvas.height);
-
-            if (canvas.style.transform !== 'translate3d(0px, 0px, 0)') {
-                canvas.style.transform = 'translate3d(0px, 0px, 0)';
-            }
 
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -1253,28 +1261,37 @@ export function LiquidGlassProvider({
             emitLoadState('error');
         };
 
+        const getPointerCanvasCoords = (e: PointerEvent) => {
+            const canvasRect = canvas.getBoundingClientRect();
+            return {
+                x: toCanvasX(e.clientX, canvasRect),
+                y: toCanvasY(e.clientY, canvasRect),
+            };
+        };
+
         const handlePointerMove = (e: PointerEvent) => {
             const vp = vpCssRef.current;
-            pointerRef.current.x = e.clientX;
-            pointerRef.current.y = e.clientY;
+            const pointer = getPointerCanvasCoords(e);
+            pointerRef.current.x = pointer.x;
+            pointerRef.current.y = pointer.y;
             pointerRef.current.active = e.pointerType === 'touch' ? 0.85 : 0.55;
             pointerRef.current.lastT = performance.now();
 
-            lightRef.current.x = Math.max(-1, Math.min(1, (e.clientX / Math.max(1, vp.w)) * 2 - 1));
-            lightRef.current.y = Math.max(-1, Math.min(1, (e.clientY / Math.max(1, vp.h)) * 2 - 1));
+            lightRef.current.x = Math.max(-1, Math.min(1, (pointer.x / Math.max(1, vp.w)) * 2 - 1));
+            lightRef.current.y = Math.max(-1, Math.min(1, (pointer.y / Math.max(1, vp.h)) * 2 - 1));
         };
 
         const handlePointerDown = (e: PointerEvent) => {
             const vp = vpCssRef.current;
-            pointerRef.current.x = e.clientX;
-            pointerRef.current.y = e.clientY;
+            const pointer = getPointerCanvasCoords(e);
+            pointerRef.current.x = pointer.x;
+            pointerRef.current.y = pointer.y;
             pointerRef.current.active = 1;
             pointerRef.current.lastT = performance.now();
 
-            lightRef.current.x = Math.max(-1, Math.min(1, (e.clientX / Math.max(1, vp.w)) * 2 - 1));
-            lightRef.current.y = Math.max(-1, Math.min(1, (e.clientY / Math.max(1, vp.h)) * 2 - 1));
+            lightRef.current.x = Math.max(-1, Math.min(1, (pointer.x / Math.max(1, vp.w)) * 2 - 1));
+            lightRef.current.y = Math.max(-1, Math.min(1, (pointer.y / Math.max(1, vp.h)) * 2 - 1));
         };
-
         canvas.addEventListener('webglcontextlost', handleContextLost as EventListener, false);
 
         window.addEventListener('pointermove', handlePointerMove, { passive: true });
@@ -1328,21 +1345,16 @@ export function LiquidGlassProvider({
 
     return (
         <LiquidGlassRegistryProvider register={ctxValue} visualRootRef={visualRootRef}>
-            <canvas ref={canvasRef} aria-hidden />
+            <canvas ref={canvasRef} className="liquid-glass-canvas" aria-hidden />
             <div style={{ position: 'relative', zIndex: zIndex + 1 }}>
                 {children}
                 <div
                     ref={visualRootRef}
                     aria-hidden={false}
+                    className="liquid-glass-visual-root"
                     style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        width: 'var(--app-full-viewport-width, 100vw)',
-                        height: 'var(--app-full-viewport-height, 100vh)',
                         pointerEvents: 'none',
                         zIndex: 0,
-                        contain: 'layout style paint',
                     }}
                 />
             </div>
