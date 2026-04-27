@@ -51,6 +51,7 @@ const MAX_REPULSOR_SPEED_PX_PER_FRAME = 14;
 const FONT_READY_TIMEOUT_MS = 2400;
 const SNAPSHOT_RETRY_DELAY_MS = 140;
 const SNAPSHOT_FALLBACK_AFTER_MS = 5000;
+const FIRST_RENDER_FALLBACK_AFTER_MS = 6500;
 
 function delay(ms: number) {
     return new Promise<void>((resolve) => {
@@ -497,6 +498,7 @@ export function HeroDustText({
         let firstSnapshotReady = false;
         let firstFrameRendered = false;
         let snapshotRetryTimeout = 0;
+        let firstRenderFallbackTimeout = 0;
         let firstSnapshotAttemptTime = 0;
         let fallbackReported = false;
         let renderFailed = false;
@@ -508,9 +510,17 @@ export function HeroDustText({
             }
         };
 
+        const clearFirstRenderFallback = () => {
+            if (firstRenderFallbackTimeout !== 0) {
+                window.clearTimeout(firstRenderFallbackTimeout);
+                firstRenderFallbackTimeout = 0;
+            }
+        };
+
         const reportFallbackOnce = () => {
             if (fallbackReported || firstFrameRendered) return;
             fallbackReported = true;
+            clearFirstRenderFallback();
             onLoadStateChange?.('error');
         };
 
@@ -521,6 +531,11 @@ export function HeroDustText({
         };
 
         renderer.domElement.addEventListener('webglcontextlost', handleRendererContextLost, false);
+
+        firstRenderFallbackTimeout = window.setTimeout(() => {
+            if (disposed || firstFrameRendered) return;
+            reportFallbackOnce();
+        }, FIRST_RENDER_FALLBACK_AFTER_MS);
 
         const syncViewportBounds = (snapshotWidth = state.width, snapshotHeight = state.height) => {
             if (snapshotWidth < 1 || snapshotHeight < 1) return;
@@ -860,6 +875,7 @@ export function HeroDustText({
 
             if (firstSnapshotReady && !firstFrameRendered) {
                 firstFrameRendered = true;
+                clearFirstRenderFallback();
                 onLoadStateChange?.('ready');
             }
         };
@@ -875,6 +891,7 @@ export function HeroDustText({
             resizeObserver.disconnect();
             renderer.domElement.removeEventListener('webglcontextlost', handleRendererContextLost, false);
             clearSnapshotRetry();
+            clearFirstRenderFallback();
             window.cancelAnimationFrame(animationFrame);
             window.cancelAnimationFrame(resizeFrame);
             window.cancelAnimationFrame(initFrame1);

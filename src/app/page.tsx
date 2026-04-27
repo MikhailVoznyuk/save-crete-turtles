@@ -41,7 +41,9 @@ export default function Home() {
         const visualViewport = window.visualViewport;
         const host = document.body || root;
         let frame = 0;
+        let scrollFrame = 0;
         let lastSignature = '';
+        let lastScrollY = -1;
 
         const baseProbeStyle = [
             'position:fixed',
@@ -106,12 +108,22 @@ export default function Home() {
 
         const maxPositive = (...values: number[]) => Math.max(0, ...values.filter((value) => value > 0));
 
+        const setAppScrollVar = () => {
+            const scrollY = roundPx(window.scrollY || window.pageYOffset || 0);
+            if (scrollY === lastScrollY) return;
+            lastScrollY = scrollY;
+            setPxVar('--app-scroll-y', scrollY);
+        };
+
         const setAppViewportVars = () => {
             const safeRect = readProbe(safeProbe);
             const viewportRect = readProbe(viewportProbe);
             const largeRect = readProbe(largeProbe);
             const safeOffsetTop = roundPx(getPositiveNumber(visualViewport?.offsetTop));
             const safeOffsetLeft = roundPx(getPositiveNumber(visualViewport?.offsetLeft));
+            const isTouchLike = window.matchMedia?.('(hover: none) and (pointer: coarse)')?.matches ?? false;
+            const outerWidth = isTouchLike ? getPositiveNumber(window.outerWidth) : 0;
+            const outerHeight = isTouchLike ? getPositiveNumber(window.outerHeight) : 0;
 
             const safeWidth = Math.round(
                 getPositiveNumber(visualViewport?.width) ||
@@ -132,6 +144,7 @@ export default function Home() {
                 largeRect.width,
                 getPositiveNumber(window.innerWidth),
                 getPositiveNumber(root.clientWidth),
+                outerWidth,
                 safeWidth + safeOffsetLeft,
             ));
 
@@ -140,6 +153,7 @@ export default function Home() {
                 largeRect.height,
                 getPositiveNumber(window.innerHeight),
                 getPositiveNumber(root.clientHeight),
+                outerHeight,
                 safeHeight + safeOffsetTop,
             ));
 
@@ -175,6 +189,8 @@ export default function Home() {
             setPxVar('--full-viewport-bleed-bottom', 0);
             setPxVar('--full-viewport-bleed-left', 0);
 
+            setAppScrollVar();
+
             window.dispatchEvent(new Event('appviewportchange'));
         };
 
@@ -187,10 +203,21 @@ export default function Home() {
             });
         };
 
+        const scheduleSetAppScrollVar = () => {
+            if (scrollFrame !== 0) return;
+
+            scrollFrame = window.requestAnimationFrame(() => {
+                scrollFrame = 0;
+                setAppScrollVar();
+            });
+        };
+
         setAppViewportVars();
+        setAppScrollVar();
         window.addEventListener('resize', scheduleSetAppViewportVars, {passive: true});
         window.addEventListener('orientationchange', scheduleSetAppViewportVars);
         window.addEventListener('pageshow', scheduleSetAppViewportVars);
+        window.addEventListener('scroll', scheduleSetAppScrollVar, {passive: true});
         visualViewport?.addEventListener('resize', scheduleSetAppViewportVars);
         visualViewport?.addEventListener('scroll', scheduleSetAppViewportVars);
 
@@ -198,6 +225,7 @@ export default function Home() {
             window.removeEventListener('resize', scheduleSetAppViewportVars);
             window.removeEventListener('orientationchange', scheduleSetAppViewportVars);
             window.removeEventListener('pageshow', scheduleSetAppViewportVars);
+            window.removeEventListener('scroll', scheduleSetAppScrollVar);
             visualViewport?.removeEventListener('resize', scheduleSetAppViewportVars);
             visualViewport?.removeEventListener('scroll', scheduleSetAppViewportVars);
 
@@ -207,6 +235,10 @@ export default function Home() {
 
             if (frame !== 0) {
                 window.cancelAnimationFrame(frame);
+            }
+
+            if (scrollFrame !== 0) {
+                window.cancelAnimationFrame(scrollFrame);
             }
         };
     }, []);
