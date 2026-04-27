@@ -42,7 +42,7 @@ export function HomeLoadingOverlay({isLoaded, className}: HomeLoadingOverlayProp
             <div className='absolute inset-0 bg-white/10 backdrop-blur-[48px]'
                  style={{WebkitBackdropFilter: 'blur(48px)'}}
             />
-            <div className='relative size-full flex items-center justify-center'>
+            <div className='app-loading-overlay__content flex items-center justify-center'>
                 <LoadingBlock isLoaded={isLoaded} />
             </div>
 
