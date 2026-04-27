@@ -13,6 +13,10 @@
   --app-scroll-y: 0px;
   --app-full-viewport-width: 100vw;
   --app-full-viewport-height: calc(var(--app-full-vh) * 100);
+  --app-full-layer-width: var(--app-full-viewport-width);
+  --app-full-layer-height: var(--app-full-viewport-height);
+  --app-full-layer-top: 0px;
+  --app-full-layer-left: 0px;
   --safe-area-inset-top: 0px;
   --safe-area-inset-right: 0px;
   --safe-area-inset-bottom: 0px;
@@ -155,12 +159,12 @@ video {
 
 .fixed-video-bg {
   position: fixed;
-  top: 0;
-  left: 0;
+  top: var(--app-full-layer-top);
+  left: var(--app-full-layer-left);
   right: auto;
   bottom: auto;
-  width: var(--app-full-viewport-width);
-  height: var(--app-full-viewport-height);
+  width: var(--app-full-layer-width);
+  height: var(--app-full-layer-height);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -172,16 +176,16 @@ video {
 }
 
 .app-loading-overlay {
-  width: var(--app-full-viewport-width);
-  height: var(--app-full-viewport-height);
+  width: var(--app-full-layer-width);
+  height: var(--app-full-layer-height);
 }
 
 @media (hover: none) and (pointer: coarse) {
   .fixed-video-bg,
   .app-loading-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
+    top: var(--app-full-layer-top);
+    left: var(--app-full-layer-left);
     right: auto;
     bottom: auto;
     transform: translate3d(0, var(--app-scroll-y), 0);
