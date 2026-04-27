@@ -168,8 +168,8 @@ video {
 .liquid-glass-canvas,
 .liquid-glass-visual-root {
   position: fixed;
-  top: 0;
-  left: 0;
+  top: var(--app-edge-viewport-top);
+  left: var(--app-edge-viewport-left);
   right: auto;
   bottom: auto;
   width: var(--app-edge-viewport-width);
@@ -189,6 +189,7 @@ video {
   min-height: 0;
   overflow: hidden;
   transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 .app-loading-overlay {
@@ -197,8 +198,8 @@ video {
 
 .app-loading-overlay__content {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: var(--app-edge-content-top);
+  left: var(--app-edge-content-left);
   width: var(--app-safe-viewport-width);
   height: var(--app-safe-viewport-height);
 }
@@ -217,28 +218,22 @@ video {
   contain: layout style;
 }
 
-@media (hover: none) and (pointer: coarse) {
-  .fixed-video-bg,
-  .app-loading-overlay,
-  .liquid-glass-canvas,
-  .liquid-glass-visual-root {
-    position: absolute;
-    top: var(--app-edge-viewport-top);
-    left: var(--app-edge-viewport-left);
-    right: auto;
-    bottom: auto;
-    transform: translate3d(var(--app-scroll-x), var(--app-scroll-y), 0);
-    will-change: transform;
-  }
-
-  .app-loading-overlay__content {
-    top: var(--app-edge-content-top);
-    left: var(--app-edge-content-left);
-  }
-}
-
-.fixed-video-bg__video {
+.fixed-video-bg__video,
+.fixed-video-bg__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+.fixed-video-bg__video {
+  z-index: 0;
+}
+
+.fixed-video-bg__canvas {
+  z-index: 1;
+  pointer-events: none;
 }

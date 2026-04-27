@@ -28,6 +28,7 @@ export function Background({
     onLoadStateChange,
 }: BackgroundProps) {
     const localVideoRef = useRef<HTMLVideoElement | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const hasSources = (sources?.length ?? 0) > 0;
 
     const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
@@ -51,6 +52,151 @@ export function Background({
 
         return stabilizeInlineVideo(video, {keepPlaying: true});
     }, [sourcesKey, videoSrc]);
+
+
+    useEffect(() => {
+        if (!fixed) return;
+
+        const video = localVideoRef.current;
+        const canvas = canvasRef.current;
+        const host = canvas?.parentElement;
+        const ctx = canvas?.getContext('2d');
+
+        if (!video || !canvas || !host || !ctx) return;
+
+        type VideoWithFrameCallback = HTMLVideoElement & {
+            requestVideoFrameCallback?: (callback: (now: DOMHighResTimeStamp, metadata: unknown) => void) => number;
+            cancelVideoFrameCallback?: (handle: number) => void;
+        };
+
+        let disposed = false;
+        let rafId = 0;
+        let frameCallbackId = 0;
+        const frameVideo = video as VideoWithFrameCallback;
+
+        const parsePositionPart = (part: string | undefined, fallback: number) => {
+            if (!part) return fallback;
+
+            const normalized = part.trim().toLowerCase();
+            if (normalized === 'left' || normalized === 'top') return 0;
+            if (normalized === 'center') return 0.5;
+            if (normalized === 'right' || normalized === 'bottom') return 1;
+
+            if (normalized.endsWith('%')) {
+                const value = Number.parseFloat(normalized);
+                return Number.isFinite(value) ? value / 100 : fallback;
+            }
+
+            return fallback;
+        };
+
+        const draw = () => {
+            if (disposed || video.videoWidth <= 0 || video.videoHeight <= 0) return;
+
+            const rect = host.getBoundingClientRect();
+            const cssWidth = Math.max(1, rect.width);
+            const cssHeight = Math.max(1, rect.height);
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const nextWidth = Math.max(1, Math.round(cssWidth * dpr));
+            const nextHeight = Math.max(1, Math.round(cssHeight * dpr));
+
+            if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
+                canvas.width = nextWidth;
+                canvas.height = nextHeight;
+            }
+
+            const objectPosition = getComputedStyle(video).objectPosition || '50% 50%';
+            const [xPart, yPart] = objectPosition.split(/\s+/);
+            const posX = parsePositionPart(xPart, 0.5);
+            const posY = parsePositionPart(yPart, 0.5);
+            const mediaScale = Math.max(cssWidth / video.videoWidth, cssHeight / video.videoHeight);
+            const mediaWidth = video.videoWidth * mediaScale;
+            const mediaHeight = video.videoHeight * mediaScale;
+            const dx = (cssWidth - mediaWidth) * posX;
+            const dy = (cssHeight - mediaHeight) * posY;
+
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+            try {
+                ctx.drawImage(video, dx, dy, mediaWidth, mediaHeight);
+            } catch {
+                ctx.clearRect(0, 0, cssWidth, cssHeight);
+            }
+        };
+
+        const requestNextFrame = () => {
+            if (disposed) return;
+
+            if (frameVideo.requestVideoFrameCallback) {
+                frameCallbackId = frameVideo.requestVideoFrameCallback(() => {
+                    frameCallbackId = 0;
+                    draw();
+                    requestNextFrame();
+                });
+                return;
+            }
+
+            rafId = requestAnimationFrame(() => {
+                rafId = 0;
+                draw();
+                requestNextFrame();
+            });
+        };
+
+        const scheduleDraw = () => {
+            if (disposed || rafId !== 0) return;
+
+            rafId = requestAnimationFrame(() => {
+                rafId = 0;
+                draw();
+            });
+        };
+
+        const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(scheduleDraw) : null;
+        resizeObserver?.observe(host);
+
+        const drawEvents: Array<keyof HTMLMediaElementEventMap> = [
+            'loadedmetadata',
+            'loadeddata',
+            'canplay',
+            'playing',
+            'seeked',
+            'timeupdate',
+        ];
+
+        for (const eventName of drawEvents) {
+            video.addEventListener(eventName, scheduleDraw);
+        }
+
+        window.addEventListener('resize', scheduleDraw, {passive: true});
+        window.addEventListener('orientationchange', scheduleDraw);
+        window.addEventListener('appviewportchange', scheduleDraw);
+
+        draw();
+        requestNextFrame();
+
+        return () => {
+            disposed = true;
+            resizeObserver?.disconnect();
+
+            for (const eventName of drawEvents) {
+                video.removeEventListener(eventName, scheduleDraw);
+            }
+
+            window.removeEventListener('resize', scheduleDraw);
+            window.removeEventListener('orientationchange', scheduleDraw);
+            window.removeEventListener('appviewportchange', scheduleDraw);
+
+            if (frameCallbackId !== 0 && frameVideo.cancelVideoFrameCallback) {
+                frameVideo.cancelVideoFrameCallback(frameCallbackId);
+            }
+
+            if (rafId !== 0) {
+                cancelAnimationFrame(rafId);
+            }
+        };
+    }, [fixed, sourcesKey, videoSrc, objectPos?.x, objectPos?.y, videoSize.w, videoSize.h]);
 
     useEffect(() => {
         const video = localVideoRef.current;
@@ -216,6 +362,7 @@ export function Background({
 
     return (
         <div className={`${fixed ? 'fixed-video-bg' : 'absolute inset-0'} z-0 overflow-hidden pointer-events-none`} aria-hidden>
+            {fixed && <canvas ref={canvasRef} className='fixed-video-bg__canvas' aria-hidden />}
             <video
                 src={hasSources ? undefined : videoSrc}
                 ref={setVideoRef}
