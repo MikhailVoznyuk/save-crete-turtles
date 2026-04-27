@@ -1,6 +1,6 @@
 'use client';
 
-import {ReactNode, useEffect, useId, useState} from "react";
+import {ReactNode, useCallback, useEffect, useId, useState} from "react";
 import {createPortal} from "react-dom";
 import {LayoutGroup, AnimatePresence, motion} from "framer-motion";
 import {twMerge} from "tailwind-merge";
@@ -27,11 +27,12 @@ export function MediaModal({preview, content, previewClassName, contentClassName
     const id = useId();
     const layoutId = `media-${id}`;
 
-    const open = () => {
+    const open = useCallback(() => {
         setHidePreview(true);
         setOpened(true);
-    }
-    const close = () => setOpened(false);
+    }, []);
+
+    const close = useCallback(() => setOpened(false), []);
 
     const args: MediaModalRenderArgs = {
         layoutId,
@@ -53,7 +54,7 @@ export function MediaModal({preview, content, previewClassName, contentClassName
         }
 
         const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setOpened(false);
+            if (e.key === 'Escape') close();
         };
 
         window.addEventListener('keydown', onKeyDown);
@@ -63,20 +64,19 @@ export function MediaModal({preview, content, previewClassName, contentClassName
             document.body.style.overflow = prevOverflow;
             document.body.style.paddingRight = prevPaddingRight;
         };
-    }, [opened]);
+    }, [opened, close]);
 
     return (
         <LayoutGroup id={layoutId}>
-            <motion.div
+            <div
                 className={twMerge(previewClassName)}
-                onClick={() => setOpened(true)}
+                onClick={open}
                 style={{
-                    visibility: (hidePreview) ? 'hidden' : 'visible',
-                    opacity: opened ? 0 : 1,
+                    opacity: (opened ? 0 : 1)
                 }}
             >
                 {preview(args)}
-            </motion.div>
+            </div>
 
             {typeof window !== 'undefined' && createPortal(
                 <AnimatePresence
@@ -107,11 +107,11 @@ export function MediaModal({preview, content, previewClassName, contentClassName
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         {content(args)}
-                                        <CloseButton
-                                            onClick={close}
-                                            className='absolute top-2 right-2'
-                                        />
                                     </div>
+                                    <CloseButton
+                                        onClick={close}
+                                        className='absolute top-2 right-2 z-20'
+                                    />
                                 </div>
                             </div>
                         </motion.div>

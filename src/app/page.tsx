@@ -45,6 +45,11 @@ export default function Home() {
         let lastSignature = '';
         let lastScrollX = -1;
         let lastScrollY = -1;
+        let stableViewportKey = '';
+        let stableFullWidth = 0;
+        let stableFullHeight = 0;
+        let stableEdgeTop = 0;
+        let stableEdgeLeft = 0;
 
         const baseProbeStyle = [
             'position:fixed',
@@ -166,6 +171,8 @@ export default function Home() {
             const safeAreaInsets = readSafeAreaInsets();
             const safeOffsetTop = roundPx(getPositiveNumber(visualViewport?.offsetTop));
             const safeOffsetLeft = roundPx(getPositiveNumber(visualViewport?.offsetLeft));
+            const visualPageTop = roundPx(Math.max(0, getPositiveNumber(visualViewport?.pageTop) - getPositiveNumber(window.scrollY || window.pageYOffset || 0)));
+            const visualPageLeft = roundPx(Math.max(0, getPositiveNumber(visualViewport?.pageLeft) - getPositiveNumber(window.scrollX || window.pageXOffset || 0)));
             const isTouchLike = isTouchViewport();
             const outerWidth = isTouchLike ? getPositiveNumber(window.outerWidth) : 0;
             const outerHeight = isTouchLike ? getPositiveNumber(window.outerHeight) : 0;
@@ -184,12 +191,12 @@ export default function Home() {
                 getPositiveNumber(window.innerHeight)
             );
 
-            const edgeTop = isTouchLike ? roundPx(Math.max(safeOffsetTop, safeAreaInsets.top)) : 0;
-            const edgeLeft = isTouchLike ? roundPx(Math.max(safeOffsetLeft, safeAreaInsets.left)) : 0;
+            const edgeTop = isTouchLike ? roundPx(Math.max(safeOffsetTop, visualPageTop, safeAreaInsets.top)) : 0;
+            const edgeLeft = isTouchLike ? roundPx(Math.max(safeOffsetLeft, visualPageLeft, safeAreaInsets.left)) : 0;
             const safeRightInset = isTouchLike ? roundPx(safeAreaInsets.right) : 0;
             const safeBottomInset = isTouchLike ? roundPx(safeAreaInsets.bottom) : 0;
 
-            const fullWidth = Math.round(maxPositive(
+            const fullWidthCandidate = Math.round(maxPositive(
                 viewportRect.width,
                 largeRect.width,
                 getPositiveNumber(window.innerWidth),
@@ -198,7 +205,7 @@ export default function Home() {
                 safeWidth + edgeLeft + safeRightInset,
             ));
 
-            const fullHeight = Math.round(maxPositive(
+            const fullHeightCandidate = Math.round(maxPositive(
                 viewportRect.height,
                 largeRect.height,
                 getPositiveNumber(window.innerHeight),
@@ -207,18 +214,43 @@ export default function Home() {
                 safeHeight + edgeTop + safeBottomInset,
             ));
 
-            const edgeBottom = roundPx(Math.max(0, fullHeight - safeHeight - edgeTop));
-            const edgeRight = roundPx(Math.max(0, fullWidth - safeWidth - edgeLeft));
-            const edgeTopForLayer = isTouchLike ? edgeTop : 0;
-            const edgeLeftForLayer = isTouchLike ? edgeLeft : 0;
+            const viewportKey = [
+                isTouchLike ? 'touch' : 'fine',
+                screen.orientation?.type || (window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'),
+                Math.round(screen.width || 0),
+                Math.round(screen.height || 0),
+            ].join('|');
+
+            if (viewportKey !== stableViewportKey) {
+                stableViewportKey = viewportKey;
+                stableFullWidth = 0;
+                stableFullHeight = 0;
+                stableEdgeTop = 0;
+                stableEdgeLeft = 0;
+                lastSignature = '';
+            }
+
+            stableFullWidth = Math.max(stableFullWidth, fullWidthCandidate);
+            stableFullHeight = Math.max(stableFullHeight, fullHeightCandidate);
+            stableEdgeTop = Math.max(stableEdgeTop, edgeTop);
+            stableEdgeLeft = Math.max(stableEdgeLeft, edgeLeft);
+
+            const fullWidth = isTouchLike ? stableFullWidth : fullWidthCandidate;
+            const fullHeight = isTouchLike ? stableFullHeight : fullHeightCandidate;
+            const edgeTopForLayer = isTouchLike ? stableEdgeTop : 0;
+            const edgeLeftForLayer = isTouchLike ? stableEdgeLeft : 0;
+            const edgeBottom = roundPx(Math.max(0, fullHeight - safeHeight - edgeTopForLayer));
+            const edgeRight = roundPx(Math.max(0, fullWidth - safeWidth - edgeLeftForLayer));
 
             const signature = [
                 safeWidth,
                 safeHeight,
                 safeOffsetLeft,
                 safeOffsetTop,
-                edgeTop,
-                edgeLeft,
+                visualPageLeft,
+                visualPageTop,
+                edgeTopForLayer,
+                edgeLeftForLayer,
                 edgeRight,
                 edgeBottom,
                 fullWidth,
