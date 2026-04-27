@@ -55,13 +55,16 @@ export default function Home() {
         ].join(';');
 
         const safeProbe = document.createElement('div');
-        const fullProbe = document.createElement('div');
+        const viewportProbe = document.createElement('div');
+        const largeProbe = document.createElement('div');
 
         safeProbe.setAttribute('aria-hidden', 'true');
-        fullProbe.setAttribute('aria-hidden', 'true');
+        viewportProbe.setAttribute('aria-hidden', 'true');
+        largeProbe.setAttribute('aria-hidden', 'true');
 
         safeProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
-        fullProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
+        viewportProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
+        largeProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
 
         if (typeof CSS !== 'undefined') {
             if (CSS.supports('width', '100svw')) {
@@ -73,15 +76,15 @@ export default function Home() {
             }
 
             if (CSS.supports('width', '100lvw')) {
-                fullProbe.style.width = '100lvw';
+                largeProbe.style.width = '100lvw';
             }
 
             if (CSS.supports('height', '100lvh')) {
-                fullProbe.style.height = '100lvh';
+                largeProbe.style.height = '100lvh';
             }
         }
 
-        host.append(safeProbe, fullProbe);
+        host.append(safeProbe, viewportProbe, largeProbe);
 
         const getPositiveNumber = (value: number | undefined | null) => (
             typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0
@@ -101,41 +104,50 @@ export default function Home() {
             };
         };
 
+        const maxPositive = (...values: number[]) => Math.max(0, ...values.filter((value) => value > 0));
+
         const setAppViewportVars = () => {
             const safeRect = readProbe(safeProbe);
-            const fullRect = readProbe(fullProbe);
+            const viewportRect = readProbe(viewportProbe);
+            const largeRect = readProbe(largeProbe);
+            const safeOffsetTop = roundPx(getPositiveNumber(visualViewport?.offsetTop));
+            const safeOffsetLeft = roundPx(getPositiveNumber(visualViewport?.offsetLeft));
 
             const safeWidth = Math.round(
-                safeRect.width ||
                 getPositiveNumber(visualViewport?.width) ||
+                safeRect.width ||
                 getPositiveNumber(root.clientWidth) ||
                 getPositiveNumber(window.innerWidth)
             );
 
             const safeHeight = Math.round(
-                safeRect.height ||
                 getPositiveNumber(visualViewport?.height) ||
+                safeRect.height ||
                 getPositiveNumber(root.clientHeight) ||
                 getPositiveNumber(window.innerHeight)
             );
 
-            const fullWidth = Math.round(
-                fullRect.width ||
-                getPositiveNumber(window.innerWidth) ||
-                getPositiveNumber(root.clientWidth) ||
-                safeWidth
-            );
+            const fullWidth = Math.round(maxPositive(
+                viewportRect.width,
+                largeRect.width,
+                getPositiveNumber(window.innerWidth),
+                getPositiveNumber(root.clientWidth),
+                safeWidth + safeOffsetLeft,
+            ));
 
-            const fullHeight = Math.round(
-                fullRect.height ||
-                getPositiveNumber(window.innerHeight) ||
-                getPositiveNumber(root.clientHeight) ||
-                safeHeight
-            );
+            const fullHeight = Math.round(maxPositive(
+                viewportRect.height,
+                largeRect.height,
+                getPositiveNumber(window.innerHeight),
+                getPositiveNumber(root.clientHeight),
+                safeHeight + safeOffsetTop,
+            ));
 
             const signature = [
                 safeWidth,
                 safeHeight,
+                safeOffsetLeft,
+                safeOffsetTop,
                 fullWidth,
                 fullHeight,
             ].map(roundPx).join('|');
@@ -153,6 +165,8 @@ export default function Home() {
 
             setPxVar('--app-safe-viewport-width', safeWidth);
             setPxVar('--app-safe-viewport-height', safeHeight);
+            setPxVar('--app-safe-viewport-offset-left', safeOffsetLeft);
+            setPxVar('--app-safe-viewport-offset-top', safeOffsetTop);
             setPxVar('--app-full-viewport-width', fullWidth);
             setPxVar('--app-full-viewport-height', fullHeight);
 
@@ -188,7 +202,8 @@ export default function Home() {
             visualViewport?.removeEventListener('scroll', scheduleSetAppViewportVars);
 
             safeProbe.remove();
-            fullProbe.remove();
+            viewportProbe.remove();
+            largeProbe.remove();
 
             if (frame !== 0) {
                 window.cancelAnimationFrame(frame);
