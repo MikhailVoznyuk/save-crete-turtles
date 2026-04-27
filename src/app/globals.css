@@ -10,6 +10,7 @@
   --app-safe-viewport-height: calc(var(--app-vh) * 100);
   --app-safe-viewport-offset-top: 0px;
   --app-safe-viewport-offset-left: 0px;
+  --app-scroll-y: 0px;
   --app-full-viewport-width: 100vw;
   --app-full-viewport-height: calc(var(--app-full-vh) * 100);
   --safe-area-inset-top: 0px;
@@ -168,6 +169,24 @@ video {
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+.app-loading-overlay {
+  width: var(--app-full-viewport-width);
+  height: var(--app-full-viewport-height);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .fixed-video-bg,
+  .app-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: auto;
+    bottom: auto;
+    transform: translate3d(0, var(--app-scroll-y), 0);
+    will-change: transform;
+  }
 }
 
 

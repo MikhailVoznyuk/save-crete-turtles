@@ -34,7 +34,7 @@ export function HomeLoadingOverlay({isLoaded, className}: HomeLoadingOverlayProp
             aria-live='polite'
             aria-hidden={isLoaded}
             className={twMerge(
-                'fixed inset-0 z-[999] transition-opacity duration-500',
+                'fixed inset-0 app-loading-overlay z-[999] transition-opacity duration-500',
                 !isLoaded ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
                 className,
             )}
