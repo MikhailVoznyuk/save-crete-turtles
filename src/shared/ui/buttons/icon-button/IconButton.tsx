@@ -13,7 +13,7 @@ type Props = {
     alt?: string;
 }
 
-const base = 'size-10 sm:size-12 cursor-pointer ';
+const base = 'size-12 sm:size-16 cursor-pointer ';
 const childrenBase = 'size-full flex justify-center items-center'
 
 export function IconButton({onClick, icon, variant='secondary', alt, rounded=true, rotate,  className}: Props) {
@@ -23,7 +23,7 @@ export function IconButton({onClick, icon, variant='secondary', alt, rounded=tru
         src={icon}
         width={128}
         height={128}
-        className='size-8 sm:size-10 transition-transform duration-300'
+        className='size-8 sm:size-12 transition-transform duration-300'
         style={(rotate !== undefined) ? {
             transform: `rotate(${rotate}deg)`
         } : {}}
@@ -60,7 +60,7 @@ export function IconButton({onClick, icon, variant='secondary', alt, rounded=tru
         <button
             type='button'
             onClick={onClick}
-            className='size-10 sm:size-12 cursor-pointer overflow-hidden group/iconBtn'
+            className='size-12 sm:size-14 cursor-pointer overflow-hidden group/iconBtn'
         >
             {btnChildren}
         </button>

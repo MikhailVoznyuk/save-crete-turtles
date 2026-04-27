@@ -59,10 +59,9 @@ export function Background({
 
         const video = localVideoRef.current;
         const canvas = canvasRef.current;
-        const host = canvas?.parentElement;
         const ctx = canvas?.getContext('2d');
 
-        if (!video || !canvas || !host || !ctx) return;
+        if (!video || !canvas || !ctx) return;
 
         type VideoWithFrameCallback = HTMLVideoElement & {
             requestVideoFrameCallback?: (callback: (now: DOMHighResTimeStamp, metadata: unknown) => void) => number;
@@ -93,7 +92,7 @@ export function Background({
         const draw = () => {
             if (disposed || video.videoWidth <= 0 || video.videoHeight <= 0) return;
 
-            const rect = host.getBoundingClientRect();
+            const rect = canvas.getBoundingClientRect();
             const cssWidth = Math.max(1, rect.width);
             const cssHeight = Math.max(1, rect.height);
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -154,7 +153,7 @@ export function Background({
         };
 
         const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(scheduleDraw) : null;
-        resizeObserver?.observe(host);
+        resizeObserver?.observe(canvas);
 
         const drawEvents: Array<keyof HTMLMediaElementEventMap> = [
             'loadedmetadata',
@@ -361,34 +360,36 @@ export function Background({
     }, [sourcesKey, videoSrc, onLoadStateChange]);
 
     return (
-        <div className={`${fixed ? 'fixed-video-bg' : 'absolute inset-0'} z-0 overflow-hidden pointer-events-none`} aria-hidden>
-            {fixed && <canvas ref={canvasRef} className='fixed-video-bg__canvas' aria-hidden />}
-            <video
-                src={hasSources ? undefined : videoSrc}
-                ref={setVideoRef}
-                className='absolute inset-0 h-full w-full object-cover pointer-events-none select-none fixed-video-bg__video'
-                style={objectPos ? {
-                    objectPosition: `${objectPos.x / videoSize?.w * 100}% ${objectPos.y / videoSize?.h * 100}%`
-                } : {}}
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload={fixed ? 'auto' : 'metadata'}
-                disablePictureInPicture
-                controls={false}
-                aria-hidden
-                tabIndex={-1}
-            >
-                {sources?.map((source) => (
-                    <source
-                        key={`${source.media || 'default'}-${source.src}`}
-                        src={source.src}
-                        media={source.media}
-                        type={source.type || 'video/mp4'}
-                    />
-                ))}
-            </video>
-        </div>
+        <>
+            {fixed && <canvas ref={canvasRef} className='edge-video-bg' aria-hidden />}
+            <div className={`${fixed ? 'fixed-video-bg' : 'absolute inset-0'} z-0 overflow-hidden pointer-events-none`} aria-hidden>
+                <video
+                    src={hasSources ? undefined : videoSrc}
+                    ref={setVideoRef}
+                    className='absolute inset-0 h-full w-full object-cover pointer-events-none select-none fixed-video-bg__video'
+                    style={objectPos ? {
+                        objectPosition: `${objectPos.x / videoSize?.w * 100}% ${objectPos.y / videoSize?.h * 100}%`
+                    } : {}}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    preload={fixed ? 'auto' : 'metadata'}
+                    disablePictureInPicture
+                    controls={false}
+                    aria-hidden
+                    tabIndex={-1}
+                >
+                    {sources?.map((source) => (
+                        <source
+                            key={`${source.media || 'default'}-${source.src}`}
+                            src={source.src}
+                            media={source.media}
+                            type={source.type || 'video/mp4'}
+                        />
+                    ))}
+                </video>
+            </div>
+        </>
     );
 }

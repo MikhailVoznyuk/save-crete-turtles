@@ -1,0 +1,1 @@
+export {AppNavigation} from "@/widgets/app-navigation/ui/AppNavigation";
