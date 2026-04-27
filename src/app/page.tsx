@@ -1,16 +1,17 @@
 'use client';
 
+import React from 'react';
 import {useCallback, useEffect, useMemo, useRef} from 'react';
 import {HeroBlock} from '@/widgets/hero-block';
 import {FactCardsSection} from '@/widgets/cards-section';
 import {StepsSection} from '@/widgets/steps-section';
 import {QuestionsSection} from '@/widgets/questions-section';
 import {ContactsSection} from '@/widgets/contacts-section/ui/ContactsSection';
+import {AppNavigation} from "@/widgets/app-navigation";
 import {SectionNavigationProvider} from '@/app/_model/section-navigation/section-navigation.context';
 import {LiquidGlassProvider} from '@/shared/effects/liquid-glass/ui/LiquidGlassProvider';
 import {Background} from '@/shared/ui/background';
 import {useIsMobile} from '@/shared/hooks/adaptive';
-import React from 'react';
 import {useHomeReadyGate} from '@/app/_model/home-loader/useHomeReadyGate';
 import {HomeLoadingOverlay} from '@/app/_model/home-loader/ui/HomeLoadingOverlay';
 import type {LoadState} from '@/shared/types/load-state';
@@ -384,6 +385,7 @@ export default function Home() {
                             <QuestionsSection />
                             <ContactsSection />
                         </div>
+                        {/*<AppNavigation />*/}
                     </LiquidGlassProvider>
                 </SectionNavigationProvider>
             </main>
