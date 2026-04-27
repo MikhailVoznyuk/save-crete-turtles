@@ -468,7 +468,10 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
                 layoutRafRef.current = null;
             }
 
-            timelinesRef.current.forEach((timeline) => timeline.destroy());
+            timelinesRef.current.forEach((timeline) => {
+                timeline.loop = false;
+                timeline.clear();
+            });
             timelinesRef.current = [];
             lastLayoutSignatureRef.current = '';
         };
