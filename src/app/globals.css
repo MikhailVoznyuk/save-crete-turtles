@@ -7,9 +7,9 @@
   --app-vh: 1vh;
   --app-full-vh: 1vh;
   --app-safe-viewport-width: 100vw;
-  --app-safe-viewport-height: calc(var(--app-vh, 1vh) * 100);
+  --app-safe-viewport-height: calc(var(--app-vh) * 100);
   --app-full-viewport-width: 100vw;
-  --app-full-viewport-height: calc(var(--app-full-vh, 1vh) * 100);
+  --app-full-viewport-height: calc(var(--app-full-vh) * 100);
   --safe-area-inset-top: 0px;
   --safe-area-inset-right: 0px;
   --safe-area-inset-bottom: 0px;
@@ -114,33 +114,21 @@ video {
 }
 
 .hero-screen {
-  min-height: var(--app-full-viewport-height, calc(var(--app-full-vh, 1vh) * 100));
-  height: var(--app-full-viewport-height, calc(var(--app-full-vh, 1vh) * 100));
+  min-height: var(--app-full-viewport-height);
+  height: var(--app-full-viewport-height);
 }
 
-@supports (height: 100lvh) {
-  .hero-screen {
-    min-height: var(--app-full-viewport-height, 100lvh);
-    height: var(--app-full-viewport-height, 100lvh);
-  }
-}
 
 .hero-safe-zone {
-  min-height: var(--app-safe-viewport-height, calc(var(--app-vh, 1vh) * 100));
-  height: var(--app-safe-viewport-height, calc(var(--app-vh, 1vh) * 100));
+  min-height: var(--app-safe-viewport-height);
+  height: var(--app-safe-viewport-height);
   box-sizing: border-box;
-  padding-top: max(1rem, var(--safe-area-inset-top, 0px));
-  padding-right: max(1rem, var(--safe-area-inset-right, 0px));
-  padding-bottom: max(1rem, var(--safe-area-inset-bottom, 0px));
-  padding-left: max(1rem, var(--safe-area-inset-left, 0px));
+  padding-top: max(1rem, var(--safe-area-inset-top));
+  padding-right: max(1rem, var(--safe-area-inset-right));
+  padding-bottom: max(1rem, var(--safe-area-inset-bottom));
+  padding-left: max(1rem, var(--safe-area-inset-left));
 }
 
-@supports (height: 100svh) {
-  .hero-safe-zone {
-    min-height: var(--app-safe-viewport-height, 100svh);
-    height: var(--app-safe-viewport-height, 100svh);
-  }
-}
 
 .gpu-fixed-layer {
   transform: translateZ(0);
@@ -155,8 +143,8 @@ video {
   left: 0;
   right: auto;
   bottom: auto;
-  width: var(--app-full-viewport-width, 100vw);
-  height: var(--app-full-viewport-height, calc(var(--app-full-vh, 1vh) * 100));
+  width: var(--app-full-viewport-width);
+  height: var(--app-full-viewport-height);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -167,17 +155,7 @@ video {
   -webkit-backface-visibility: hidden;
 }
 
-@supports (width: 100lvw) {
-  .fixed-video-bg {
-    width: var(--app-full-viewport-width, 100lvw);
-  }
-}
 
-@supports (height: 100lvh) {
-  .fixed-video-bg {
-    height: var(--app-full-viewport-height, 100lvh);
-  }
-}
 
 .fixed-video-bg__video {
   transform: translate3d(0, 0, 0);
