@@ -43,6 +43,7 @@ export default function Home() {
         let frame = 0;
         let scrollFrame = 0;
         let lastSignature = '';
+        let lastScrollX = -1;
         let lastScrollY = -1;
 
         const baseProbeStyle = [
@@ -60,11 +61,13 @@ export default function Home() {
         const viewportProbe = document.createElement('div');
         const largeProbe = document.createElement('div');
         const safeAreaProbe = document.createElement('div');
+        const safeAreaMaxProbe = document.createElement('div');
 
         safeProbe.setAttribute('aria-hidden', 'true');
         viewportProbe.setAttribute('aria-hidden', 'true');
         largeProbe.setAttribute('aria-hidden', 'true');
         safeAreaProbe.setAttribute('aria-hidden', 'true');
+        safeAreaMaxProbe.setAttribute('aria-hidden', 'true');
 
         safeProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
         viewportProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
@@ -77,6 +80,16 @@ export default function Home() {
             'padding-right:env(safe-area-inset-right, 0px)',
             'padding-bottom:env(safe-area-inset-bottom, 0px)',
             'padding-left:env(safe-area-inset-left, 0px)',
+        ].join(';');
+
+        safeAreaMaxProbe.style.cssText = [
+            baseProbeStyle,
+            'width:0',
+            'height:0',
+            'padding-top:env(safe-area-max-inset-top, 0px)',
+            'padding-right:env(safe-area-max-inset-right, 0px)',
+            'padding-bottom:env(safe-area-max-inset-bottom, 0px)',
+            'padding-left:env(safe-area-max-inset-left, 0px)',
         ].join(';');
 
         if (typeof CSS !== 'undefined') {
@@ -97,7 +110,7 @@ export default function Home() {
             }
         }
 
-        host.append(safeProbe, viewportProbe, largeProbe, safeAreaProbe);
+        host.append(safeProbe, viewportProbe, largeProbe, safeAreaProbe, safeAreaMaxProbe);
 
         const getPositiveNumber = (value: number | undefined | null) => (
             typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0
@@ -119,22 +132,30 @@ export default function Home() {
 
         const readSafeAreaInsets = () => {
             const style = getComputedStyle(safeAreaProbe);
+            const maxStyle = getComputedStyle(safeAreaMaxProbe);
             const read = (value: string) => getPositiveNumber(Number.parseFloat(value));
 
             return {
-                top: read(style.paddingTop),
-                right: read(style.paddingRight),
-                bottom: read(style.paddingBottom),
-                left: read(style.paddingLeft),
+                top: Math.max(read(style.paddingTop), read(maxStyle.paddingTop)),
+                right: Math.max(read(style.paddingRight), read(maxStyle.paddingRight)),
+                bottom: Math.max(read(style.paddingBottom), read(maxStyle.paddingBottom)),
+                left: Math.max(read(style.paddingLeft), read(maxStyle.paddingLeft)),
             };
         };
 
         const maxPositive = (...values: number[]) => Math.max(0, ...values.filter((value) => value > 0));
 
+        const isTouchViewport = () => (
+            window.matchMedia?.('(hover: none) and (pointer: coarse)')?.matches ?? false
+        );
+
         const setAppScrollVar = () => {
+            const scrollX = roundPx(window.scrollX || window.pageXOffset || 0);
             const scrollY = roundPx(window.scrollY || window.pageYOffset || 0);
-            if (scrollY === lastScrollY) return;
+            if (scrollX === lastScrollX && scrollY === lastScrollY) return;
+            lastScrollX = scrollX;
             lastScrollY = scrollY;
+            setPxVar('--app-scroll-x', scrollX);
             setPxVar('--app-scroll-y', scrollY);
         };
 
@@ -145,7 +166,7 @@ export default function Home() {
             const safeAreaInsets = readSafeAreaInsets();
             const safeOffsetTop = roundPx(getPositiveNumber(visualViewport?.offsetTop));
             const safeOffsetLeft = roundPx(getPositiveNumber(visualViewport?.offsetLeft));
-            const isTouchLike = window.matchMedia?.('(hover: none) and (pointer: coarse)')?.matches ?? false;
+            const isTouchLike = isTouchViewport();
             const outerWidth = isTouchLike ? getPositiveNumber(window.outerWidth) : 0;
             const outerHeight = isTouchLike ? getPositiveNumber(window.outerHeight) : 0;
 
@@ -163,8 +184,8 @@ export default function Home() {
                 getPositiveNumber(window.innerHeight)
             );
 
-            const safeTopInset = isTouchLike ? roundPx(Math.max(safeOffsetTop, safeAreaInsets.top)) : 0;
-            const safeLeftInset = isTouchLike ? roundPx(Math.max(safeOffsetLeft, safeAreaInsets.left)) : 0;
+            const edgeTop = isTouchLike ? roundPx(Math.max(safeOffsetTop, safeAreaInsets.top)) : 0;
+            const edgeLeft = isTouchLike ? roundPx(Math.max(safeOffsetLeft, safeAreaInsets.left)) : 0;
             const safeRightInset = isTouchLike ? roundPx(safeAreaInsets.right) : 0;
             const safeBottomInset = isTouchLike ? roundPx(safeAreaInsets.bottom) : 0;
 
@@ -174,7 +195,7 @@ export default function Home() {
                 getPositiveNumber(window.innerWidth),
                 getPositiveNumber(root.clientWidth),
                 outerWidth,
-                safeWidth + safeLeftInset + safeRightInset,
+                safeWidth + edgeLeft + safeRightInset,
             ));
 
             const fullHeight = Math.round(maxPositive(
@@ -183,18 +204,23 @@ export default function Home() {
                 getPositiveNumber(window.innerHeight),
                 getPositiveNumber(root.clientHeight),
                 outerHeight,
-                safeHeight + safeTopInset + safeBottomInset,
+                safeHeight + edgeTop + safeBottomInset,
             ));
+
+            const edgeBottom = roundPx(Math.max(0, fullHeight - safeHeight - edgeTop));
+            const edgeRight = roundPx(Math.max(0, fullWidth - safeWidth - edgeLeft));
+            const edgeTopForLayer = isTouchLike ? edgeTop : 0;
+            const edgeLeftForLayer = isTouchLike ? edgeLeft : 0;
 
             const signature = [
                 safeWidth,
                 safeHeight,
                 safeOffsetLeft,
                 safeOffsetTop,
-                safeTopInset,
-                safeLeftInset,
-                safeRightInset,
-                safeBottomInset,
+                edgeTop,
+                edgeLeft,
+                edgeRight,
+                edgeBottom,
                 fullWidth,
                 fullHeight,
             ].map(roundPx).join('|');
@@ -216,15 +242,21 @@ export default function Home() {
             setPxVar('--app-safe-viewport-offset-top', safeOffsetTop);
             setPxVar('--app-full-viewport-width', fullWidth);
             setPxVar('--app-full-viewport-height', fullHeight);
+            setPxVar('--app-edge-viewport-width', fullWidth);
+            setPxVar('--app-edge-viewport-height', fullHeight);
+            setPxVar('--app-edge-viewport-top', -edgeTopForLayer);
+            setPxVar('--app-edge-viewport-left', -edgeLeftForLayer);
+            setPxVar('--app-edge-content-top', edgeTopForLayer + safeOffsetTop);
+            setPxVar('--app-edge-content-left', edgeLeftForLayer + safeOffsetLeft);
             setPxVar('--app-full-layer-width', fullWidth);
             setPxVar('--app-full-layer-height', fullHeight);
-            setPxVar('--app-full-layer-top', 0);
-            setPxVar('--app-full-layer-left', 0);
+            setPxVar('--app-full-layer-top', -edgeTopForLayer);
+            setPxVar('--app-full-layer-left', -edgeLeftForLayer);
 
-            setPxVar('--full-viewport-bleed-top', 0);
-            setPxVar('--full-viewport-bleed-right', Math.max(0, fullWidth - safeWidth - safeLeftInset));
-            setPxVar('--full-viewport-bleed-bottom', Math.max(0, fullHeight - safeHeight - safeTopInset));
-            setPxVar('--full-viewport-bleed-left', 0);
+            setPxVar('--full-viewport-bleed-top', edgeTopForLayer);
+            setPxVar('--full-viewport-bleed-right', edgeRight);
+            setPxVar('--full-viewport-bleed-bottom', edgeBottom);
+            setPxVar('--full-viewport-bleed-left', edgeLeftForLayer);
 
             setAppScrollVar();
 
@@ -270,6 +302,7 @@ export default function Home() {
             viewportProbe.remove();
             largeProbe.remove();
             safeAreaProbe.remove();
+            safeAreaMaxProbe.remove();
 
             if (frame !== 0) {
                 window.cancelAnimationFrame(frame);
