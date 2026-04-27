@@ -26,6 +26,11 @@ type RectLike = {
     bottom?: number;
 };
 
+function readRootPxVar(name: string) {
+    const value = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+    return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
 function getViewportMetrics() {
     const bg = document.querySelector<HTMLElement>('.fixed-video-bg');
     const rect = bg?.getBoundingClientRect();
@@ -34,6 +39,17 @@ function getViewportMetrics() {
         return {
             w: Math.max(1, Math.round(rect.width)),
             h: Math.max(1, Math.round(rect.height)),
+            dpr: Math.min(window.devicePixelRatio || 1, 4),
+        };
+    }
+
+    const cssFullW = readRootPxVar('--app-full-viewport-width');
+    const cssFullH = readRootPxVar('--app-full-viewport-height');
+
+    if (cssFullW > 1 && cssFullH > 1) {
+        return {
+            w: Math.max(1, Math.round(cssFullW)),
+            h: Math.max(1, Math.round(cssFullH)),
             dpr: Math.min(window.devicePixelRatio || 1, 4),
         };
     }
@@ -1320,9 +1336,13 @@ export function LiquidGlassProvider({
                     aria-hidden={false}
                     style={{
                         position: 'fixed',
-                        inset: 0,
+                        top: 0,
+                        left: 0,
+                        width: 'var(--app-full-viewport-width, 100vw)',
+                        height: 'var(--app-full-viewport-height, 100vh)',
                         pointerEvents: 'none',
                         zIndex: 0,
+                        contain: 'layout style paint',
                     }}
                 />
             </div>

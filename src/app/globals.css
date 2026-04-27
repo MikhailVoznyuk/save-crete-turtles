@@ -6,6 +6,10 @@
   --bounce-amplitude: 20%;
   --app-vh: 1vh;
   --app-full-vh: 1vh;
+  --app-safe-viewport-width: 100vw;
+  --app-safe-viewport-height: calc(var(--app-vh) * 100);
+  --app-full-viewport-width: 100vw;
+  --app-full-viewport-height: calc(var(--app-full-vh) * 100);
   --safe-area-inset-top: 0px;
   --safe-area-inset-right: 0px;
   --safe-area-inset-bottom: 0px;
@@ -110,16 +114,21 @@ video {
 }
 
 .hero-screen {
-  min-height: calc(var(--app-vh, 1vh) * 100);
-  height: calc(var(--app-vh, 1vh) * 100);
+  min-height: var(--app-full-viewport-height);
+  height: var(--app-full-viewport-height);
 }
 
-@supports (height: 100svh) {
-  .hero-screen {
-    min-height: 100svh;
-    height: 100svh;
-  }
+
+.hero-safe-zone {
+  min-height: var(--app-safe-viewport-height);
+  height: var(--app-safe-viewport-height);
+  box-sizing: border-box;
+  padding-top: max(1rem, var(--safe-area-inset-top));
+  padding-right: max(1rem, var(--safe-area-inset-right));
+  padding-bottom: max(1rem, var(--safe-area-inset-bottom));
+  padding-left: max(1rem, var(--safe-area-inset-left));
 }
+
 
 .gpu-fixed-layer {
   transform: translateZ(0);
@@ -130,12 +139,12 @@ video {
 
 .fixed-video-bg {
   position: fixed;
-  top: calc(0px - var(--full-viewport-bleed-top, 0px));
-  right: calc(0px - var(--full-viewport-bleed-right, 0px));
-  bottom: calc(0px - var(--full-viewport-bleed-bottom, 0px));
-  left: calc(0px - var(--full-viewport-bleed-left, 0px));
-  width: auto;
-  height: auto;
+  top: 0;
+  left: 0;
+  right: auto;
+  bottom: auto;
+  width: var(--app-full-viewport-width);
+  height: var(--app-full-viewport-height);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -145,6 +154,8 @@ video {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
+
+
 
 .fixed-video-bg__video {
   transform: translate3d(0, 0, 0);

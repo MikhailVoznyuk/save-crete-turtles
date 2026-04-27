@@ -43,8 +43,6 @@ export default function Home() {
         let frame = 0;
         let lastSignature = '';
 
-        const fixedProbe = document.createElement('div');
-        const largeProbe = document.createElement('div');
         const baseProbeStyle = [
             'position:fixed',
             'top:0',
@@ -52,36 +50,42 @@ export default function Home() {
             'visibility:hidden',
             'pointer-events:none',
             'z-index:-2147483647',
-            'contain:layout style paint',
+            'contain:size layout style paint',
             'box-sizing:border-box',
         ].join(';');
 
-        fixedProbe.setAttribute('aria-hidden', 'true');
-        fixedProbe.style.cssText = `${baseProbeStyle};right:0;bottom:0`;
+        const safeProbe = document.createElement('div');
+        const fullProbe = document.createElement('div');
 
-        largeProbe.setAttribute('aria-hidden', 'true');
-        largeProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
+        safeProbe.setAttribute('aria-hidden', 'true');
+        fullProbe.setAttribute('aria-hidden', 'true');
+
+        safeProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
+        fullProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
 
         if (typeof CSS !== 'undefined') {
+            if (CSS.supports('width', '100svw')) {
+                safeProbe.style.width = '100svw';
+            }
+
+            if (CSS.supports('height', '100svh')) {
+                safeProbe.style.height = '100svh';
+            }
+
             if (CSS.supports('width', '100lvw')) {
-                largeProbe.style.width = '100lvw';
+                fullProbe.style.width = '100lvw';
             }
 
             if (CSS.supports('height', '100lvh')) {
-                largeProbe.style.height = '100lvh';
+                fullProbe.style.height = '100lvh';
             }
         }
 
-        host.append(fixedProbe, largeProbe);
+        host.append(safeProbe, fullProbe);
 
         const getPositiveNumber = (value: number | undefined | null) => (
             typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0
         );
-
-        const readPxVar = (name: string) => {
-            const value = Number.parseFloat(getComputedStyle(root).getPropertyValue(name));
-            return Number.isFinite(value) && value > 0 ? value : 0;
-        };
 
         const roundPx = (value: number) => Math.round(Math.max(0, value) * 100) / 100;
 
@@ -89,73 +93,51 @@ export default function Home() {
             root.style.setProperty(name, `${roundPx(value)}px`);
         };
 
+        const readProbe = (el: HTMLElement) => {
+            const rect = el.getBoundingClientRect();
+            return {
+                width: getPositiveNumber(rect.width),
+                height: getPositiveNumber(rect.height),
+            };
+        };
+
         const setAppViewportVars = () => {
-            const fixedRect = fixedProbe.getBoundingClientRect();
-            const largeRect = largeProbe.getBoundingClientRect();
-            const safeTop = readPxVar('--safe-area-inset-top');
-            const safeRight = readPxVar('--safe-area-inset-right');
-            const safeBottom = readPxVar('--safe-area-inset-bottom');
-            const safeLeft = readPxVar('--safe-area-inset-left');
+            const safeRect = readProbe(safeProbe);
+            const fullRect = readProbe(fullProbe);
+
+            const safeWidth = Math.round(
+                safeRect.width ||
+                getPositiveNumber(visualViewport?.width) ||
+                getPositiveNumber(root.clientWidth) ||
+                getPositiveNumber(window.innerWidth)
+            );
 
             const safeHeight = Math.round(
+                safeRect.height ||
                 getPositiveNumber(visualViewport?.height) ||
-                getPositiveNumber(fixedRect.height) ||
-                getPositiveNumber(window.innerHeight) ||
-                getPositiveNumber(root.clientHeight)
-            );
-
-            const baseWidth = Math.round(
-                getPositiveNumber(fixedRect.width) ||
-                getPositiveNumber(root.clientWidth) ||
-                getPositiveNumber(window.innerWidth) ||
-                getPositiveNumber(visualViewport?.width)
-            );
-
-            const baseHeight = Math.round(
-                getPositiveNumber(fixedRect.height) ||
                 getPositiveNumber(root.clientHeight) ||
-                getPositiveNumber(window.innerHeight) ||
-                getPositiveNumber(visualViewport?.height)
+                getPositiveNumber(window.innerHeight)
             );
 
-            const fullWidth = Math.round(Math.max(
-                baseWidth,
-                getPositiveNumber(largeRect.width),
-                getPositiveNumber(window.innerWidth),
-                getPositiveNumber(root.clientWidth),
-                getPositiveNumber(visualViewport?.width) + safeLeft + safeRight
-            ));
+            const fullWidth = Math.round(
+                fullRect.width ||
+                getPositiveNumber(window.innerWidth) ||
+                getPositiveNumber(root.clientWidth) ||
+                safeWidth
+            );
 
-            const fullHeight = Math.round(Math.max(
-                baseHeight,
-                getPositiveNumber(largeRect.height),
-                getPositiveNumber(window.innerHeight),
-                getPositiveNumber(root.clientHeight),
-                getPositiveNumber(visualViewport?.height) + safeTop + safeBottom
-            ));
-
-            const extraWidth = Math.max(0, fullWidth - baseWidth);
-            const extraHeight = Math.max(0, fullHeight - baseHeight);
-            const horizontalSafeSum = safeLeft + safeRight;
-            const verticalSafeSum = safeTop + safeBottom;
-
-            const leftBleed = horizontalSafeSum > 0
-                ? Math.min(safeLeft, extraWidth * (safeLeft / horizontalSafeSum))
-                : 0;
-            const rightBleed = Math.max(0, extraWidth - leftBleed);
-
-            const topBleed = verticalSafeSum > 0
-                ? Math.min(safeTop, extraHeight * (safeTop / verticalSafeSum))
-                : 0;
-            const bottomBleed = Math.max(0, extraHeight - topBleed);
+            const fullHeight = Math.round(
+                fullRect.height ||
+                getPositiveNumber(window.innerHeight) ||
+                getPositiveNumber(root.clientHeight) ||
+                safeHeight
+            );
 
             const signature = [
+                safeWidth,
                 safeHeight,
+                fullWidth,
                 fullHeight,
-                leftBleed,
-                rightBleed,
-                topBleed,
-                bottomBleed,
             ].map(roundPx).join('|');
 
             if (signature === lastSignature) return;
@@ -169,10 +151,15 @@ export default function Home() {
                 root.style.setProperty('--app-full-vh', `${fullHeight * 0.01}px`);
             }
 
-            setPxVar('--full-viewport-bleed-top', topBleed);
-            setPxVar('--full-viewport-bleed-right', rightBleed);
-            setPxVar('--full-viewport-bleed-bottom', bottomBleed);
-            setPxVar('--full-viewport-bleed-left', leftBleed);
+            setPxVar('--app-safe-viewport-width', safeWidth);
+            setPxVar('--app-safe-viewport-height', safeHeight);
+            setPxVar('--app-full-viewport-width', fullWidth);
+            setPxVar('--app-full-viewport-height', fullHeight);
+
+            setPxVar('--full-viewport-bleed-top', 0);
+            setPxVar('--full-viewport-bleed-right', 0);
+            setPxVar('--full-viewport-bleed-bottom', 0);
+            setPxVar('--full-viewport-bleed-left', 0);
 
             window.dispatchEvent(new Event('appviewportchange'));
         };
@@ -190,7 +177,6 @@ export default function Home() {
         window.addEventListener('resize', scheduleSetAppViewportVars, {passive: true});
         window.addEventListener('orientationchange', scheduleSetAppViewportVars);
         window.addEventListener('pageshow', scheduleSetAppViewportVars);
-        window.addEventListener('scroll', scheduleSetAppViewportVars, {passive: true});
         visualViewport?.addEventListener('resize', scheduleSetAppViewportVars);
         visualViewport?.addEventListener('scroll', scheduleSetAppViewportVars);
 
@@ -198,12 +184,11 @@ export default function Home() {
             window.removeEventListener('resize', scheduleSetAppViewportVars);
             window.removeEventListener('orientationchange', scheduleSetAppViewportVars);
             window.removeEventListener('pageshow', scheduleSetAppViewportVars);
-            window.removeEventListener('scroll', scheduleSetAppViewportVars);
             visualViewport?.removeEventListener('resize', scheduleSetAppViewportVars);
             visualViewport?.removeEventListener('scroll', scheduleSetAppViewportVars);
 
-            fixedProbe.remove();
-            largeProbe.remove();
+            safeProbe.remove();
+            fullProbe.remove();
 
             if (frame !== 0) {
                 window.cancelAnimationFrame(frame);
