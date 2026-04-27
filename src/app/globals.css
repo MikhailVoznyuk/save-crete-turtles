@@ -8,6 +8,8 @@
   --app-full-vh: 1vh;
   --app-safe-viewport-width: 100vw;
   --app-safe-viewport-height: calc(var(--app-vh) * 100);
+  --app-safe-viewport-offset-top: 0px;
+  --app-safe-viewport-offset-left: 0px;
   --app-full-viewport-width: 100vw;
   --app-full-viewport-height: calc(var(--app-full-vh) * 100);
   --safe-area-inset-top: 0px;
@@ -97,6 +99,10 @@ body {
   overflow-x: clip;
 }
 
+html {
+  min-height: var(--app-full-viewport-height);
+}
+
 body {
   margin: 0;
   background: radial-gradient(circle at top, rgba(0, 238, 255, 0.08), transparent 32%), var(--background);
@@ -120,13 +126,22 @@ video {
 
 
 .hero-safe-zone {
+  --hero-safe-padding: 1rem;
+  width: var(--app-safe-viewport-width);
   min-height: var(--app-safe-viewport-height);
   height: var(--app-safe-viewport-height);
   box-sizing: border-box;
-  padding-top: max(1rem, var(--safe-area-inset-top));
-  padding-right: max(1rem, var(--safe-area-inset-right));
-  padding-bottom: max(1rem, var(--safe-area-inset-bottom));
-  padding-left: max(1rem, var(--safe-area-inset-left));
+  transform: translate3d(var(--app-safe-viewport-offset-left), var(--app-safe-viewport-offset-top), 0);
+  padding-top: max(var(--hero-safe-padding), var(--safe-area-inset-top));
+  padding-right: max(var(--hero-safe-padding), var(--safe-area-inset-right));
+  padding-bottom: max(var(--hero-safe-padding), var(--safe-area-inset-bottom));
+  padding-left: max(var(--hero-safe-padding), var(--safe-area-inset-left));
+}
+
+@media (min-width: 640px) {
+  .hero-safe-zone {
+    --hero-safe-padding: 2.5rem;
+  }
 }
 
 

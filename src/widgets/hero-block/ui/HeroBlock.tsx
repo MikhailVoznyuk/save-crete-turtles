@@ -37,8 +37,8 @@ export function HeroBlock({onBubblesLoadStateChange, onParticlesLoadStateChange}
 
     return (
         <section ref={registerSection('hero')} className='relative w-full hero-screen'>
-            <div className='flex flex-col size-full p-4 justify-center  sm:p-10 text-9'>
-                <div className='flex flex-col gap-4  max-w-[740px] items-center sm:items-start'>
+            <div className='relative z-[2] flex flex-col hero-safe-zone justify-center text-9'>
+                <div className='flex flex-col gap-4 max-w-[820px] items-center sm:items-start sm:p-6'>
                     <div ref={textParticleRootRef} className='relative w-full'>
                         <div className={`select-none flex flex-col items-center gap-5 ${showTextFallback ? 'opacity-100' : 'opacity-0'}`}>
                             <div ref={titleRef}>
