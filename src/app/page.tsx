@@ -59,14 +59,25 @@ export default function Home() {
         const safeProbe = document.createElement('div');
         const viewportProbe = document.createElement('div');
         const largeProbe = document.createElement('div');
+        const safeAreaProbe = document.createElement('div');
 
         safeProbe.setAttribute('aria-hidden', 'true');
         viewportProbe.setAttribute('aria-hidden', 'true');
         largeProbe.setAttribute('aria-hidden', 'true');
+        safeAreaProbe.setAttribute('aria-hidden', 'true');
 
         safeProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
         viewportProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
         largeProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
+        safeAreaProbe.style.cssText = [
+            baseProbeStyle,
+            'width:0',
+            'height:0',
+            'padding-top:env(safe-area-inset-top, 0px)',
+            'padding-right:env(safe-area-inset-right, 0px)',
+            'padding-bottom:env(safe-area-inset-bottom, 0px)',
+            'padding-left:env(safe-area-inset-left, 0px)',
+        ].join(';');
 
         if (typeof CSS !== 'undefined') {
             if (CSS.supports('width', '100svw')) {
@@ -86,16 +97,21 @@ export default function Home() {
             }
         }
 
-        host.append(safeProbe, viewportProbe, largeProbe);
+        host.append(safeProbe, viewportProbe, largeProbe, safeAreaProbe);
 
         const getPositiveNumber = (value: number | undefined | null) => (
             typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0
         );
 
         const roundPx = (value: number) => Math.round(Math.max(0, value) * 100) / 100;
+        const roundSignedPx = (value: number) => Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
 
         const setPxVar = (name: string, value: number) => {
             root.style.setProperty(name, `${roundPx(value)}px`);
+        };
+
+        const setSignedPxVar = (name: string, value: number) => {
+            root.style.setProperty(name, `${roundSignedPx(value)}px`);
         };
 
         const readProbe = (el: HTMLElement) => {
@@ -103,6 +119,18 @@ export default function Home() {
             return {
                 width: getPositiveNumber(rect.width),
                 height: getPositiveNumber(rect.height),
+            };
+        };
+
+        const readSafeAreaInsets = () => {
+            const style = getComputedStyle(safeAreaProbe);
+            const read = (value: string) => getPositiveNumber(Number.parseFloat(value));
+
+            return {
+                top: read(style.paddingTop),
+                right: read(style.paddingRight),
+                bottom: read(style.paddingBottom),
+                left: read(style.paddingLeft),
             };
         };
 
@@ -119,6 +147,7 @@ export default function Home() {
             const safeRect = readProbe(safeProbe);
             const viewportRect = readProbe(viewportProbe);
             const largeRect = readProbe(largeProbe);
+            const safeAreaInsets = readSafeAreaInsets();
             const safeOffsetTop = roundPx(getPositiveNumber(visualViewport?.offsetTop));
             const safeOffsetLeft = roundPx(getPositiveNumber(visualViewport?.offsetLeft));
             const isTouchLike = window.matchMedia?.('(hover: none) and (pointer: coarse)')?.matches ?? false;
@@ -139,7 +168,7 @@ export default function Home() {
                 getPositiveNumber(window.innerHeight)
             );
 
-            const fullWidth = Math.round(maxPositive(
+            const fullWidthCandidate = Math.round(maxPositive(
                 viewportRect.width,
                 largeRect.width,
                 getPositiveNumber(window.innerWidth),
@@ -148,7 +177,7 @@ export default function Home() {
                 safeWidth + safeOffsetLeft,
             ));
 
-            const fullHeight = Math.round(maxPositive(
+            const fullHeightCandidate = Math.round(maxPositive(
                 viewportRect.height,
                 largeRect.height,
                 getPositiveNumber(window.innerHeight),
@@ -157,13 +186,42 @@ export default function Home() {
                 safeHeight + safeOffsetTop,
             ));
 
+            const topBleed = isTouchLike
+                ? roundPx(Math.max(safeOffsetTop, safeAreaInsets.top))
+                : 0;
+            const leftBleed = isTouchLike
+                ? roundPx(Math.max(safeOffsetLeft, safeAreaInsets.left))
+                : 0;
+            const rightBleed = isTouchLike ? roundPx(safeAreaInsets.right) : 0;
+            const fullWidth = Math.round(maxPositive(
+                fullWidthCandidate,
+                safeWidth + leftBleed + rightBleed,
+            ));
+            const fullHeight = Math.round(maxPositive(
+                fullHeightCandidate,
+                safeHeight + topBleed,
+            ));
+            const fullLayerWidth = Math.round(maxPositive(
+                fullWidth,
+                safeWidth + leftBleed + rightBleed,
+            ));
+            const fullLayerHeight = Math.round(maxPositive(
+                fullHeight,
+                safeHeight + topBleed,
+            ));
+
             const signature = [
                 safeWidth,
                 safeHeight,
                 safeOffsetLeft,
                 safeOffsetTop,
+                topBleed,
+                leftBleed,
+                rightBleed,
                 fullWidth,
                 fullHeight,
+                fullLayerWidth,
+                fullLayerHeight,
             ].map(roundPx).join('|');
 
             if (signature === lastSignature) return;
@@ -183,11 +241,15 @@ export default function Home() {
             setPxVar('--app-safe-viewport-offset-top', safeOffsetTop);
             setPxVar('--app-full-viewport-width', fullWidth);
             setPxVar('--app-full-viewport-height', fullHeight);
+            setPxVar('--app-full-layer-width', fullLayerWidth);
+            setPxVar('--app-full-layer-height', fullLayerHeight);
+            setSignedPxVar('--app-full-layer-top', -topBleed);
+            setSignedPxVar('--app-full-layer-left', -leftBleed);
 
-            setPxVar('--full-viewport-bleed-top', 0);
-            setPxVar('--full-viewport-bleed-right', 0);
-            setPxVar('--full-viewport-bleed-bottom', 0);
-            setPxVar('--full-viewport-bleed-left', 0);
+            setPxVar('--full-viewport-bleed-top', topBleed);
+            setPxVar('--full-viewport-bleed-right', rightBleed);
+            setPxVar('--full-viewport-bleed-bottom', Math.max(0, fullLayerHeight - safeHeight - topBleed));
+            setPxVar('--full-viewport-bleed-left', leftBleed);
 
             setAppScrollVar();
 
@@ -232,6 +294,7 @@ export default function Home() {
             safeProbe.remove();
             viewportProbe.remove();
             largeProbe.remove();
+            safeAreaProbe.remove();
 
             if (frame !== 0) {
                 window.cancelAnimationFrame(frame);
