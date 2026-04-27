@@ -10,13 +10,20 @@
   --app-safe-viewport-height: calc(var(--app-vh) * 100);
   --app-safe-viewport-offset-top: 0px;
   --app-safe-viewport-offset-left: 0px;
+  --app-scroll-x: 0px;
   --app-scroll-y: 0px;
   --app-full-viewport-width: 100vw;
   --app-full-viewport-height: calc(var(--app-full-vh) * 100);
-  --app-full-layer-width: var(--app-full-viewport-width);
-  --app-full-layer-height: var(--app-full-viewport-height);
-  --app-full-layer-top: 0px;
-  --app-full-layer-left: 0px;
+  --app-edge-viewport-width: var(--app-full-viewport-width);
+  --app-edge-viewport-height: var(--app-full-viewport-height);
+  --app-edge-viewport-top: 0px;
+  --app-edge-viewport-left: 0px;
+  --app-edge-content-top: 0px;
+  --app-edge-content-left: 0px;
+  --app-full-layer-width: var(--app-edge-viewport-width);
+  --app-full-layer-height: var(--app-edge-viewport-height);
+  --app-full-layer-top: var(--app-edge-viewport-top);
+  --app-full-layer-left: var(--app-edge-viewport-left);
   --safe-area-inset-top: 0px;
   --safe-area-inset-right: 0px;
   --safe-area-inset-bottom: 0px;
@@ -129,7 +136,6 @@ video {
   height: var(--app-full-viewport-height);
 }
 
-
 .hero-safe-zone {
   --hero-safe-padding: 1rem;
   width: var(--app-safe-viewport-width);
@@ -149,7 +155,6 @@ video {
   }
 }
 
-
 .gpu-fixed-layer {
   transform: translateZ(0);
   will-change: transform, opacity, left, top;
@@ -157,47 +162,83 @@ video {
   -webkit-backface-visibility: hidden;
 }
 
-.fixed-video-bg {
+.app-edge-layer,
+.fixed-video-bg,
+.app-loading-overlay,
+.liquid-glass-canvas,
+.liquid-glass-visual-root {
   position: fixed;
   top: 0;
   left: 0;
   right: auto;
   bottom: auto;
-  width: var(--app-full-layer-width);
-  height: var(--app-full-layer-height);
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  pointer-events: none;
-  transform: translate3d(0, 0, 0);
+  width: var(--app-edge-viewport-width);
+  height: var(--app-edge-viewport-height);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
 
+.fixed-video-bg,
+.liquid-glass-canvas,
+.liquid-glass-visual-root {
+  pointer-events: none;
+}
+
+.fixed-video-bg {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  transform: translate3d(0, 0, 0);
+}
 
 .app-loading-overlay {
-  width: var(--app-full-layer-width);
-  height: var(--app-full-layer-height);
+  overflow: hidden;
+}
+
+.app-loading-overlay__content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--app-safe-viewport-width);
+  height: var(--app-safe-viewport-height);
+}
+
+.liquid-glass-canvas {
+  display: block;
+  z-index: 1;
+  background: transparent;
+  will-change: transform;
+}
+
+.liquid-glass-visual-root {
+  z-index: 0;
+  overflow: visible;
+  transform: translate3d(0, 0, 0);
+  contain: layout style;
 }
 
 @media (hover: none) and (pointer: coarse) {
   .fixed-video-bg,
-  .app-loading-overlay {
+  .app-loading-overlay,
+  .liquid-glass-canvas,
+  .liquid-glass-visual-root {
     position: absolute;
-    top: var(--app-full-layer-top);
-    left: var(--app-full-layer-left);
+    top: var(--app-edge-viewport-top);
+    left: var(--app-edge-viewport-left);
     right: auto;
     bottom: auto;
-    transform: translate3d(0, var(--app-scroll-y), 0);
+    transform: translate3d(var(--app-scroll-x), var(--app-scroll-y), 0);
     will-change: transform;
   }
+
+  .app-loading-overlay__content {
+    top: var(--app-edge-content-top);
+    left: var(--app-edge-content-left);
+  }
 }
-
-
 
 .fixed-video-bg__video {
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
-
