@@ -44,6 +44,8 @@ export function MediaModal({preview, content, previewClassName, contentClassName
     useEffect(() => {
         if (!opened) return;
 
+        const scrollRoot = document.querySelector<HTMLElement>("[data-app-scroll-root]");
+        const prevScrollRootOverflow = scrollRoot?.style.overflowY ?? "";
         const prevOverflow = document.body.style.overflow;
         const prevPaddingRight = document.body.style.paddingRight;
         const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
@@ -51,6 +53,9 @@ export function MediaModal({preview, content, previewClassName, contentClassName
         document.body.style.overflow = 'hidden';
         if (scrollBarWidth > 0) {
             document.body.style.paddingRight = `${scrollBarWidth}px`;
+        }
+        if (scrollRoot) {
+            scrollRoot.style.overflowY = 'hidden';
         }
 
         const onKeyDown = (e: KeyboardEvent) => {
@@ -63,6 +68,9 @@ export function MediaModal({preview, content, previewClassName, contentClassName
             window.removeEventListener('keydown', onKeyDown);
             document.body.style.overflow = prevOverflow;
             document.body.style.paddingRight = prevPaddingRight;
+            if (scrollRoot) {
+                scrollRoot.style.overflowY = prevScrollRootOverflow;
+            }
         };
     }, [opened, close]);
 
