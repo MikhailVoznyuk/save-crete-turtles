@@ -7,6 +7,7 @@ import {
     RegisterLiquidGlass
 } from "@/shared/effects/liquid-glass/model/context";
 import type {LoadState} from '@/shared/types/load-state';
+import {getEdgeViewportMetrics, getEdgeViewportRect} from '@/shared/utils/viewport';
 
 type Props = {
     videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -26,48 +27,11 @@ type RectLike = {
     bottom?: number;
 };
 
-function readRootPxVar(name: string) {
-    const value = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
-    return Number.isFinite(value) && value > 0 ? value : 0;
-}
-
-function getViewportMetrics() {
-    const bg = document.querySelector<HTMLElement>('.edge-video-bg') ?? document.querySelector<HTMLElement>('.fixed-video-bg');
-    const rect = bg?.getBoundingClientRect();
-
-    if (rect && rect.width > 1 && rect.height > 1) {
-        return {
-            w: Math.max(1, Math.round(rect.width)),
-            h: Math.max(1, Math.round(rect.height)),
-            dpr: Math.min(window.devicePixelRatio || 1, 4),
-        };
-    }
-
-    const cssFullW = readRootPxVar('--app-edge-viewport-width') || readRootPxVar('--app-full-viewport-width');
-    const cssFullH = readRootPxVar('--app-edge-viewport-height') || readRootPxVar('--app-full-viewport-height');
-
-    if (cssFullW > 1 && cssFullH > 1) {
-        return {
-            w: Math.max(1, Math.round(cssFullW)),
-            h: Math.max(1, Math.round(cssFullH)),
-            dpr: Math.min(window.devicePixelRatio || 1, 4),
-        };
-    }
-
-    const docEl = document.documentElement;
-
-    return {
-        w: Math.max(1, Math.round(Math.max(docEl.clientWidth || 0, window.innerWidth || 0))),
-        h: Math.max(1, Math.round(Math.max(docEl.clientHeight || 0, window.innerHeight || 0))),
-        dpr: Math.min(window.devicePixelRatio || 1, 4),
-    };
-}
-
-function toCanvasX(value: number, canvasRect: DOMRect) {
+function toCanvasX(value: number, canvasRect: Pick<RectLike, 'left'>) {
     return value - canvasRect.left;
 }
 
-function toCanvasY(value: number, canvasRect: DOMRect) {
+function toCanvasY(value: number, canvasRect: Pick<RectLike, 'top'>) {
     return value - canvasRect.top;
 }
 function parseObjectPositionPart(part: string | undefined, fallback: number) {
@@ -87,7 +51,7 @@ function parseObjectPositionPart(part: string | undefined, fallback: number) {
 }
 
 function getVideoMediaRect(video: HTMLVideoElement) {
-    const box = video.getBoundingClientRect();
+    const box = getEdgeViewportRect();
     const videoW = Math.max(1, video.videoWidth || 1);
     const videoH = Math.max(1, video.videoHeight || 1);
     const boxW = Math.max(1, box.width);
@@ -688,7 +652,7 @@ export function LiquidGlassProvider({
         const gl = glRef.current;
         if (!canvas || !gl) return;
 
-        const viewport = getViewportMetrics();
+        const viewport = getEdgeViewportMetrics();
         const dpr = Math.min(dprCap, viewport.dpr);
         const q = Math.max(0.6, Math.min(1, quality));
         const scale = dpr * q;
@@ -783,7 +747,7 @@ export function LiquidGlassProvider({
                 return;
             }
 
-            const nextViewport = getViewportMetrics();
+            const nextViewport = getEdgeViewportMetrics();
             const nextScale = Math.min(dprCap, nextViewport.dpr) * Math.max(0.6, Math.min(1, quality));
 
             if (
@@ -797,7 +761,7 @@ export function LiquidGlassProvider({
             }
 
             const vp = vpCssRef.current;
-            const canvasRect = canvas.getBoundingClientRect();
+            const canvasRect = getEdgeViewportRect();
             const viewportMargin = 96;
             const orderedLenses = [...mapRef.current.values()]
                 .filter((h) => h.enabledRef.current)
@@ -1262,7 +1226,7 @@ export function LiquidGlassProvider({
         };
 
         const getPointerCanvasCoords = (e: PointerEvent) => {
-            const canvasRect = canvas.getBoundingClientRect();
+            const canvasRect = getEdgeViewportRect();
             return {
                 x: toCanvasX(e.clientX, canvasRect),
                 y: toCanvasY(e.clientY, canvasRect),
@@ -1345,18 +1309,29 @@ export function LiquidGlassProvider({
 
     return (
         <LiquidGlassRegistryProvider register={ctxValue} visualRootRef={visualRootRef}>
-            <canvas ref={canvasRef} className="liquid-glass-canvas" aria-hidden />
+            <div
+                className="app-edge-fixed-frame liquid-glass-canvas-frame"
+                aria-hidden
+                style={{zIndex}}
+            >
+                <canvas ref={canvasRef} className="liquid-glass-canvas" />
+            </div>
             <div style={{ position: 'relative', zIndex: zIndex + 1 }}>
                 {children}
                 <div
-                    ref={visualRootRef}
+                    className="app-edge-fixed-frame liquid-glass-visual-frame"
                     aria-hidden={false}
-                    className="liquid-glass-visual-root"
-                    style={{
-                        pointerEvents: 'none',
-                        zIndex: 0,
-                    }}
-                />
+                    style={{zIndex: 0}}
+                >
+                    <div
+                        ref={visualRootRef}
+                        className="liquid-glass-visual-root"
+                        style={{
+                            pointerEvents: 'none',
+                            zIndex: 0,
+                        }}
+                    />
+                </div>
             </div>
         </LiquidGlassRegistryProvider>
     );

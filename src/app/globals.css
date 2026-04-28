@@ -201,6 +201,10 @@ video {
   bottom: auto;
   width: var(--app-edge-viewport-width);
   height: var(--app-edge-viewport-height);
+  min-width: var(--app-edge-viewport-width);
+  min-height: var(--app-edge-viewport-height);
+  max-width: none;
+  max-height: none;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
@@ -216,7 +220,6 @@ video {
   min-height: 0;
   overflow: hidden;
   transform: translate3d(0, 0, 0);
-  will-change: transform;
 }
 
 .edge-video-bg {
@@ -224,7 +227,6 @@ video {
   z-index: 0;
   pointer-events: none;
   transform: translate3d(0, 0, 0);
-  will-change: transform;
 }
 
 .app-loading-overlay {
@@ -243,7 +245,6 @@ video {
   display: block;
   z-index: 1;
   background: transparent;
-  will-change: transform;
 }
 
 .liquid-glass-visual-root {
@@ -271,23 +272,38 @@ video {
   opacity: 0.001;
 }
 
-html.app-ios-edge-scroll-layer .app-edge-layer,
-html.app-ios-edge-scroll-layer .edge-video-bg,
-html.app-ios-edge-scroll-layer .fixed-video-bg,
-html.app-ios-edge-scroll-layer .app-loading-overlay,
-html.app-ios-edge-scroll-layer .liquid-glass-canvas,
-html.app-ios-edge-scroll-layer .liquid-glass-visual-root {
+
+.app-edge-fixed-frame {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: block;
+  width: max(85vw, var(--app-edge-viewport-width));
+  height: min(48px, 20svh);
+  overflow: visible;
+  pointer-events: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+}
+
+.app-edge-fixed-frame > .edge-video-bg,
+.app-edge-fixed-frame > .liquid-glass-canvas,
+.app-edge-fixed-frame > .liquid-glass-visual-root {
   position: absolute;
   top: 0;
   left: 0;
   right: auto;
   bottom: auto;
-  transform: translate3d(var(--app-scroll-x), var(--app-scroll-y), 0);
-  will-change: transform;
+  width: var(--app-edge-viewport-width);
+  height: var(--app-edge-viewport-height);
+  min-width: var(--app-edge-viewport-width);
+  min-height: var(--app-edge-viewport-height);
+  max-width: none;
+  max-height: none;
 }
 
-html.app-ios-edge-scroll-layer .fixed-video-bg__video,
-html.app-ios-edge-scroll-layer .edge-video-bg,
-html.app-ios-edge-scroll-layer .liquid-glass-canvas {
-  transform-style: preserve-3d;
+.edge-video-bg-frame {
+  z-index: 0;
 }

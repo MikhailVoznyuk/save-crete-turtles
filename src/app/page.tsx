@@ -40,30 +40,23 @@ export default function Home() {
         const root = document.documentElement;
         const host = document.body || root;
         const visualViewport = window.visualViewport;
-        let viewportFrame = 0;
-        let scrollFrame = 0;
-        let lastViewportSignature = '';
-        let lastScrollSignature = '';
+        const isIPhoneLike = /iP(?:hone|od)/.test(window.navigator.userAgent);
+        let frame = 0;
+        let settleFrame = 0;
+        let settleTimeout = 0;
+        let lastSignature = '';
+        let lastFullSignature = '';
 
-        const ua = window.navigator.userAgent;
-        const isIOS = /iP(?:hone|ad|od)/.test(ua) || (
-            window.navigator.platform === 'MacIntel' &&
-            window.navigator.maxTouchPoints > 1
-        );
-
-        root.classList.toggle('app-ios-edge-scroll-layer', isIOS);
-
-        const baseProbeStyle = [
-            'position:fixed',
+        const probeBaseStyle = [
+            'position:absolute',
             'top:0',
             'left:0',
-            'width:0',
-            'height:0',
             'visibility:hidden',
             'pointer-events:none',
             'z-index:-2147483647',
             'contain:size layout style paint',
             'box-sizing:border-box',
+            'overflow:hidden',
         ].join(';');
 
         const fullProbe = document.createElement('div');
@@ -74,10 +67,12 @@ export default function Home() {
         safeProbe.setAttribute('aria-hidden', 'true');
         insetProbe.setAttribute('aria-hidden', 'true');
 
-        fullProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
-        safeProbe.style.cssText = `${baseProbeStyle};width:100vw;height:100vh`;
+        fullProbe.style.cssText = `${probeBaseStyle};width:100vw;height:100vh`;
+        safeProbe.style.cssText = `${probeBaseStyle};width:100vw;height:100vh`;
         insetProbe.style.cssText = [
-            baseProbeStyle,
+            probeBaseStyle,
+            'width:0',
+            'height:0',
             'padding-top:env(safe-area-inset-top, 0px)',
             'padding-right:env(safe-area-inset-right, 0px)',
             'padding-bottom:env(safe-area-inset-bottom, 0px)',
@@ -116,22 +111,25 @@ export default function Home() {
             return Number.isFinite(value) && value > 0 ? value : 0;
         };
 
-        const setAppScrollVar = () => {
-            const scrollX = roundPx(window.scrollX || window.pageXOffset || 0);
-            const scrollY = roundPx(window.scrollY || window.pageYOffset || 0);
-            const signature = `${scrollX}|${scrollY}`;
+        const getIPhoneScreenViewport = () => {
+            if (!isIPhoneLike || !window.screen) return {width: 0, height: 0};
 
-            if (signature === lastScrollSignature) return;
-            lastScrollSignature = signature;
+            const screenWidth = positive(window.screen.width);
+            const screenHeight = positive(window.screen.height);
+            if (screenWidth <= 0 || screenHeight <= 0) return {width: 0, height: 0};
 
-            setPxVar('--app-scroll-x', scrollX);
-            setPxVar('--app-scroll-y', scrollY);
+            const portrait = window.matchMedia?.('(orientation: portrait)').matches ?? screenHeight >= screenWidth;
+
+            return portrait
+                ? {width: Math.min(screenWidth, screenHeight), height: Math.max(screenWidth, screenHeight)}
+                : {width: Math.max(screenWidth, screenHeight), height: Math.min(screenWidth, screenHeight)};
         };
 
         const setAppViewportVars = () => {
             const fullRect = readRect(fullProbe);
             const safeRect = readRect(safeProbe);
             const docEl = document.documentElement;
+            const iPhoneScreen = getIPhoneScreenViewport();
 
             const fullWidth = Math.max(
                 1,
@@ -139,6 +137,7 @@ export default function Home() {
                     fullRect.width,
                     positive(window.innerWidth),
                     positive(docEl.clientWidth),
+                    iPhoneScreen.width,
                 )),
             );
 
@@ -148,6 +147,7 @@ export default function Home() {
                     fullRect.height,
                     positive(window.innerHeight),
                     positive(docEl.clientHeight),
+                    iPhoneScreen.height,
                 )),
             );
 
@@ -157,7 +157,7 @@ export default function Home() {
                 1,
                 Math.round(Math.min(
                     fullWidth,
-                    visualWidth || safeRect.width || fullWidth,
+                    visualWidth || safeRect.width || positive(window.innerWidth) || fullWidth,
                     safeRect.width || fullWidth,
                 )),
             );
@@ -165,7 +165,7 @@ export default function Home() {
                 1,
                 Math.round(Math.min(
                     fullHeight,
-                    visualHeight || safeRect.height || fullHeight,
+                    visualHeight || safeRect.height || positive(window.innerHeight) || fullHeight,
                     safeRect.height || fullHeight,
                 )),
             );
@@ -190,8 +190,8 @@ export default function Home() {
                 insetLeft,
             ].map(roundPx).join('|');
 
-            if (signature === lastViewportSignature) return;
-            lastViewportSignature = signature;
+            if (signature === lastSignature) return;
+            lastSignature = signature;
 
             root.style.setProperty('--app-vh', `${safeHeight * 0.01}px`);
             root.style.setProperty('--app-full-vh', `${fullHeight * 0.01}px`);
@@ -224,58 +224,46 @@ export default function Home() {
             setPxVar('--full-viewport-bleed-bottom', Math.max(0, fullHeight - safeHeight - safeOffsetTop));
             setPxVar('--full-viewport-bleed-left', safeOffsetLeft);
 
-            window.dispatchEvent(new Event('appviewportchange'));
+            const fullSignature = `${fullWidth}|${fullHeight}`;
+            if (fullSignature !== lastFullSignature) {
+                lastFullSignature = fullSignature;
+                window.dispatchEvent(new Event('appviewportchange'));
+            }
         };
 
         const scheduleViewport = () => {
-            if (viewportFrame !== 0) return;
+            if (frame !== 0) return;
 
-            viewportFrame = window.requestAnimationFrame(() => {
-                viewportFrame = 0;
+            frame = window.requestAnimationFrame(() => {
+                frame = 0;
                 setAppViewportVars();
-                setAppScrollVar();
-            });
-        };
-
-        const scheduleScroll = () => {
-            if (isIOS) {
-                setAppScrollVar();
-                return;
-            }
-
-            if (scrollFrame !== 0) return;
-
-            scrollFrame = window.requestAnimationFrame(() => {
-                scrollFrame = 0;
-                setAppScrollVar();
             });
         };
 
         setAppViewportVars();
-        setAppScrollVar();
+        settleFrame = requestAnimationFrame(scheduleViewport);
+        settleTimeout = window.setTimeout(scheduleViewport, 250);
 
         window.addEventListener('resize', scheduleViewport, {passive: true});
         window.addEventListener('orientationchange', scheduleViewport);
         window.addEventListener('pageshow', scheduleViewport);
-        window.addEventListener('scroll', scheduleScroll, {passive: true});
         visualViewport?.addEventListener('resize', scheduleViewport);
-        visualViewport?.addEventListener('scroll', scheduleScroll);
+        visualViewport?.addEventListener('scroll', scheduleViewport);
 
         return () => {
             window.removeEventListener('resize', scheduleViewport);
             window.removeEventListener('orientationchange', scheduleViewport);
             window.removeEventListener('pageshow', scheduleViewport);
-            window.removeEventListener('scroll', scheduleScroll);
             visualViewport?.removeEventListener('resize', scheduleViewport);
-            visualViewport?.removeEventListener('scroll', scheduleScroll);
+            visualViewport?.removeEventListener('scroll', scheduleViewport);
 
             fullProbe.remove();
             safeProbe.remove();
             insetProbe.remove();
-            root.classList.remove('app-ios-edge-scroll-layer');
 
-            if (viewportFrame !== 0) window.cancelAnimationFrame(viewportFrame);
-            if (scrollFrame !== 0) window.cancelAnimationFrame(scrollFrame);
+            if (frame !== 0) window.cancelAnimationFrame(frame);
+            if (settleFrame !== 0) window.cancelAnimationFrame(settleFrame);
+            if (settleTimeout !== 0) window.clearTimeout(settleTimeout);
         };
     }, []);
 

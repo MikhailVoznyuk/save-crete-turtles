@@ -5,6 +5,7 @@ import {VideoPointAnchor} from '@/shared/utils/position';
 import {GlassBubble} from '@/shared/ui/containers/glass-bubble';
 import type {BubbleRepulsor} from '@/widgets/hero-block/model/types';
 import type {LoadState} from '@/shared/types/load-state';
+import {getEdgeViewportRect} from '@/shared/utils/viewport';
 
 type StageProps  = {
     style?: Record<string, string>,
@@ -276,43 +277,14 @@ type Cords = {x: number, y: number};
 type Sizes = {width: number, height: number};
 type ViewportRect = Sizes & {left: number, top: number};
 
-function readRootPxVar(name: string) {
-    const value = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
-    return Number.isFinite(value) && value > 0 ? value : 0;
-}
-
 function getViewportRect(): ViewportRect {
-    const bg = document.querySelector<HTMLElement>('.edge-video-bg') ?? document.querySelector<HTMLElement>('.fixed-video-bg');
-    const rect = bg?.getBoundingClientRect();
-
-    if (rect && rect.width > 1 && rect.height > 1) {
-        return {
-            left: Math.round(rect.left),
-            top: Math.round(rect.top),
-            width: Math.max(1, Math.round(rect.width)),
-            height: Math.max(1, Math.round(rect.height)),
-        };
-    }
-
-    const cssFullW = readRootPxVar('--app-full-viewport-width');
-    const cssFullH = readRootPxVar('--app-full-viewport-height');
-
-    if (cssFullW > 1 && cssFullH > 1) {
-        return {
-            left: 0,
-            top: 0,
-            width: Math.max(1, Math.round(cssFullW)),
-            height: Math.max(1, Math.round(cssFullH)),
-        };
-    }
-
-    const docEl = document.documentElement;
+    const viewport = getEdgeViewportRect();
 
     return {
-        left: 0,
-        top: 0,
-        width: Math.max(1, Math.round(Math.max(docEl.clientWidth || 0, window.innerWidth || 0))),
-        height: Math.max(1, Math.round(Math.max(docEl.clientHeight || 0, window.innerHeight || 0))),
+        left: viewport.left,
+        top: viewport.top,
+        width: viewport.width,
+        height: viewport.height,
     };
 }
 
