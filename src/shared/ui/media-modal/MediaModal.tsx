@@ -41,6 +41,10 @@ export function MediaModal({preview, content, previewClassName, contentClassName
         close
     }
 
+    const portalHost = typeof document !== 'undefined'
+        ? document.querySelector<HTMLElement>('[data-app-shell]') ?? document.body
+        : null;
+
     useEffect(() => {
         if (!opened) return;
 
@@ -86,14 +90,14 @@ export function MediaModal({preview, content, previewClassName, contentClassName
                 {preview(args)}
             </div>
 
-            {typeof window !== 'undefined' && createPortal(
+            {portalHost && createPortal(
                 <AnimatePresence
                     onExitComplete={() => setHidePreview(false)}
                 >
                     {opened ? (
                         <motion.div
                             layoutRoot
-                            className='fixed inset-0 z-50 flex items-center justify-center p-2'
+                            className='app-modal-overlay z-50 flex items-center justify-center p-2'
                             initial={{opacity: 0}}
                             animate={{opacity: 1}}
                             exit={{opacity: 0}}
@@ -125,7 +129,7 @@ export function MediaModal({preview, content, previewClassName, contentClassName
                         </motion.div>
                     ) : null}
                 </AnimatePresence>,
-                document.body
+                portalHost
             )}
         </LayoutGroup>
     );

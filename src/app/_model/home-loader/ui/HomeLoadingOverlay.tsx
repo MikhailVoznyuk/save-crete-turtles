@@ -14,16 +14,28 @@ export function HomeLoadingOverlay({isLoaded, className}: HomeLoadingOverlayProp
     useEffect(() => {
         if (isLoaded) return;
 
-        const {style} = document.body;
-        const prevOverflow = style.overflow;
-        const prevTouchAction = style.touchAction;
+        const scrollRoot = document.querySelector<HTMLElement>('[data-app-scroll-root]');
+        const prevBodyOverflow = document.body.style.overflow;
+        const prevBodyTouchAction = document.body.style.touchAction;
+        const prevScrollOverflowY = scrollRoot?.style.overflowY ?? '';
+        const prevScrollTouchAction = scrollRoot?.style.touchAction ?? '';
 
-        style.overflow = 'hidden';
-        style.touchAction = 'none';
+        document.body.style.overflow = 'hidden';
+        document.body.style.touchAction = 'none';
+
+        if (scrollRoot) {
+            scrollRoot.style.overflowY = 'hidden';
+            scrollRoot.style.touchAction = 'none';
+        }
 
         return () => {
-            style.overflow = prevOverflow;
-            style.touchAction = prevTouchAction;
+            document.body.style.overflow = prevBodyOverflow;
+            document.body.style.touchAction = prevBodyTouchAction;
+
+            if (scrollRoot) {
+                scrollRoot.style.overflowY = prevScrollOverflowY;
+                scrollRoot.style.touchAction = prevScrollTouchAction;
+            }
         };
     }, [isLoaded]);
 
