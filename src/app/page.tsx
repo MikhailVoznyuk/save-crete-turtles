@@ -117,13 +117,11 @@ export default function Home() {
         const setAppViewportVars = () => {
             const edgeProbeRect = readProbeRect(edgeProbe);
             const safeProbeRect = readProbeRect(safeProbe);
-            const shellRect = document.querySelector<HTMLElement>('[data-app-shell]')?.getBoundingClientRect();
             const docEl = document.documentElement;
 
             const edgeWidth = Math.max(
                 1,
                 roundPx(Math.max(
-                    positive(shellRect?.width),
                     edgeProbeRect.width,
                     positive(window.innerWidth),
                     positive(docEl.clientWidth),
@@ -133,7 +131,6 @@ export default function Home() {
             const edgeHeight = Math.max(
                 1,
                 roundPx(Math.max(
-                    positive(shellRect?.height),
                     edgeProbeRect.height,
                     positive(window.innerHeight),
                     positive(docEl.clientHeight),
@@ -165,6 +162,14 @@ export default function Home() {
             const insetRight = readInset('paddingRight');
             const insetBottom = readInset('paddingBottom');
             const insetLeft = readInset('paddingLeft');
+            const bleedTop = roundPx(Math.max(safeOffsetTop, insetTop));
+            const bleedLeft = roundPx(Math.max(safeOffsetLeft, insetLeft));
+            const bleedRight = roundPx(Math.max(0, edgeWidth - safeWidth - safeOffsetLeft));
+            const bleedBottom = roundPx(Math.max(0, edgeHeight - safeHeight - safeOffsetTop));
+            const layerLeft = -bleedLeft;
+            const layerTop = -bleedTop;
+            const layerWidth = edgeWidth + bleedLeft;
+            const layerHeight = edgeHeight + bleedTop;
 
             const signature = [
                 edgeWidth,
@@ -173,6 +178,14 @@ export default function Home() {
                 safeHeight,
                 safeOffsetLeft,
                 safeOffsetTop,
+                bleedTop,
+                bleedRight,
+                bleedBottom,
+                bleedLeft,
+                layerLeft,
+                layerTop,
+                layerWidth,
+                layerHeight,
                 insetTop,
                 insetRight,
                 insetBottom,
@@ -200,22 +213,22 @@ export default function Home() {
             setPxVar('--app-edge-viewport-height', edgeHeight);
             setPxVar('--app-edge-viewport-top', 0);
             setPxVar('--app-edge-viewport-left', 0);
-            setPxVar('--app-edge-content-top', safeOffsetTop);
-            setPxVar('--app-edge-content-left', safeOffsetLeft);
-            setPxVar('--app-full-layer-width', edgeWidth);
-            setPxVar('--app-full-layer-height', edgeHeight);
-            setPxVar('--app-full-layer-top', 0);
-            setPxVar('--app-full-layer-left', 0);
+            setPxVar('--app-edge-content-top', 0);
+            setPxVar('--app-edge-content-left', 0);
+            setPxVar('--app-full-layer-width', layerWidth);
+            setPxVar('--app-full-layer-height', layerHeight);
+            setPxVar('--app-full-layer-top', layerTop);
+            setPxVar('--app-full-layer-left', layerLeft);
 
             setPxVar('--safe-area-inset-top', insetTop);
             setPxVar('--safe-area-inset-right', insetRight);
             setPxVar('--safe-area-inset-bottom', insetBottom);
             setPxVar('--safe-area-inset-left', insetLeft);
 
-            setPxVar('--full-viewport-bleed-top', safeOffsetTop);
-            setPxVar('--full-viewport-bleed-right', Math.max(0, edgeWidth - safeWidth - safeOffsetLeft));
-            setPxVar('--full-viewport-bleed-bottom', Math.max(0, edgeHeight - safeHeight - safeOffsetTop));
-            setPxVar('--full-viewport-bleed-left', safeOffsetLeft);
+            setPxVar('--full-viewport-bleed-top', bleedTop);
+            setPxVar('--full-viewport-bleed-right', bleedRight);
+            setPxVar('--full-viewport-bleed-bottom', bleedBottom);
+            setPxVar('--full-viewport-bleed-left', bleedLeft);
 
             updateScrollVars();
 

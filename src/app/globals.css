@@ -128,9 +128,9 @@
 html,
 body {
   width: 100%;
-  height: var(--app-full-viewport-height);
-  min-height: var(--app-full-viewport-height);
-  overflow: hidden;
+  min-width: 100%;
+  min-height: 100%;
+  overflow: visible;
 }
 
 html {
@@ -162,7 +162,7 @@ video {
   min-height: var(--app-edge-viewport-height);
   max-width: none;
   max-height: none;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .app-root {
@@ -186,12 +186,14 @@ video {
 }
 
 .app-scroll-root {
-  position: relative;
+  position: absolute;
   z-index: 2;
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
+  top: var(--app-full-layer-top);
+  left: var(--app-full-layer-left);
+  width: var(--app-full-layer-width);
+  height: var(--app-full-layer-height);
+  min-width: var(--app-full-layer-width);
+  min-height: var(--app-full-layer-height);
   overflow-x: clip;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -204,21 +206,20 @@ video {
 .hero-screen {
   position: relative;
   width: 100%;
-  min-height: var(--app-edge-viewport-height);
-  height: var(--app-edge-viewport-height);
+  min-height: var(--app-full-layer-height);
+  height: var(--app-full-layer-height);
 }
 
 .hero-safe-zone {
   --hero-safe-padding: 1rem;
-  width: var(--app-safe-viewport-width);
-  min-height: var(--app-safe-viewport-height);
-  height: var(--app-safe-viewport-height);
+  width: 100%;
+  min-height: var(--app-full-layer-height);
+  height: var(--app-full-layer-height);
   box-sizing: border-box;
-  transform: translate3d(var(--app-safe-viewport-offset-left), var(--app-safe-viewport-offset-top), 0);
-  padding-top: max(var(--hero-safe-padding), var(--safe-area-inset-top));
-  padding-right: max(var(--hero-safe-padding), var(--safe-area-inset-right));
-  padding-bottom: max(var(--hero-safe-padding), var(--safe-area-inset-bottom));
-  padding-left: max(var(--hero-safe-padding), var(--safe-area-inset-left));
+  padding-top: calc(var(--full-viewport-bleed-top) + max(var(--hero-safe-padding), var(--safe-area-inset-top)));
+  padding-right: calc(var(--full-viewport-bleed-right) + max(var(--hero-safe-padding), var(--safe-area-inset-right)));
+  padding-bottom: calc(var(--full-viewport-bleed-bottom) + max(var(--hero-safe-padding), var(--safe-area-inset-bottom)));
+  padding-left: calc(var(--full-viewport-bleed-left) + max(var(--hero-safe-padding), var(--safe-area-inset-left)));
 }
 
 @media (min-width: 640px) {
@@ -242,14 +243,14 @@ video {
 .liquid-glass-visual-root,
 .app-edge-fixed-frame {
   position: absolute;
-  top: var(--app-edge-viewport-top);
-  left: var(--app-edge-viewport-left);
+  top: var(--app-full-layer-top);
+  left: var(--app-full-layer-left);
   right: auto;
   bottom: auto;
-  width: var(--app-edge-viewport-width);
-  height: var(--app-edge-viewport-height);
-  min-width: var(--app-edge-viewport-width);
-  min-height: var(--app-edge-viewport-height);
+  width: var(--app-full-layer-width);
+  height: var(--app-full-layer-height);
+  min-width: var(--app-full-layer-width);
+  min-height: var(--app-full-layer-height);
   max-width: none;
   max-height: none;
   backface-visibility: hidden;
@@ -288,10 +289,14 @@ video {
 
 .app-loading-overlay__content {
   position: absolute;
-  top: var(--app-edge-content-top);
-  left: var(--app-edge-content-left);
-  width: var(--app-safe-viewport-width);
-  height: var(--app-safe-viewport-height);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding-top: calc(var(--full-viewport-bleed-top) + max(1rem, var(--safe-area-inset-top)));
+  padding-right: calc(var(--full-viewport-bleed-right) + max(1rem, var(--safe-area-inset-right)));
+  padding-bottom: calc(var(--full-viewport-bleed-bottom) + max(1rem, var(--safe-area-inset-bottom)));
+  padding-left: calc(var(--full-viewport-bleed-left) + max(1rem, var(--safe-area-inset-left)));
 }
 
 .liquid-glass-canvas {
@@ -332,12 +337,29 @@ video {
   left: 0;
   right: auto;
   bottom: auto;
-  width: var(--app-edge-viewport-width);
-  height: var(--app-edge-viewport-height);
-  min-width: var(--app-edge-viewport-width);
-  min-height: var(--app-edge-viewport-height);
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
   max-width: none;
   max-height: none;
+}
+
+
+
+.app-modal-overlay {
+  position: absolute;
+  top: var(--app-full-layer-top);
+  left: var(--app-full-layer-left);
+  width: var(--app-full-layer-width);
+  height: var(--app-full-layer-height);
+}
+
+.app-floating-navigation {
+  position: absolute;
+  right: calc(var(--full-viewport-bleed-right) + max(1.5rem, var(--safe-area-inset-right)));
+  bottom: calc(var(--full-viewport-bleed-bottom) + max(1.5rem, var(--safe-area-inset-bottom)));
+  z-index: 30;
 }
 
 .edge-video-bg-frame {

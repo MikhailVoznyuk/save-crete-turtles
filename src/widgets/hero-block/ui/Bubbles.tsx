@@ -5,7 +5,7 @@ import {VideoPointAnchor} from '@/shared/utils/position';
 import {GlassBubble} from '@/shared/ui/containers/glass-bubble';
 import type {BubbleRepulsor} from '@/widgets/hero-block/model/types';
 import type {LoadState} from '@/shared/types/load-state';
-import {getEdgeViewportRect} from '@/shared/utils/viewport';
+import {getAppScrollRoot, getAppScrollTop, getEdgeViewportRect} from '@/shared/utils/viewport';
 
 type StageProps  = {
     style?: Record<string, string>,
@@ -459,18 +459,21 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
             ticking.current = true;
 
             rafId.current = requestAnimationFrame(() => {
-                const scrollY = window.scrollY;
+                const scrollY = getAppScrollTop();
                 setVisible((prev) => prev ? scrollY < HIDE_SCROLL_Y : scrollY < SHOW_SCROLL_Y);
                 ticking.current = false;
                 rafId.current = null;
             })
         }
 
-        window.addEventListener('scroll', onScroll, {passive: true});
+        const scrollRoot = getAppScrollRoot();
+        scrollRoot?.addEventListener('scroll', onScroll, {passive: true});
+        window.addEventListener('appviewportchange', onScroll);
         onScroll();
 
         return () => {
-            window.removeEventListener('scroll', onScroll);
+            scrollRoot?.removeEventListener('scroll', onScroll);
+            window.removeEventListener('appviewportchange', onScroll);
             if (rafId.current !== null) {
                 cancelAnimationFrame(rafId.current);
                 rafId.current = null;
@@ -562,7 +565,7 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
     return (
         <>
             <div
-                className={`fixed gpu-fixed-layer transition-all rounded-full animate-turbulence ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
+                className={`absolute gpu-fixed-layer transition-all rounded-full animate-turbulence ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
                 ref={el => {bubblesRef.current[1] = el}}
                 style={{
                     width: `${bubbleSizes[1].width}px`,
@@ -584,7 +587,7 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
                 />
             </div>
             <div
-                className={`fixed gpu-fixed-layer transition-all rounded-full animate-turbulence ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
+                className={`absolute gpu-fixed-layer transition-all rounded-full animate-turbulence ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
                 ref={el => {bubblesRef.current[2] = el}}
                 style={{
                     width: `${bubbleSizes[2].width}px`,
@@ -606,7 +609,7 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
                 />
             </div>
             <div
-                className={`fixed gpu-fixed-layer rounded-full animate-turbulence ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
+                className={`absolute gpu-fixed-layer rounded-full animate-turbulence ${visible ? 'z-10' : '-z-10'} pointer-events-none`}
                 ref={(el) => {bubblesRef.current[0] = el}}
                 style={{
                     width: `${bubbleSizes[0].width}px`,

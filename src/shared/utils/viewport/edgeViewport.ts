@@ -15,11 +15,24 @@ function roundPx(value: number) {
     return Math.round(Math.max(0, value) * 100) / 100;
 }
 
-export function readRootPxVar(name: string) {
+function readResolvedRootPx(name: string) {
     if (typeof window === 'undefined') return 0;
 
-    const value = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
-    return Number.isFinite(value) && value > 0 ? value : 0;
+    const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    if (!raw) return 0;
+    if (/var\(|calc\(|[a-z%]/i.test(raw.replace(/px$/i, ''))) return 0;
+
+    const value = Number.parseFloat(raw);
+    return Number.isFinite(value) ? value : 0;
+}
+
+export function readRootPxVar(name: string) {
+    const value = readResolvedRootPx(name);
+    return value > 0 ? value : 0;
+}
+
+export function readRootNumberVar(name: string) {
+    return readResolvedRootPx(name);
 }
 
 export function getAppShell() {
@@ -46,14 +59,29 @@ export function getEdgeViewportRect(): EdgeViewportRect {
         return {left: 0, top: 0, width: MIN_VIEWPORT_SIZE, height: MIN_VIEWPORT_SIZE};
     }
 
-    const shellRect = getAppShell()?.getBoundingClientRect();
+    const layerWidth = readRootPxVar('--app-full-layer-width');
+    const layerHeight = readRootPxVar('--app-full-layer-height');
+    const layerLeft = readRootNumberVar('--app-full-layer-left');
+    const layerTop = readRootNumberVar('--app-full-layer-top');
 
-    if (shellRect && shellRect.width > MIN_VIEWPORT_SIZE && shellRect.height > MIN_VIEWPORT_SIZE) {
+    if (layerWidth > MIN_VIEWPORT_SIZE && layerHeight > MIN_VIEWPORT_SIZE) {
         return {
-            left: roundPx(shellRect.left),
-            top: roundPx(shellRect.top),
-            width: Math.max(MIN_VIEWPORT_SIZE, roundPx(shellRect.width)),
-            height: Math.max(MIN_VIEWPORT_SIZE, roundPx(shellRect.height)),
+            left: roundPx(layerLeft),
+            top: roundPx(layerTop),
+            width: Math.max(MIN_VIEWPORT_SIZE, roundPx(layerWidth)),
+            height: Math.max(MIN_VIEWPORT_SIZE, roundPx(layerHeight)),
+        };
+    }
+
+    const bg = document.querySelector<HTMLElement>('.edge-video-bg') ?? document.querySelector<HTMLElement>('.fixed-video-bg');
+    const rect = bg?.getBoundingClientRect();
+
+    if (rect && rect.width > MIN_VIEWPORT_SIZE && rect.height > MIN_VIEWPORT_SIZE) {
+        return {
+            left: roundPx(rect.left),
+            top: roundPx(rect.top),
+            width: Math.max(MIN_VIEWPORT_SIZE, roundPx(rect.width)),
+            height: Math.max(MIN_VIEWPORT_SIZE, roundPx(rect.height)),
         };
     }
 
@@ -69,15 +97,14 @@ export function getEdgeViewportRect(): EdgeViewportRect {
         };
     }
 
-    const bg = document.querySelector<HTMLElement>('.edge-video-bg') ?? document.querySelector<HTMLElement>('.fixed-video-bg');
-    const rect = bg?.getBoundingClientRect();
+    const shellRect = getAppShell()?.getBoundingClientRect();
 
-    if (rect && rect.width > MIN_VIEWPORT_SIZE && rect.height > MIN_VIEWPORT_SIZE) {
+    if (shellRect && shellRect.width > MIN_VIEWPORT_SIZE && shellRect.height > MIN_VIEWPORT_SIZE) {
         return {
-            left: roundPx(rect.left),
-            top: roundPx(rect.top),
-            width: Math.max(MIN_VIEWPORT_SIZE, roundPx(rect.width)),
-            height: Math.max(MIN_VIEWPORT_SIZE, roundPx(rect.height)),
+            left: roundPx(shellRect.left),
+            top: roundPx(shellRect.top),
+            width: Math.max(MIN_VIEWPORT_SIZE, roundPx(shellRect.width)),
+            height: Math.max(MIN_VIEWPORT_SIZE, roundPx(shellRect.height)),
         };
     }
 
