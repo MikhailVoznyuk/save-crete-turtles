@@ -1,15 +1,17 @@
 import Image from 'next/image';
 import {useState, useRef, useLayoutEffect, type CSSProperties} from 'react';
 import {BlurContainer} from "@/shared/ui/containers/blur-container";
+import {twMerge} from "tailwind-merge";
 
 type Props = {
     onClick: () => void;
+    active: boolean;
     label: string;
     icon: string;
     alt: string;
 }
 
-export function AppNavItem({onClick, label, icon, alt}: Props) {
+export function AppNavItem({onClick, active, label, icon, alt}: Props) {
     const [textWidth, setTextWidth] = useState<number>(0);
     const textRef = useRef<HTMLSpanElement | null>(null);
 
@@ -21,7 +23,10 @@ export function AppNavItem({onClick, label, icon, alt}: Props) {
 
     return (
         <BlurContainer
-            className='absolute rounded-full hover:border-turk transition-colors duration-300 py-1 px-2 group/AppNavItem'
+            className={twMerge(
+                'absolute rounded-full hover:border-turk transition-colors duration-300 py-1 px-2 group/AppNavItem',
+                active ? 'bg-turk' : '',
+            )}
         >
             <button
                 type='button'
