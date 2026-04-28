@@ -32,7 +32,7 @@ function readRootPxVar(name: string) {
 }
 
 function getViewportMetrics() {
-    const bg = document.querySelector<HTMLElement>('.fixed-video-bg');
+    const bg = document.querySelector<HTMLElement>('.edge-video-bg') ?? document.querySelector<HTMLElement>('.fixed-video-bg');
     const rect = bg?.getBoundingClientRect();
 
     if (rect && rect.width > 1 && rect.height > 1) {

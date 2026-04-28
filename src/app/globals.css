@@ -270,3 +270,24 @@ video {
 .fixed-video-bg .fixed-video-bg__video {
   opacity: 0.001;
 }
+
+html.app-ios-edge-scroll-layer .app-edge-layer,
+html.app-ios-edge-scroll-layer .edge-video-bg,
+html.app-ios-edge-scroll-layer .fixed-video-bg,
+html.app-ios-edge-scroll-layer .app-loading-overlay,
+html.app-ios-edge-scroll-layer .liquid-glass-canvas,
+html.app-ios-edge-scroll-layer .liquid-glass-visual-root {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: auto;
+  bottom: auto;
+  transform: translate3d(var(--app-scroll-x), var(--app-scroll-y), 0);
+  will-change: transform;
+}
+
+html.app-ios-edge-scroll-layer .fixed-video-bg__video,
+html.app-ios-edge-scroll-layer .edge-video-bg,
+html.app-ios-edge-scroll-layer .liquid-glass-canvas {
+  transform-style: preserve-3d;
+}
