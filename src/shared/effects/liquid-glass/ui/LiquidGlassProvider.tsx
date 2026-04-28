@@ -1316,7 +1316,7 @@ export function LiquidGlassProvider({
             >
                 <canvas ref={canvasRef} className="liquid-glass-canvas" />
             </div>
-            <div style={{ position: 'relative', zIndex: zIndex + 1 }}>
+            <div className="app-content-layer" style={{zIndex: zIndex + 1}}>
                 {children}
                 <div
                     className="app-edge-fixed-frame liquid-glass-visual-frame"

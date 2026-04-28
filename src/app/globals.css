@@ -58,10 +58,6 @@
   }
 }
 
-html {
-  background: var(--background);
-}
-
 @supports (top: env(safe-area-inset-top)) {
   :root {
     --safe-area-inset-top: env(safe-area-inset-top, 0px);
@@ -132,23 +128,23 @@ html {
 html,
 body {
   width: 100%;
-  min-height: 100%;
-  overflow-x: clip;
+  height: var(--app-full-viewport-height);
+  min-height: var(--app-full-viewport-height);
+  overflow: hidden;
 }
 
 html {
-  min-height: var(--app-full-viewport-height);
+  background: var(--background);
 }
 
 body {
-  min-height: var(--app-full-viewport-height);
   margin: 0;
   background: radial-gradient(circle at top, rgba(0, 238, 255, 0.08), transparent 32%), var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  overscroll-behavior-x: none;
+  overscroll-behavior: none;
 }
 
 canvas,
@@ -157,9 +153,59 @@ video {
   -webkit-tap-highlight-color: transparent;
 }
 
+.app-root,
+.app-shell {
+  position: relative;
+  width: var(--app-edge-viewport-width);
+  height: var(--app-edge-viewport-height);
+  min-width: var(--app-edge-viewport-width);
+  min-height: var(--app-edge-viewport-height);
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+}
+
+.app-root {
+  isolation: isolate;
+  background: var(--background);
+}
+
+.app-shell {
+  z-index: 0;
+  background: transparent;
+  contain: layout style;
+}
+
+.app-content-layer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+}
+
+.app-scroll-root {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: clip;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  scrollbar-gutter: stable;
+}
+
 .hero-screen {
-  min-height: var(--app-full-viewport-height);
-  height: var(--app-full-viewport-height);
+  position: relative;
+  width: 100%;
+  min-height: var(--app-edge-viewport-height);
+  height: var(--app-edge-viewport-height);
 }
 
 .hero-safe-zone {
@@ -193,8 +239,9 @@ video {
 .fixed-video-bg,
 .app-loading-overlay,
 .liquid-glass-canvas,
-.liquid-glass-visual-root {
-  position: fixed;
+.liquid-glass-visual-root,
+.app-edge-fixed-frame {
+  position: absolute;
   top: var(--app-edge-viewport-top);
   left: var(--app-edge-viewport-left);
   right: auto;
@@ -211,26 +258,32 @@ video {
 
 .fixed-video-bg,
 .liquid-glass-canvas,
-.liquid-glass-visual-root {
+.liquid-glass-visual-root,
+.app-edge-fixed-frame {
   pointer-events: none;
 }
 
-.fixed-video-bg {
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
+.fixed-video-bg,
+.edge-video-bg,
+.liquid-glass-canvas,
+.liquid-glass-visual-root,
+.app-edge-fixed-frame {
   transform: translate3d(0, 0, 0);
+}
+
+.fixed-video-bg,
+.app-loading-overlay {
+  overflow: hidden;
 }
 
 .edge-video-bg {
   display: block;
   z-index: 0;
   pointer-events: none;
-  transform: translate3d(0, 0, 0);
 }
 
 .app-loading-overlay {
-  overflow: hidden;
+  z-index: 999;
 }
 
 .app-loading-overlay__content {
@@ -250,7 +303,6 @@ video {
 .liquid-glass-visual-root {
   z-index: 0;
   overflow: visible;
-  transform: translate3d(0, 0, 0);
   contain: layout style;
 }
 
@@ -270,22 +322,6 @@ video {
 
 .fixed-video-bg .fixed-video-bg__video {
   opacity: 0.001;
-}
-
-
-.app-edge-fixed-frame {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  display: block;
-  width: max(85vw, var(--app-edge-viewport-width));
-  height: min(48px, 20svh);
-  overflow: visible;
-  pointer-events: none;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  transform: translate3d(0, 0, 0);
 }
 
 .app-edge-fixed-frame > .edge-video-bg,

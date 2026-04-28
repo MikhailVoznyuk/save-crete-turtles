@@ -22,9 +22,39 @@ export function readRootPxVar(name: string) {
     return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
+export function getAppShell() {
+    if (typeof document === 'undefined') return null;
+
+    return document.querySelector<HTMLElement>('[data-app-shell]');
+}
+
+export function getAppScrollRoot() {
+    if (typeof document === 'undefined') return null;
+
+    return document.querySelector<HTMLElement>('[data-app-scroll-root]');
+}
+
+export function getAppScrollTop() {
+    if (typeof window === 'undefined') return 0;
+
+    const scrollRoot = getAppScrollRoot();
+    return scrollRoot?.scrollTop ?? window.scrollY ?? 0;
+}
+
 export function getEdgeViewportRect(): EdgeViewportRect {
     if (typeof window === 'undefined') {
         return {left: 0, top: 0, width: MIN_VIEWPORT_SIZE, height: MIN_VIEWPORT_SIZE};
+    }
+
+    const shellRect = getAppShell()?.getBoundingClientRect();
+
+    if (shellRect && shellRect.width > MIN_VIEWPORT_SIZE && shellRect.height > MIN_VIEWPORT_SIZE) {
+        return {
+            left: roundPx(shellRect.left),
+            top: roundPx(shellRect.top),
+            width: Math.max(MIN_VIEWPORT_SIZE, roundPx(shellRect.width)),
+            height: Math.max(MIN_VIEWPORT_SIZE, roundPx(shellRect.height)),
+        };
     }
 
     const cssWidth = readRootPxVar('--app-edge-viewport-width') || readRootPxVar('--app-full-viewport-width');

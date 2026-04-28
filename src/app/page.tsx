@@ -17,6 +17,7 @@ import type {LoadState} from '@/shared/types/load-state';
 
 export default function Home() {
     const videoRef = useRef<HTMLVideoElement | null>(null);
+    const scrollRootRef = useRef<HTMLDivElement | null>(null);
     const isMobile = useIsMobile();
     const {isReady, setTaskState} = useHomeReadyGate();
 
@@ -38,14 +39,10 @@ export default function Home() {
 
     useEffect(() => {
         const root = document.documentElement;
-        const host = document.body || root;
         const visualViewport = window.visualViewport;
-        const isIPhoneLike = /iP(?:hone|od)/.test(window.navigator.userAgent);
         let frame = 0;
-        let settleFrame = 0;
-        let settleTimeout = 0;
+        let lastEdgeSignature = '';
         let lastSignature = '';
-        let lastFullSignature = '';
 
         const probeBaseStyle = [
             'position:absolute',
@@ -59,15 +56,15 @@ export default function Home() {
             'overflow:hidden',
         ].join(';');
 
-        const fullProbe = document.createElement('div');
+        const edgeProbe = document.createElement('div');
         const safeProbe = document.createElement('div');
         const insetProbe = document.createElement('div');
 
-        fullProbe.setAttribute('aria-hidden', 'true');
+        edgeProbe.setAttribute('aria-hidden', 'true');
         safeProbe.setAttribute('aria-hidden', 'true');
         insetProbe.setAttribute('aria-hidden', 'true');
 
-        fullProbe.style.cssText = `${probeBaseStyle};width:100vw;height:100vh`;
+        edgeProbe.style.cssText = `${probeBaseStyle};width:100vw;height:100vh`;
         safeProbe.style.cssText = `${probeBaseStyle};width:100vw;height:100vh`;
         insetProbe.style.cssText = [
             probeBaseStyle,
@@ -80,13 +77,13 @@ export default function Home() {
         ].join(';');
 
         if (typeof CSS !== 'undefined') {
-            if (CSS.supports('width', '100lvw')) fullProbe.style.width = '100lvw';
-            if (CSS.supports('height', '100lvh')) fullProbe.style.height = '100lvh';
+            if (CSS.supports('width', '100lvw')) edgeProbe.style.width = '100lvw';
+            if (CSS.supports('height', '100lvh')) edgeProbe.style.height = '100lvh';
             if (CSS.supports('width', '100svw')) safeProbe.style.width = '100svw';
             if (CSS.supports('height', '100svh')) safeProbe.style.height = '100svh';
         }
 
-        host.append(fullProbe, safeProbe, insetProbe);
+        document.body.append(edgeProbe, safeProbe, insetProbe);
 
         const positive = (value: number | undefined | null) => (
             typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0
@@ -98,7 +95,7 @@ export default function Home() {
             root.style.setProperty(name, `${roundPx(value)}px`);
         };
 
-        const readRect = (el: HTMLElement) => {
+        const readProbeRect = (el: HTMLElement) => {
             const rect = el.getBoundingClientRect();
             return {
                 width: positive(rect.width),
@@ -111,43 +108,35 @@ export default function Home() {
             return Number.isFinite(value) && value > 0 ? value : 0;
         };
 
-        const getIPhoneScreenViewport = () => {
-            if (!isIPhoneLike || !window.screen) return {width: 0, height: 0};
-
-            const screenWidth = positive(window.screen.width);
-            const screenHeight = positive(window.screen.height);
-            if (screenWidth <= 0 || screenHeight <= 0) return {width: 0, height: 0};
-
-            const portrait = window.matchMedia?.('(orientation: portrait)').matches ?? screenHeight >= screenWidth;
-
-            return portrait
-                ? {width: Math.min(screenWidth, screenHeight), height: Math.max(screenWidth, screenHeight)}
-                : {width: Math.max(screenWidth, screenHeight), height: Math.min(screenWidth, screenHeight)};
+        const updateScrollVars = () => {
+            const scrollRoot = scrollRootRef.current;
+            setPxVar('--app-scroll-x', scrollRoot?.scrollLeft ?? window.scrollX ?? 0);
+            setPxVar('--app-scroll-y', scrollRoot?.scrollTop ?? window.scrollY ?? 0);
         };
 
         const setAppViewportVars = () => {
-            const fullRect = readRect(fullProbe);
-            const safeRect = readRect(safeProbe);
+            const edgeProbeRect = readProbeRect(edgeProbe);
+            const safeProbeRect = readProbeRect(safeProbe);
+            const shellRect = document.querySelector<HTMLElement>('[data-app-shell]')?.getBoundingClientRect();
             const docEl = document.documentElement;
-            const iPhoneScreen = getIPhoneScreenViewport();
 
-            const fullWidth = Math.max(
+            const edgeWidth = Math.max(
                 1,
-                Math.round(Math.max(
-                    fullRect.width,
+                roundPx(Math.max(
+                    positive(shellRect?.width),
+                    edgeProbeRect.width,
                     positive(window.innerWidth),
                     positive(docEl.clientWidth),
-                    iPhoneScreen.width,
                 )),
             );
 
-            const fullHeight = Math.max(
+            const edgeHeight = Math.max(
                 1,
-                Math.round(Math.max(
-                    fullRect.height,
+                roundPx(Math.max(
+                    positive(shellRect?.height),
+                    edgeProbeRect.height,
                     positive(window.innerHeight),
                     positive(docEl.clientHeight),
-                    iPhoneScreen.height,
                 )),
             );
 
@@ -155,18 +144,18 @@ export default function Home() {
             const visualHeight = positive(visualViewport?.height);
             const safeWidth = Math.max(
                 1,
-                Math.round(Math.min(
-                    fullWidth,
-                    visualWidth || safeRect.width || positive(window.innerWidth) || fullWidth,
-                    safeRect.width || fullWidth,
+                roundPx(Math.min(
+                    edgeWidth,
+                    visualWidth || safeProbeRect.width || positive(window.innerWidth) || edgeWidth,
+                    safeProbeRect.width || edgeWidth,
                 )),
             );
             const safeHeight = Math.max(
                 1,
-                Math.round(Math.min(
-                    fullHeight,
-                    visualHeight || safeRect.height || positive(window.innerHeight) || fullHeight,
-                    safeRect.height || fullHeight,
+                roundPx(Math.min(
+                    edgeHeight,
+                    visualHeight || safeProbeRect.height || positive(window.innerHeight) || edgeHeight,
+                    safeProbeRect.height || edgeHeight,
                 )),
             );
 
@@ -178,8 +167,8 @@ export default function Home() {
             const insetLeft = readInset('paddingLeft');
 
             const signature = [
-                fullWidth,
-                fullHeight,
+                edgeWidth,
+                edgeHeight,
                 safeWidth,
                 safeHeight,
                 safeOffsetLeft,
@@ -190,27 +179,31 @@ export default function Home() {
                 insetLeft,
             ].map(roundPx).join('|');
 
-            if (signature === lastSignature) return;
+            if (signature === lastSignature) {
+                updateScrollVars();
+                return;
+            }
+
             lastSignature = signature;
 
             root.style.setProperty('--app-vh', `${safeHeight * 0.01}px`);
-            root.style.setProperty('--app-full-vh', `${fullHeight * 0.01}px`);
+            root.style.setProperty('--app-full-vh', `${edgeHeight * 0.01}px`);
 
             setPxVar('--app-safe-viewport-width', safeWidth);
             setPxVar('--app-safe-viewport-height', safeHeight);
             setPxVar('--app-safe-viewport-offset-left', safeOffsetLeft);
             setPxVar('--app-safe-viewport-offset-top', safeOffsetTop);
 
-            setPxVar('--app-full-viewport-width', fullWidth);
-            setPxVar('--app-full-viewport-height', fullHeight);
-            setPxVar('--app-edge-viewport-width', fullWidth);
-            setPxVar('--app-edge-viewport-height', fullHeight);
+            setPxVar('--app-full-viewport-width', edgeWidth);
+            setPxVar('--app-full-viewport-height', edgeHeight);
+            setPxVar('--app-edge-viewport-width', edgeWidth);
+            setPxVar('--app-edge-viewport-height', edgeHeight);
             setPxVar('--app-edge-viewport-top', 0);
             setPxVar('--app-edge-viewport-left', 0);
             setPxVar('--app-edge-content-top', safeOffsetTop);
             setPxVar('--app-edge-content-left', safeOffsetLeft);
-            setPxVar('--app-full-layer-width', fullWidth);
-            setPxVar('--app-full-layer-height', fullHeight);
+            setPxVar('--app-full-layer-width', edgeWidth);
+            setPxVar('--app-full-layer-height', edgeHeight);
             setPxVar('--app-full-layer-top', 0);
             setPxVar('--app-full-layer-left', 0);
 
@@ -220,13 +213,15 @@ export default function Home() {
             setPxVar('--safe-area-inset-left', insetLeft);
 
             setPxVar('--full-viewport-bleed-top', safeOffsetTop);
-            setPxVar('--full-viewport-bleed-right', Math.max(0, fullWidth - safeWidth - safeOffsetLeft));
-            setPxVar('--full-viewport-bleed-bottom', Math.max(0, fullHeight - safeHeight - safeOffsetTop));
+            setPxVar('--full-viewport-bleed-right', Math.max(0, edgeWidth - safeWidth - safeOffsetLeft));
+            setPxVar('--full-viewport-bleed-bottom', Math.max(0, edgeHeight - safeHeight - safeOffsetTop));
             setPxVar('--full-viewport-bleed-left', safeOffsetLeft);
 
-            const fullSignature = `${fullWidth}|${fullHeight}`;
-            if (fullSignature !== lastFullSignature) {
-                lastFullSignature = fullSignature;
+            updateScrollVars();
+
+            const edgeSignature = `${edgeWidth}|${edgeHeight}`;
+            if (edgeSignature !== lastEdgeSignature) {
+                lastEdgeSignature = edgeSignature;
                 window.dispatchEvent(new Event('appviewportchange'));
             }
         };
@@ -240,15 +235,15 @@ export default function Home() {
             });
         };
 
-        setAppViewportVars();
-        settleFrame = requestAnimationFrame(scheduleViewport);
-        settleTimeout = window.setTimeout(scheduleViewport, 250);
+        const scrollRoot = scrollRootRef.current;
 
+        setAppViewportVars();
         window.addEventListener('resize', scheduleViewport, {passive: true});
         window.addEventListener('orientationchange', scheduleViewport);
         window.addEventListener('pageshow', scheduleViewport);
         visualViewport?.addEventListener('resize', scheduleViewport);
         visualViewport?.addEventListener('scroll', scheduleViewport);
+        scrollRoot?.addEventListener('scroll', updateScrollVars, {passive: true});
 
         return () => {
             window.removeEventListener('resize', scheduleViewport);
@@ -256,14 +251,13 @@ export default function Home() {
             window.removeEventListener('pageshow', scheduleViewport);
             visualViewport?.removeEventListener('resize', scheduleViewport);
             visualViewport?.removeEventListener('scroll', scheduleViewport);
+            scrollRoot?.removeEventListener('scroll', updateScrollVars);
 
-            fullProbe.remove();
+            edgeProbe.remove();
             safeProbe.remove();
             insetProbe.remove();
 
             if (frame !== 0) window.cancelAnimationFrame(frame);
-            if (settleFrame !== 0) window.cancelAnimationFrame(settleFrame);
-            if (settleTimeout !== 0) window.clearTimeout(settleTimeout);
         };
     }, []);
 
@@ -273,12 +267,12 @@ export default function Home() {
     ]), []);
 
     return (
-        <div className='relative isolate w-full min-w-0'>
+        <div className='app-root'>
             <HomeLoadingOverlay isLoaded={isReady}>
                 <div className='sr-only'>Preparing hero scene</div>
             </HomeLoadingOverlay>
 
-            <main className='relative w-full' aria-busy={!isReady}>
+            <main className='app-shell' data-app-shell aria-busy={!isReady}>
                 <Background
                     videoRef={videoRef}
                     videoSrc='/media/video/bg/bg_1.mp4'
@@ -287,7 +281,7 @@ export default function Home() {
                     fixed
                     onLoadStateChange={handleBackgroundLoadState}
                 />
-                <SectionNavigationProvider>
+                <SectionNavigationProvider scrollRootRef={scrollRootRef}>
                     <LiquidGlassProvider
                         videoRef={videoRef}
                         zIndex={1}
@@ -295,17 +289,19 @@ export default function Home() {
                         dprCap={isMobile ? 1.4 : 2}
                         onLoadStateChange={handleHeroGlassLoadState}
                     >
-                        <HeroBlock
-                            onBubblesLoadStateChange={handleHeroBubblesLoadState}
-                            onParticlesLoadStateChange={handleHeroParticlesLoadState}
-                        />
-                        <div className='relative flex flex-col gap-24 p-3 sm:p-6'>
-                            <FactCardsSection />
-                            <StepsSection />
-                            <QuestionsSection />
-                            <ContactsSection />
+                        <div ref={scrollRootRef} className='app-scroll-root' data-app-scroll-root>
+                            <HeroBlock
+                                onBubblesLoadStateChange={handleHeroBubblesLoadState}
+                                onParticlesLoadStateChange={handleHeroParticlesLoadState}
+                            />
+                            <div className='relative flex flex-col gap-24 p-3 sm:p-6'>
+                                <FactCardsSection />
+                                <StepsSection />
+                                <QuestionsSection />
+                                <ContactsSection />
+                            </div>
+                            {/*<AppNavigation />*/}
                         </div>
-                        {/*<AppNavigation />*/}
                     </LiquidGlassProvider>
                 </SectionNavigationProvider>
             </main>

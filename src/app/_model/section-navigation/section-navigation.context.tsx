@@ -8,6 +8,7 @@ import {
     useMemo,
     useCallback,
     ReactNode,
+    type RefObject,
 } from 'react';
 
 const PAGE_SECTIONS = ['hero', 'cards', 'steps', 'q&a', 'contacts'] as const;
@@ -21,11 +22,17 @@ type SectionNavigationContextValue = {
     registerSection: (name: SectionName) => (node: HTMLElement | null) => void;
     scrollToSection: (name: SectionName) => void;
     getSection: (name: SectionName) => HTMLElement | null;
+    getScrollRoot: () => HTMLElement | null;
 }
 
 const SectionNavigationContext = createContext<SectionNavigationContextValue | null>(null);
 
-export function SectionNavigationProvider({children}: {children: ReactNode}) {
+type SectionNavigationProviderProps = {
+    children: ReactNode;
+    scrollRootRef?: RefObject<HTMLElement | null>;
+}
+
+export function SectionNavigationProvider({children, scrollRootRef}: SectionNavigationProviderProps) {
     const [activeSection, setActiveSection] = useState<SectionName>();
     const sectionsRef = useRef<Sections>({});
 
@@ -36,17 +43,34 @@ export function SectionNavigationProvider({children}: {children: ReactNode}) {
 
     const getSection = useCallback((name: SectionName) => sectionsRef.current[name] ?? null, []);
 
+    const getScrollRoot = useCallback(() => (
+        scrollRootRef?.current ?? document.querySelector<HTMLElement>('[data-app-scroll-root]')
+    ), [scrollRootRef]);
+
     const scrollToSection = useCallback((name: SectionName) => {
         const el = sectionsRef.current[name];
         if (!el) return;
 
-        el.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-        })
+        const scrollRoot = getScrollRoot();
+
+        if (scrollRoot) {
+            const rootRect = scrollRoot.getBoundingClientRect();
+            const targetRect = el.getBoundingClientRect();
+            const top = targetRect.top - rootRect.top + scrollRoot.scrollTop;
+
+            scrollRoot.scrollTo({
+                top: Math.max(0, top),
+                behavior: 'smooth',
+            });
+        } else {
+            el.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        }
 
         setActiveSection(name);
-    }, []);
+    }, [getScrollRoot]);
 
     const value = useMemo(() => ({
         sections: PAGE_SECTIONS,
@@ -54,8 +78,9 @@ export function SectionNavigationProvider({children}: {children: ReactNode}) {
         setActiveSection: setActiveSection,
         registerSection,
         scrollToSection,
-        getSection
-    }), [activeSection, registerSection, scrollToSection, getSection]);
+        getSection,
+        getScrollRoot,
+    }), [activeSection, registerSection, scrollToSection, getSection, getScrollRoot]);
 
     return (
         <SectionNavigationContext.Provider value={value}>{children}</SectionNavigationContext.Provider>
@@ -69,5 +94,3 @@ export function useSectionNavigation() {
 
     return ctx;
 }
-
-
