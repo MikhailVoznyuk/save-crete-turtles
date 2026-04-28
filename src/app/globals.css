@@ -34,6 +34,30 @@
   --full-viewport-bleed-left: 0px;
 }
 
+@supports (height: 100svh) {
+  :root {
+    --app-vh: 1svh;
+    --app-safe-viewport-height: 100svh;
+  }
+}
+
+@supports (height: 100lvh) {
+  :root {
+    --app-full-vh: 1lvh;
+    --app-full-viewport-height: 100lvh;
+    --app-edge-viewport-height: 100lvh;
+    --app-full-layer-height: 100lvh;
+  }
+}
+
+@supports (width: 100lvw) {
+  :root {
+    --app-full-viewport-width: 100lvw;
+    --app-edge-viewport-width: 100lvw;
+    --app-full-layer-width: 100lvw;
+  }
+}
+
 html {
   background: var(--background);
 }
@@ -107,6 +131,7 @@ html {
 
 html,
 body {
+  width: 100%;
   min-height: 100%;
   overflow-x: clip;
 }
@@ -116,6 +141,7 @@ html {
 }
 
 body {
+  min-height: var(--app-full-viewport-height);
   margin: 0;
   background: radial-gradient(circle at top, rgba(0, 238, 255, 0.08), transparent 32%), var(--background);
   color: var(--foreground);
@@ -163,6 +189,7 @@ video {
 }
 
 .app-edge-layer,
+.edge-video-bg,
 .fixed-video-bg,
 .app-loading-overlay,
 .liquid-glass-canvas,
@@ -193,18 +220,10 @@ video {
 }
 
 .edge-video-bg {
-  position: sticky;
-  top: 0;
-  left: 0;
   display: block;
-  width: var(--app-edge-viewport-width);
-  height: var(--app-edge-viewport-height);
-  margin-bottom: calc(var(--app-edge-viewport-height) * -1);
-  transform: translate3d(var(--app-edge-viewport-left), var(--app-edge-viewport-top), 0);
   z-index: 0;
   pointer-events: none;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
   will-change: transform;
 }
 
