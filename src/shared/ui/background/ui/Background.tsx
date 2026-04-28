@@ -1,5 +1,6 @@
 import React, {useCallback, useEffect, useRef} from 'react';
 import {stabilizeInlineVideo} from '@/shared/utils/media/stabilizeInlineVideo';
+import {getEdgeViewportRect} from '@/shared/utils/viewport';
 import type {LoadState} from '@/shared/types/load-state';
 
 type VideoSource = {
@@ -92,9 +93,9 @@ export function Background({
         const draw = () => {
             if (disposed || video.videoWidth <= 0 || video.videoHeight <= 0) return;
 
-            const rect = canvas.getBoundingClientRect();
-            const cssWidth = Math.max(1, rect.width);
-            const cssHeight = Math.max(1, rect.height);
+            const viewport = getEdgeViewportRect();
+            const cssWidth = Math.max(1, viewport.width);
+            const cssHeight = Math.max(1, viewport.height);
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
             const nextWidth = Math.max(1, Math.round(cssWidth * dpr));
             const nextHeight = Math.max(1, Math.round(cssHeight * dpr));
@@ -361,7 +362,11 @@ export function Background({
 
     return (
         <>
-            {fixed && <canvas ref={canvasRef} className='edge-video-bg' aria-hidden />}
+            {fixed && (
+                <div className='app-edge-fixed-frame edge-video-bg-frame' aria-hidden>
+                    <canvas ref={canvasRef} className='edge-video-bg' />
+                </div>
+            )}
             <div className={`${fixed ? 'fixed-video-bg' : 'absolute inset-0'} z-0 overflow-hidden pointer-events-none`} aria-hidden>
                 <video
                     src={hasSources ? undefined : videoSrc}
