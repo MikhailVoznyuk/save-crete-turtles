@@ -14,28 +14,39 @@ export function HomeLoadingOverlay({isLoaded, className}: HomeLoadingOverlayProp
     useEffect(() => {
         if (isLoaded) return;
 
-        const scrollRoot = document.querySelector<HTMLElement>('[data-app-scroll-root]');
-        const prevBodyOverflow = document.body.style.overflow;
-        const prevBodyTouchAction = document.body.style.touchAction;
-        const prevScrollOverflowY = scrollRoot?.style.overflowY ?? '';
-        const prevScrollTouchAction = scrollRoot?.style.touchAction ?? '';
+        const html = document.documentElement;
+        const body = document.body;
+        const scrollY = window.scrollY || window.pageYOffset || html.scrollTop || 0;
+        const scrollX = window.scrollX || window.pageXOffset || html.scrollLeft || 0;
+        const prevHtmlOverflow = html.style.overflow;
+        const prevBodyPosition = body.style.position;
+        const prevBodyTop = body.style.top;
+        const prevBodyLeft = body.style.left;
+        const prevBodyRight = body.style.right;
+        const prevBodyWidth = body.style.width;
+        const prevBodyOverflow = body.style.overflow;
+        const prevBodyTouchAction = body.style.touchAction;
 
-        document.body.style.overflow = 'hidden';
-        document.body.style.touchAction = 'none';
-
-        if (scrollRoot) {
-            scrollRoot.style.overflowY = 'hidden';
-            scrollRoot.style.touchAction = 'none';
-        }
+        html.style.overflow = 'hidden';
+        body.style.position = 'fixed';
+        body.style.top = `-${scrollY}px`;
+        body.style.left = '0';
+        body.style.right = '0';
+        body.style.width = '100%';
+        body.style.overflow = 'hidden';
+        body.style.touchAction = 'none';
 
         return () => {
-            document.body.style.overflow = prevBodyOverflow;
-            document.body.style.touchAction = prevBodyTouchAction;
-
-            if (scrollRoot) {
-                scrollRoot.style.overflowY = prevScrollOverflowY;
-                scrollRoot.style.touchAction = prevScrollTouchAction;
-            }
+            html.style.overflow = prevHtmlOverflow;
+            body.style.position = prevBodyPosition;
+            body.style.top = prevBodyTop;
+            body.style.left = prevBodyLeft;
+            body.style.right = prevBodyRight;
+            body.style.width = prevBodyWidth;
+            body.style.overflow = prevBodyOverflow;
+            body.style.touchAction = prevBodyTouchAction;
+            window.scrollTo({top: scrollY, left: scrollX, behavior: 'auto'});
+            window.dispatchEvent(new Event('appscrollchange'));
         };
     }, [isLoaded]);
 

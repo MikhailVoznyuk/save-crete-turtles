@@ -1,11 +1,10 @@
 'use client';
 
-import {useCallback, useRef, useState} from 'react';
+import {useCallback, useRef, useState, type MutableRefObject} from 'react';
 import {useSectionNavigation} from '@/app/_model/section-navigation/section-navigation.context';
 import {Title} from '@/shared/ui/text-blocks/ui/Title';
 import {TextBlock} from '@/shared/ui/text-blocks';
 import {WaveButton} from '@/shared/ui/buttons/wave-button';
-import {Bubbles} from '@/widgets/hero-block/ui/Bubbles';
 import {ArrowButton} from '@/shared/ui/buttons/arrow-button';
 import {useIsMobile} from '@/shared/hooks/adaptive';
 import {HeroDustText} from '@/widgets/hero-block/ui/HeroDustText';
@@ -16,17 +15,18 @@ const HERO_TITLE = 'Help us save the Cretan sea turtles in Almyrida';
 const HERO_TEXT = "Contribute to improving the loggerhead sea turtles (Caretta caretta)' living conditions and survival. It's not difficult, but it will help save their lives.";
 
 type HeroBlockProps = {
-    onBubblesLoadStateChange?: (state: LoadState) => void;
+    repulsorsRef?: MutableRefObject<BubbleRepulsor[]>;
     onParticlesLoadStateChange?: (state: LoadState) => void;
 }
 
-export function HeroBlock({onBubblesLoadStateChange, onParticlesLoadStateChange}: HeroBlockProps) {
+export function HeroBlock({repulsorsRef, onParticlesLoadStateChange}: HeroBlockProps) {
     const {registerSection, scrollToSection} = useSectionNavigation();
     const isMobile = useIsMobile();
     const textParticleRootRef = useRef<HTMLDivElement | null>(null);
     const titleRef = useRef<HTMLDivElement | null>(null);
     const textRef = useRef<HTMLDivElement | null>(null);
-    const repulsorsRef = useRef<BubbleRepulsor[]>([]);
+    const localRepulsorsRef = useRef<BubbleRepulsor[]>([]);
+    const particleRepulsorsRef = repulsorsRef ?? localRepulsorsRef;
     const [particlesLoadState, setParticlesLoadState] = useState<LoadState>('pending');
     const showTextFallback = particlesLoadState === 'error' || particlesLoadState === 'skipped';
 
@@ -56,7 +56,7 @@ export function HeroBlock({onBubblesLoadStateChange, onParticlesLoadStateChange}
                             containerRef={textParticleRootRef}
                             titleRef={titleRef}
                             textRef={textRef}
-                            repulsorsRef={repulsorsRef}
+                            repulsorsRef={particleRepulsorsRef}
                             onLoadStateChange={handleParticlesLoadStateChange}
                         />
                     </div>
@@ -66,10 +66,6 @@ export function HeroBlock({onBubblesLoadStateChange, onParticlesLoadStateChange}
                     </div>
                 </div>
             </div>
-            <Bubbles
-                repulsorsRef={repulsorsRef}
-                onLoadStateChange={onBubblesLoadStateChange}
-            />
 
             <ArrowButton
                 onClick={() => {}}

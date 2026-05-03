@@ -3,6 +3,7 @@
 import React from 'react';
 import {useCallback, useEffect, useMemo, useRef} from 'react';
 import {HeroBlock} from '@/widgets/hero-block';
+import {Bubbles} from '@/widgets/hero-block/ui/Bubbles';
 import {FactCardsSection} from '@/widgets/cards-section';
 import {StepsSection} from '@/widgets/steps-section';
 import {QuestionsSection} from '@/widgets/questions-section';
@@ -14,10 +15,13 @@ import {useIsMobile} from '@/shared/hooks/adaptive';
 import {useHomeReadyGate} from '@/app/_model/home-loader/useHomeReadyGate';
 import {HomeLoadingOverlay} from '@/app/_model/home-loader/ui/HomeLoadingOverlay';
 import type {LoadState} from '@/shared/types/load-state';
+import type {BubbleRepulsor} from '@/widgets/hero-block/model/types';
 
 export default function Home() {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const scrollRootRef = useRef<HTMLDivElement | null>(null);
+    const documentSpacerRef = useRef<HTMLDivElement | null>(null);
+    const repulsorsRef = useRef<BubbleRepulsor[]>([]);
     const isMobile = useIsMobile();
     const {isReady, setTaskState} = useHomeReadyGate();
 
@@ -41,8 +45,24 @@ export default function Home() {
         const root = document.documentElement;
         const visualViewport = window.visualViewport;
         let frame = 0;
+        let documentFrame = 0;
         let lastEdgeSignature = '';
         let lastSignature = '';
+        let lastDocumentHeight = 0;
+        let lastSpacerHeight = -1;
+        let lastScrollX = Number.NaN;
+        let lastScrollY = Number.NaN;
+        const previousScrollRestoration = 'scrollRestoration' in window.history
+            ? window.history.scrollRestoration
+            : null;
+
+        if (previousScrollRestoration !== null) {
+            window.history.scrollRestoration = 'manual';
+        }
+
+        if ((window.scrollY || window.pageYOffset || 0) !== 0 || (window.scrollX || window.pageXOffset || 0) !== 0) {
+            window.scrollTo({top: 0, left: 0, behavior: 'auto'});
+        }
 
         const probeBaseStyle = [
             'position:absolute',
@@ -109,9 +129,63 @@ export default function Home() {
         };
 
         const updateScrollVars = () => {
+            const scrollX = roundPx(window.scrollX || window.pageXOffset || 0);
+            const scrollY = roundPx(window.scrollY || window.pageYOffset || 0);
+
+            if (scrollX === lastScrollX && scrollY === lastScrollY) return;
+
+            lastScrollX = scrollX;
+            lastScrollY = scrollY;
+            setPxVar('--app-scroll-x', scrollX);
+            setPxVar('--app-scroll-y', scrollY);
+            window.dispatchEvent(new Event('appscrollchange'));
+        };
+
+        const measureDocumentHeight = () => {
             const scrollRoot = scrollRootRef.current;
-            setPxVar('--app-scroll-x', scrollRoot?.scrollLeft ?? window.scrollX ?? 0);
-            setPxVar('--app-scroll-y', scrollRoot?.scrollTop ?? window.scrollY ?? 0);
+            const spacer = documentSpacerRef.current;
+            const edgeHeight = positive(Number.parseFloat(root.style.getPropertyValue('--app-edge-viewport-height'))) || positive(window.innerHeight) || 1;
+            let contentHeight = edgeHeight;
+
+            if (scrollRoot) {
+                const rootRect = scrollRoot.getBoundingClientRect();
+                let maxBottom = 0;
+
+                for (const child of Array.from(scrollRoot.children)) {
+                    if (!(child instanceof HTMLElement)) continue;
+                    const rect = child.getBoundingClientRect();
+                    maxBottom = Math.max(maxBottom, rect.bottom - rootRect.top);
+                }
+
+                contentHeight = Math.max(
+                    edgeHeight,
+                    positive(scrollRoot.scrollHeight),
+                    positive(scrollRoot.offsetHeight),
+                    maxBottom,
+                );
+            }
+
+            const nextHeight = Math.ceil(contentHeight);
+            const nextSpacerHeight = Math.max(0, Math.ceil(contentHeight - edgeHeight));
+
+            if (Math.abs(nextHeight - lastDocumentHeight) < 1 && Math.abs(nextSpacerHeight - lastSpacerHeight) < 1) {
+                return;
+            }
+
+            lastDocumentHeight = nextHeight;
+            lastSpacerHeight = nextSpacerHeight;
+            setPxVar('--app-document-height', nextHeight);
+            setPxVar('--app-document-spacer-height', nextSpacerHeight);
+            if (spacer) spacer.style.height = `${nextSpacerHeight}px`;
+        };
+
+        const scheduleDocumentHeight = () => {
+            if (documentFrame !== 0) return;
+
+            documentFrame = window.requestAnimationFrame(() => {
+                documentFrame = 0;
+                measureDocumentHeight();
+            });
         };
 
         const setAppViewportVars = () => {
@@ -164,12 +238,8 @@ export default function Home() {
             const insetLeft = readInset('paddingLeft');
             const bleedTop = roundPx(Math.max(safeOffsetTop, insetTop));
             const bleedLeft = roundPx(Math.max(safeOffsetLeft, insetLeft));
-            const bleedRight = roundPx(Math.max(0, edgeWidth - safeWidth - safeOffsetLeft));
-            const bleedBottom = roundPx(Math.max(0, edgeHeight - safeHeight - safeOffsetTop));
-            const layerLeft = -bleedLeft;
-            const layerTop = -bleedTop;
-            const layerWidth = edgeWidth + bleedLeft;
-            const layerHeight = edgeHeight + bleedTop;
+            const bleedRight = roundPx(Math.max(0, edgeWidth - safeWidth - safeOffsetLeft, insetRight));
+            const bleedBottom = roundPx(Math.max(0, edgeHeight - safeHeight - safeOffsetTop, insetBottom));
 
             const signature = [
                 edgeWidth,
@@ -182,10 +252,6 @@ export default function Home() {
                 bleedRight,
                 bleedBottom,
                 bleedLeft,
-                layerLeft,
-                layerTop,
-                layerWidth,
-                layerHeight,
                 insetTop,
                 insetRight,
                 insetBottom,
@@ -194,6 +260,7 @@ export default function Home() {
 
             if (signature === lastSignature) {
                 updateScrollVars();
+                scheduleDocumentHeight();
                 return;
             }
 
@@ -215,10 +282,10 @@ export default function Home() {
             setPxVar('--app-edge-viewport-left', 0);
             setPxVar('--app-edge-content-top', 0);
             setPxVar('--app-edge-content-left', 0);
-            setPxVar('--app-full-layer-width', layerWidth);
-            setPxVar('--app-full-layer-height', layerHeight);
-            setPxVar('--app-full-layer-top', layerTop);
-            setPxVar('--app-full-layer-left', layerLeft);
+            setPxVar('--app-full-layer-width', edgeWidth);
+            setPxVar('--app-full-layer-height', edgeHeight);
+            setPxVar('--app-full-layer-top', 0);
+            setPxVar('--app-full-layer-left', 0);
 
             setPxVar('--safe-area-inset-top', insetTop);
             setPxVar('--safe-area-inset-right', insetRight);
@@ -231,6 +298,7 @@ export default function Home() {
             setPxVar('--full-viewport-bleed-left', bleedLeft);
 
             updateScrollVars();
+            scheduleDocumentHeight();
 
             const edgeSignature = `${edgeWidth}|${edgeHeight}`;
             if (edgeSignature !== lastEdgeSignature) {
@@ -249,28 +317,47 @@ export default function Home() {
         };
 
         const scrollRoot = scrollRootRef.current;
+        const resizeObserver = typeof ResizeObserver !== 'undefined' && scrollRoot
+            ? new ResizeObserver(scheduleDocumentHeight)
+            : null;
+        const mutationObserver = typeof MutationObserver !== 'undefined' && scrollRoot
+            ? new MutationObserver(scheduleDocumentHeight)
+            : null;
+
+        resizeObserver?.observe(scrollRoot as Element);
+        for (const child of Array.from(scrollRoot?.children ?? [])) {
+            if (child instanceof HTMLElement) resizeObserver?.observe(child);
+        }
+        mutationObserver?.observe(scrollRoot as Node, {childList: true, subtree: true, attributes: true});
 
         setAppViewportVars();
         window.addEventListener('resize', scheduleViewport, {passive: true});
         window.addEventListener('orientationchange', scheduleViewport);
         window.addEventListener('pageshow', scheduleViewport);
+        window.addEventListener('load', scheduleDocumentHeight);
+        window.addEventListener('scroll', updateScrollVars, {passive: true});
         visualViewport?.addEventListener('resize', scheduleViewport);
-        visualViewport?.addEventListener('scroll', scheduleViewport);
-        scrollRoot?.addEventListener('scroll', updateScrollVars, {passive: true});
 
         return () => {
             window.removeEventListener('resize', scheduleViewport);
             window.removeEventListener('orientationchange', scheduleViewport);
             window.removeEventListener('pageshow', scheduleViewport);
+            window.removeEventListener('load', scheduleDocumentHeight);
+            window.removeEventListener('scroll', updateScrollVars);
             visualViewport?.removeEventListener('resize', scheduleViewport);
-            visualViewport?.removeEventListener('scroll', scheduleViewport);
-            scrollRoot?.removeEventListener('scroll', updateScrollVars);
+            resizeObserver?.disconnect();
+            mutationObserver?.disconnect();
 
             edgeProbe.remove();
             safeProbe.remove();
             insetProbe.remove();
 
+            if (previousScrollRestoration !== null) {
+                window.history.scrollRestoration = previousScrollRestoration;
+            }
+
             if (frame !== 0) window.cancelAnimationFrame(frame);
+            if (documentFrame !== 0) window.cancelAnimationFrame(documentFrame);
         };
     }, []);
 
@@ -281,10 +368,6 @@ export default function Home() {
 
     return (
         <div className='app-root'>
-            <HomeLoadingOverlay isLoaded={isReady}>
-                <div className='sr-only'>Preparing hero scene</div>
-            </HomeLoadingOverlay>
-
             <main className='app-shell' data-app-shell aria-busy={!isReady}>
                 <Background
                     videoRef={videoRef}
@@ -304,7 +387,7 @@ export default function Home() {
                     >
                         <div ref={scrollRootRef} className='app-scroll-root' data-app-scroll-root>
                             <HeroBlock
-                                onBubblesLoadStateChange={handleHeroBubblesLoadState}
+                                repulsorsRef={repulsorsRef}
                                 onParticlesLoadStateChange={handleHeroParticlesLoadState}
                             />
                             <div className='relative flex flex-col gap-24 p-3 sm:p-6'>
@@ -315,9 +398,20 @@ export default function Home() {
                             </div>
                             {/*<AppNavigation />*/}
                         </div>
+                        <div className='app-bubbles-layer' aria-hidden>
+                            <Bubbles
+                                repulsorsRef={repulsorsRef}
+                                onLoadStateChange={handleHeroBubblesLoadState}
+                            />
+                        </div>
                     </LiquidGlassProvider>
                 </SectionNavigationProvider>
             </main>
+
+            <div ref={documentSpacerRef} className='app-document-spacer' aria-hidden />
+            <HomeLoadingOverlay isLoaded={isReady}>
+                <div className='sr-only'>Preparing hero scene</div>
+            </HomeLoadingOverlay>
         </div>
     );
 }
