@@ -10,35 +10,29 @@ type HomeLoadingOverlayProps = {
     children?: ReactNode;
 }
 
+const clearLegacyLoadingScrollLock = () => {
+    if (typeof document === 'undefined') return;
+
+    const html = document.documentElement;
+    const body = document.body;
+
+    html.style.overflow = '';
+    body.style.position = '';
+    body.style.top = '';
+    body.style.left = '';
+    body.style.right = '';
+    body.style.width = '';
+    body.style.overflow = '';
+    body.style.touchAction = '';
+};
+
 export function HomeLoadingOverlay({isLoaded, className}: HomeLoadingOverlayProps) {
     useEffect(() => {
-        if (isLoaded) return;
+        if (!isLoaded) return;
 
-        const scrollRoot = document.querySelector<HTMLElement>('[data-app-scroll-root]');
-        const prevBodyOverflow = document.body.style.overflow;
-        const prevBodyTouchAction = document.body.style.touchAction;
-        const prevScrollOverflowY = scrollRoot?.style.overflowY ?? '';
-        const prevScrollTouchAction = scrollRoot?.style.touchAction ?? '';
-
-        document.body.style.overflow = 'hidden';
-        document.body.style.touchAction = 'none';
-
-        if (scrollRoot) {
-            scrollRoot.style.overflowY = 'hidden';
-            scrollRoot.style.touchAction = 'none';
-        }
-
-        return () => {
-            document.body.style.overflow = prevBodyOverflow;
-            document.body.style.touchAction = prevBodyTouchAction;
-
-            if (scrollRoot) {
-                scrollRoot.style.overflowY = prevScrollOverflowY;
-                scrollRoot.style.touchAction = prevScrollTouchAction;
-            }
-        };
+        clearLegacyLoadingScrollLock();
+        window.dispatchEvent(new Event('appscrollchange'));
     }, [isLoaded]);
-
 
     return (
         <div

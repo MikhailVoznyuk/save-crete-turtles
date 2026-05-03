@@ -463,6 +463,10 @@ export function JellyContainer({
         if (!layout || !outer || !wrap) return;
 
         const layoutRect = layout.getBoundingClientRect();
+        const visualRoot = visualRootRef?.current ?? null;
+        const visualRootRect = visualRoot?.getBoundingClientRect();
+        const visualLeft = visualRootRect?.left ?? 0;
+        const visualTop = visualRootRect?.top ?? 0;
         const measured = wrap.getBoundingClientRect();
         const inheritHostTransform = visualTransformMode === 'host';
 
@@ -500,9 +504,11 @@ export function JellyContainer({
         const safeScaleX = Number.isFinite(scaleX) ? scaleX : 1;
         const safeScaleY = Number.isFinite(scaleY) ? scaleY : 1;
 
+        const translateX = layoutRect.left - visualLeft;
+        const translateY = layoutRect.top - visualTop;
         const nextTransform = inheritHostTransform
-            ? `translate3d(${layoutRect.left}px, ${layoutRect.top}px, 0) scale(${safeScaleX}, ${safeScaleY})`
-            : `translate3d(${layoutRect.left}px, ${layoutRect.top}px, 0)`;
+            ? `translate3d(${translateX}px, ${translateY}px, 0) scale(${safeScaleX}, ${safeScaleY})`
+            : `translate3d(${translateX}px, ${translateY}px, 0)`;
         if (outer.style.transform !== nextTransform) {
             outer.style.transform = nextTransform;
         }
@@ -527,7 +533,7 @@ export function JellyContainer({
             baseWidth: Math.max(1, baseWidth),
             baseHeight: Math.max(1, baseHeight),
         };
-    }, [visualTransformMode]);
+    }, [visualRootRef, visualTransformMode]);
 
     useEffect(() => {
         if (!mounted) return;
@@ -1196,7 +1202,7 @@ export function JellyContainer({
             ref={visualOuterRef}
             data-liquid-surface='jelly'
             style={{
-                position: 'fixed',
+                position: visualRootRef?.current ? 'absolute' : 'fixed',
                 left: 0,
                 top: 0,
                 width: 'max-content',

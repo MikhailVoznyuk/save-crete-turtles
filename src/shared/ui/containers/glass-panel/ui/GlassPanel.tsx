@@ -221,6 +221,10 @@ export function GlassPanel({
         if (!layout || !outer || !wrap) return;
 
         const layoutRect = layout.getBoundingClientRect();
+        const visualRoot = visualRootRef?.current ?? null;
+        const visualRootRect = visualRoot?.getBoundingClientRect();
+        const visualLeft = visualRootRect?.left ?? 0;
+        const visualTop = visualRootRect?.top ?? 0;
         const measured = wrap.getBoundingClientRect();
         const w = Math.max(1, Math.round(measured.width || wrap.offsetWidth || visualSizeRef.current.w || 1));
         const h = Math.max(1, Math.round(measured.height || wrap.offsetHeight || visualSizeRef.current.h || 1));
@@ -236,7 +240,7 @@ export function GlassPanel({
             });
         }
 
-        const nextTransform = `translate3d(${layoutRect.left}px, ${layoutRect.top}px, 0)`;
+        const nextTransform = `translate3d(${layoutRect.left - visualLeft}px, ${layoutRect.top - visualTop}px, 0)`;
         if (outer.style.transform !== nextTransform) {
             outer.style.transform = nextTransform;
         }
@@ -253,7 +257,7 @@ export function GlassPanel({
             baseWidth: Math.max(1, w),
             baseHeight: Math.max(1, h),
         };
-    }, []);
+    }, [visualRootRef]);
 
     useEffect(() => {
         if (!mounted) return;
@@ -336,7 +340,7 @@ export function GlassPanel({
             ref={visualOuterRef}
             data-liquid-surface='panel'
             style={{
-                position: 'fixed',
+                position: visualRootRef?.current ? 'absolute' : 'fixed',
                 left: 0,
                 top: 0,
                 width: 'max-content',
@@ -345,6 +349,7 @@ export function GlassPanel({
                 opacity: visible ? 1 : 0,
                 transition: 'opacity 500ms ease',
                 willChange: 'transform, opacity',
+                transformOrigin: '0 0',
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden',
                 zIndex: 0,

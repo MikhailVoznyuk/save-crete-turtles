@@ -48,18 +48,32 @@ export function MediaModal({preview, content, previewClassName, contentClassName
     useEffect(() => {
         if (!opened) return;
 
-        const scrollRoot = document.querySelector<HTMLElement>("[data-app-scroll-root]");
-        const prevScrollRootOverflow = scrollRoot?.style.overflowY ?? "";
-        const prevOverflow = document.body.style.overflow;
-        const prevPaddingRight = document.body.style.paddingRight;
-        const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+        const html = document.documentElement;
+        const body = document.body;
+        const scrollY = window.scrollY || window.pageYOffset || html.scrollTop || 0;
+        const scrollX = window.scrollX || window.pageXOffset || html.scrollLeft || 0;
+        const prevHtmlOverflow = html.style.overflow;
+        const prevBodyPosition = body.style.position;
+        const prevBodyTop = body.style.top;
+        const prevBodyLeft = body.style.left;
+        const prevBodyRight = body.style.right;
+        const prevBodyWidth = body.style.width;
+        const prevBodyOverflow = body.style.overflow;
+        const prevBodyTouchAction = body.style.touchAction;
+        const prevPaddingRight = body.style.paddingRight;
+        const scrollBarWidth = window.innerWidth - html.clientWidth;
 
-        document.body.style.overflow = 'hidden';
+        html.style.overflow = 'hidden';
+        body.style.position = 'fixed';
+        body.style.top = `-${scrollY}px`;
+        body.style.left = '0';
+        body.style.right = '0';
+        body.style.width = '100%';
+        body.style.overflow = 'hidden';
+        body.style.touchAction = 'none';
+
         if (scrollBarWidth > 0) {
-            document.body.style.paddingRight = `${scrollBarWidth}px`;
-        }
-        if (scrollRoot) {
-            scrollRoot.style.overflowY = 'hidden';
+            body.style.paddingRight = `${scrollBarWidth}px`;
         }
 
         const onKeyDown = (e: KeyboardEvent) => {
@@ -70,11 +84,17 @@ export function MediaModal({preview, content, previewClassName, contentClassName
 
         return () => {
             window.removeEventListener('keydown', onKeyDown);
-            document.body.style.overflow = prevOverflow;
-            document.body.style.paddingRight = prevPaddingRight;
-            if (scrollRoot) {
-                scrollRoot.style.overflowY = prevScrollRootOverflow;
-            }
+            html.style.overflow = prevHtmlOverflow;
+            body.style.position = prevBodyPosition;
+            body.style.top = prevBodyTop;
+            body.style.left = prevBodyLeft;
+            body.style.right = prevBodyRight;
+            body.style.width = prevBodyWidth;
+            body.style.overflow = prevBodyOverflow;
+            body.style.touchAction = prevBodyTouchAction;
+            body.style.paddingRight = prevPaddingRight;
+            window.scrollTo({top: scrollY, left: scrollX, behavior: 'auto'});
+            window.dispatchEvent(new Event('appscrollchange'));
         };
     }, [opened, close]);
 

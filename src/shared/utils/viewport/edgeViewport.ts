@@ -50,8 +50,13 @@ export function getAppScrollRoot() {
 export function getAppScrollTop() {
     if (typeof window === 'undefined') return 0;
 
-    const scrollRoot = getAppScrollRoot();
-    return scrollRoot?.scrollTop ?? window.scrollY ?? 0;
+    return window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+}
+
+export function getAppScrollLeft() {
+    if (typeof window === 'undefined') return 0;
+
+    return window.scrollX || window.pageXOffset || document.documentElement.scrollLeft || 0;
 }
 
 export function getEdgeViewportRect(): EdgeViewportRect {

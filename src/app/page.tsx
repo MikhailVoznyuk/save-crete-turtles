@@ -21,6 +21,23 @@ export default function Home() {
     const isMobile = useIsMobile();
     const {isReady, setTaskState} = useHomeReadyGate();
 
+    useEffect(() => {
+        if (!isReady) return;
+
+        const html = document.documentElement;
+        const body = document.body;
+
+        html.style.overflow = '';
+        body.style.position = '';
+        body.style.top = '';
+        body.style.left = '';
+        body.style.right = '';
+        body.style.width = '';
+        body.style.overflow = '';
+        body.style.touchAction = '';
+        window.dispatchEvent(new Event('appscrollchange'));
+    }, [isReady]);
+
     const handleBackgroundLoadState = useCallback((state: LoadState) => {
         setTaskState('backgroundVideo', state);
     }, [setTaskState]);
@@ -43,6 +60,8 @@ export default function Home() {
         let frame = 0;
         let lastEdgeSignature = '';
         let lastSignature = '';
+        let lastScrollX = Number.NaN;
+        let lastScrollY = Number.NaN;
 
         const probeBaseStyle = [
             'position:absolute',
@@ -109,9 +128,16 @@ export default function Home() {
         };
 
         const updateScrollVars = () => {
-            const scrollRoot = scrollRootRef.current;
-            setPxVar('--app-scroll-x', scrollRoot?.scrollLeft ?? window.scrollX ?? 0);
-            setPxVar('--app-scroll-y', scrollRoot?.scrollTop ?? window.scrollY ?? 0);
+            const scrollX = roundPx(window.scrollX || window.pageXOffset || 0);
+            const scrollY = roundPx(window.scrollY || window.pageYOffset || 0);
+
+            if (scrollX === lastScrollX && scrollY === lastScrollY) return;
+
+            lastScrollX = scrollX;
+            lastScrollY = scrollY;
+            setPxVar('--app-scroll-x', scrollX);
+            setPxVar('--app-scroll-y', scrollY);
+            window.dispatchEvent(new Event('appscrollchange'));
         };
 
         const setAppViewportVars = () => {
@@ -164,12 +190,8 @@ export default function Home() {
             const insetLeft = readInset('paddingLeft');
             const bleedTop = roundPx(Math.max(safeOffsetTop, insetTop));
             const bleedLeft = roundPx(Math.max(safeOffsetLeft, insetLeft));
-            const bleedRight = roundPx(Math.max(0, edgeWidth - safeWidth - safeOffsetLeft));
-            const bleedBottom = roundPx(Math.max(0, edgeHeight - safeHeight - safeOffsetTop));
-            const layerLeft = -bleedLeft;
-            const layerTop = -bleedTop;
-            const layerWidth = edgeWidth + bleedLeft;
-            const layerHeight = edgeHeight + bleedTop;
+            const bleedRight = roundPx(Math.max(0, edgeWidth - safeWidth - safeOffsetLeft, insetRight));
+            const bleedBottom = roundPx(Math.max(0, edgeHeight - safeHeight - safeOffsetTop, insetBottom));
 
             const signature = [
                 edgeWidth,
@@ -182,10 +204,6 @@ export default function Home() {
                 bleedRight,
                 bleedBottom,
                 bleedLeft,
-                layerLeft,
-                layerTop,
-                layerWidth,
-                layerHeight,
                 insetTop,
                 insetRight,
                 insetBottom,
@@ -215,10 +233,10 @@ export default function Home() {
             setPxVar('--app-edge-viewport-left', 0);
             setPxVar('--app-edge-content-top', 0);
             setPxVar('--app-edge-content-left', 0);
-            setPxVar('--app-full-layer-width', layerWidth);
-            setPxVar('--app-full-layer-height', layerHeight);
-            setPxVar('--app-full-layer-top', layerTop);
-            setPxVar('--app-full-layer-left', layerLeft);
+            setPxVar('--app-full-layer-width', edgeWidth);
+            setPxVar('--app-full-layer-height', edgeHeight);
+            setPxVar('--app-full-layer-top', 0);
+            setPxVar('--app-full-layer-left', 0);
 
             setPxVar('--safe-area-inset-top', insetTop);
             setPxVar('--safe-area-inset-right', insetRight);
@@ -248,23 +266,19 @@ export default function Home() {
             });
         };
 
-        const scrollRoot = scrollRootRef.current;
-
         setAppViewportVars();
         window.addEventListener('resize', scheduleViewport, {passive: true});
         window.addEventListener('orientationchange', scheduleViewport);
         window.addEventListener('pageshow', scheduleViewport);
+        window.addEventListener('scroll', updateScrollVars, {passive: true});
         visualViewport?.addEventListener('resize', scheduleViewport);
-        visualViewport?.addEventListener('scroll', scheduleViewport);
-        scrollRoot?.addEventListener('scroll', updateScrollVars, {passive: true});
 
         return () => {
             window.removeEventListener('resize', scheduleViewport);
             window.removeEventListener('orientationchange', scheduleViewport);
             window.removeEventListener('pageshow', scheduleViewport);
+            window.removeEventListener('scroll', updateScrollVars);
             visualViewport?.removeEventListener('resize', scheduleViewport);
-            visualViewport?.removeEventListener('scroll', scheduleViewport);
-            scrollRoot?.removeEventListener('scroll', updateScrollVars);
 
             edgeProbe.remove();
             safeProbe.remove();

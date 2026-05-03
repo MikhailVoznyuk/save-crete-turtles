@@ -12,6 +12,7 @@
   --app-safe-viewport-offset-left: 0px;
   --app-scroll-x: 0px;
   --app-scroll-y: 0px;
+  --app-document-height: var(--app-edge-viewport-height);
   --app-full-viewport-width: 100vw;
   --app-full-viewport-height: calc(var(--app-full-vh) * 100);
   --app-edge-viewport-width: var(--app-full-viewport-width);
@@ -130,11 +131,13 @@ body {
   width: 100%;
   min-width: 100%;
   min-height: 100%;
-  overflow: visible;
 }
 
 html {
   background: var(--background);
+  overflow-x: clip;
+  overflow-y: auto;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -144,7 +147,10 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  overscroll-behavior: none;
+  overflow-x: clip;
+  overflow-y: visible;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
 }
 
 canvas,
@@ -153,54 +159,60 @@ video {
   -webkit-tap-highlight-color: transparent;
 }
 
-.app-root,
-.app-shell {
-  position: relative;
-  width: var(--app-edge-viewport-width);
-  height: var(--app-edge-viewport-height);
-  min-width: var(--app-edge-viewport-width);
-  min-height: var(--app-edge-viewport-height);
-  max-width: none;
-  max-height: none;
-  overflow: visible;
-}
-
 .app-root {
+  position: relative;
+  width: 100%;
+  min-width: 100%;
+  min-height: var(--app-edge-viewport-height);
+  overflow: visible;
   isolation: isolate;
   background: var(--background);
 }
 
+.app-document-spacer {
+  display: none;
+}
+
 .app-shell {
+  position: relative;
   z-index: 0;
+  width: 100%;
+  min-width: 100%;
+  min-height: var(--app-edge-viewport-height);
+  overflow: visible;
   background: transparent;
-  contain: layout style;
+  contain: style;
 }
 
 .app-content-layer {
   position: relative;
+  z-index: 2;
   width: 100%;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
+  min-width: 100%;
+  min-height: var(--app-edge-viewport-height);
   overflow: visible;
 }
 
 .app-scroll-root {
-  position: absolute;
+  position: relative;
   z-index: 2;
-  top: var(--app-full-layer-top);
-  left: var(--app-full-layer-left);
-  width: var(--app-full-layer-width);
-  height: var(--app-full-layer-height);
-  min-width: var(--app-full-layer-width);
-  min-height: var(--app-full-layer-height);
-  overflow-x: clip;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: none;
-  overscroll-behavior-y: contain;
+  width: 100%;
+  min-width: 100%;
+  min-height: var(--app-edge-viewport-height);
+  overflow: visible;
+  overscroll-behavior: auto;
   touch-action: pan-y;
-  scrollbar-gutter: stable;
+}
+
+.app-bubbles-layer {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  width: var(--app-edge-viewport-width);
+  height: var(--app-edge-viewport-height);
+  pointer-events: none;
+  overflow: visible;
 }
 
 .hero-screen {
@@ -238,11 +250,10 @@ video {
 .app-edge-layer,
 .edge-video-bg,
 .fixed-video-bg,
-.app-loading-overlay,
 .liquid-glass-canvas,
 .liquid-glass-visual-root,
 .app-edge-fixed-frame {
-  position: absolute;
+  position: sticky;
   top: var(--app-full-layer-top);
   left: var(--app-full-layer-left);
   right: auto;
@@ -253,6 +264,7 @@ video {
   min-height: var(--app-full-layer-height);
   max-width: none;
   max-height: none;
+  margin-bottom: calc(var(--app-full-layer-height) * -1);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
@@ -284,7 +296,22 @@ video {
 }
 
 .app-loading-overlay {
+  position: fixed;
   z-index: 999;
+  touch-action: none;
+  overscroll-behavior: contain;
+  top: var(--app-full-layer-top);
+  left: var(--app-full-layer-left);
+  right: auto;
+  bottom: auto;
+  width: var(--app-full-layer-width);
+  height: var(--app-full-layer-height);
+  min-width: var(--app-full-layer-width);
+  min-height: var(--app-full-layer-height);
+  max-width: none;
+  max-height: none;
+  margin-bottom: 0;
+  transform: translate3d(0, 0, 0);
 }
 
 .app-loading-overlay__content {
@@ -329,6 +356,20 @@ video {
   opacity: 0.001;
 }
 
+
+.liquid-glass-canvas-frame,
+.liquid-glass-visual-frame,
+.edge-video-bg-frame,
+.fixed-video-bg {
+  overflow: hidden;
+}
+
+.liquid-glass-canvas-frame,
+.liquid-glass-visual-frame,
+.edge-video-bg-frame {
+  pointer-events: none;
+}
+
 .app-edge-fixed-frame > .edge-video-bg,
 .app-edge-fixed-frame > .liquid-glass-canvas,
 .app-edge-fixed-frame > .liquid-glass-visual-root {
@@ -343,12 +384,11 @@ video {
   min-height: 100%;
   max-width: none;
   max-height: none;
+  margin-bottom: 0;
 }
 
-
-
 .app-modal-overlay {
-  position: absolute;
+  position: fixed;
   top: var(--app-full-layer-top);
   left: var(--app-full-layer-left);
   width: var(--app-full-layer-width);
@@ -356,7 +396,7 @@ video {
 }
 
 .app-floating-navigation {
-  position: absolute;
+  position: fixed;
   right: calc(var(--full-viewport-bleed-right) + max(1.5rem, var(--safe-area-inset-right)));
   bottom: calc(var(--full-viewport-bleed-bottom) + max(1.5rem, var(--safe-area-inset-bottom)));
   z-index: 30;

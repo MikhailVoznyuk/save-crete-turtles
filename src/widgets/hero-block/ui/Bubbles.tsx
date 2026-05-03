@@ -5,7 +5,7 @@ import {VideoPointAnchor} from '@/shared/utils/position';
 import {GlassBubble} from '@/shared/ui/containers/glass-bubble';
 import type {BubbleRepulsor} from '@/widgets/hero-block/model/types';
 import type {LoadState} from '@/shared/types/load-state';
-import {getAppScrollRoot, getAppScrollTop, getEdgeViewportRect} from '@/shared/utils/viewport';
+import {getAppScrollTop, getEdgeViewportRect} from '@/shared/utils/viewport';
 
 type StageProps  = {
     style?: Record<string, string>,
@@ -466,13 +466,14 @@ export function Bubbles({repulsorsRef, onLoadStateChange}: BubblesProps) {
             })
         }
 
-        const scrollRoot = getAppScrollRoot();
-        scrollRoot?.addEventListener('scroll', onScroll, {passive: true});
+        window.addEventListener('scroll', onScroll, {passive: true});
+        window.addEventListener('appscrollchange', onScroll);
         window.addEventListener('appviewportchange', onScroll);
         onScroll();
 
         return () => {
-            scrollRoot?.removeEventListener('scroll', onScroll);
+            window.removeEventListener('scroll', onScroll);
+            window.removeEventListener('appscrollchange', onScroll);
             window.removeEventListener('appviewportchange', onScroll);
             if (rafId.current !== null) {
                 cancelAnimationFrame(rafId.current);

@@ -47,25 +47,33 @@ export function SectionNavigationProvider({children, scrollRootRef}: SectionNavi
         scrollRootRef?.current ?? document.querySelector<HTMLElement>('[data-app-scroll-root]')
     ), [scrollRootRef]);
 
+    const getWindowScrollLeft = () => (
+        window.scrollX || window.pageXOffset || document.documentElement.scrollLeft || 0
+    );
+
     const scrollToSection = useCallback((name: SectionName) => {
         const el = sectionsRef.current[name];
         if (!el) return;
 
         const scrollRoot = getScrollRoot();
+        const targetRect = el.getBoundingClientRect();
 
         if (scrollRoot) {
             const rootRect = scrollRoot.getBoundingClientRect();
-            const targetRect = el.getBoundingClientRect();
-            const top = targetRect.top - rootRect.top + scrollRoot.scrollTop;
+            const top = targetRect.top - rootRect.top;
 
-            scrollRoot.scrollTo({
+            window.scrollTo({
                 top: Math.max(0, top),
+                left: getWindowScrollLeft(),
                 behavior: 'smooth',
             });
         } else {
-            el.scrollIntoView({
+            const top = targetRect.top + (window.scrollY || window.pageYOffset || 0);
+
+            window.scrollTo({
+                top: Math.max(0, top),
+                left: getWindowScrollLeft(),
                 behavior: 'smooth',
-                block: 'start',
             });
         }
 

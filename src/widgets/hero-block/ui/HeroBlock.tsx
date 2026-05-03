@@ -66,6 +66,7 @@ export function HeroBlock({onBubblesLoadStateChange, onParticlesLoadStateChange}
                     </div>
                 </div>
             </div>
+
             <Bubbles
                 repulsorsRef={repulsorsRef}
                 onLoadStateChange={onBubblesLoadStateChange}
