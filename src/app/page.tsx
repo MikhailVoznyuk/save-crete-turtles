@@ -21,6 +21,23 @@ export default function Home() {
     const isMobile = useIsMobile();
     const {isReady, setTaskState} = useHomeReadyGate();
 
+    useEffect(() => {
+        if (!isReady) return;
+
+        const html = document.documentElement;
+        const body = document.body;
+
+        html.style.overflow = '';
+        body.style.position = '';
+        body.style.top = '';
+        body.style.left = '';
+        body.style.right = '';
+        body.style.width = '';
+        body.style.overflow = '';
+        body.style.touchAction = '';
+        window.dispatchEvent(new Event('appscrollchange'));
+    }, [isReady]);
+
     const handleBackgroundLoadState = useCallback((state: LoadState) => {
         setTaskState('backgroundVideo', state);
     }, [setTaskState]);

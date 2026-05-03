@@ -298,6 +298,8 @@ video {
 .app-loading-overlay {
   position: fixed;
   z-index: 999;
+  touch-action: none;
+  overscroll-behavior: contain;
   top: var(--app-full-layer-top);
   left: var(--app-full-layer-left);
   right: auto;
