@@ -1316,22 +1316,22 @@ export function LiquidGlassProvider({
             >
                 <canvas ref={canvasRef} className="liquid-glass-canvas" />
             </div>
-            <div className="app-content-layer" style={{zIndex: zIndex + 1}}>
-                {children}
+            <div
+                className="app-edge-fixed-frame liquid-glass-visual-frame"
+                aria-hidden={false}
+                style={{zIndex: zIndex + 1}}
+            >
                 <div
-                    className="app-edge-fixed-frame liquid-glass-visual-frame"
-                    aria-hidden={false}
-                    style={{zIndex: 0}}
-                >
-                    <div
-                        ref={visualRootRef}
-                        className="liquid-glass-visual-root"
-                        style={{
-                            pointerEvents: 'none',
-                            zIndex: 0,
-                        }}
-                    />
-                </div>
+                    ref={visualRootRef}
+                    className="liquid-glass-visual-root"
+                    style={{
+                        pointerEvents: 'none',
+                        zIndex: 0,
+                    }}
+                />
+            </div>
+            <div className="app-content-layer" style={{zIndex: zIndex + 2}}>
+                {children}
             </div>
         </LiquidGlassRegistryProvider>
     );

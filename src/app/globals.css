@@ -2,7 +2,7 @@
 
 :root {
   --background: #07131d;
-  --foreground: #f5faff;
+  --foreground: #F5FAFF;
   --bounce-amplitude: 20%;
   --app-vh: 1vh;
   --app-full-vh: 1vh;
@@ -13,7 +13,6 @@
   --app-scroll-x: 0px;
   --app-scroll-y: 0px;
   --app-document-height: var(--app-edge-viewport-height);
-  --app-document-spacer-height: 0px;
   --app-full-viewport-width: 100vw;
   --app-full-viewport-height: calc(var(--app-full-vh) * 100);
   --app-edge-viewport-width: var(--app-full-viewport-width);
@@ -70,10 +69,10 @@
 }
 
 @theme {
-  --color-turk: #00eeff;
-  --color-cloud: #e9e9e9;
-  --color-abyss: #1b1750;
-  --color-cold-white: #f5faff;
+  --color-turk: #00EEFF;
+  --color-cloud: #E9E9E9;
+  --color-abyss: #1B1750;
+  --color-cold-white: #F5FAFF;
 }
 
 @theme inline {
@@ -143,9 +142,7 @@ html {
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at top, rgba(0, 238, 255, 0.08), transparent 32%),
-    var(--background);
+  background: radial-gradient(circle at top, rgba(0, 238, 255, 0.08), transparent 32%), var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   -webkit-text-size-adjust: 100%;
@@ -166,66 +163,45 @@ video {
   position: relative;
   width: 100%;
   min-width: 100%;
-  min-height: var(--app-document-height);
+  min-height: var(--app-edge-viewport-height);
   overflow: visible;
   isolation: isolate;
   background: var(--background);
 }
 
 .app-document-spacer {
-  position: relative;
-  display: block;
-  width: 1px;
-  height: var(--app-document-spacer-height);
-  min-height: 0;
-  pointer-events: none;
-  visibility: hidden;
+  display: none;
 }
 
 .app-shell {
-  position: sticky;
+  position: relative;
   z-index: 0;
-  top: var(--app-edge-viewport-top);
-  left: var(--app-edge-viewport-left);
-  width: var(--app-edge-viewport-width);
-  height: var(--app-edge-viewport-height);
-  min-width: var(--app-edge-viewport-width);
+  width: 100%;
+  min-width: 100%;
   min-height: var(--app-edge-viewport-height);
-  max-width: none;
-  max-height: none;
   overflow: visible;
   background: transparent;
-  contain: layout style;
-  transform: translate3d(0, 0, 0);
-  will-change: auto;
+  contain: style;
 }
 
 .app-content-layer {
   position: relative;
+  z-index: 2;
   width: 100%;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
+  min-width: 100%;
+  min-height: var(--app-edge-viewport-height);
   overflow: visible;
 }
 
 .app-scroll-root {
-  position: absolute;
+  position: relative;
   z-index: 2;
-  top: 0;
-  left: 0;
-  width: var(--app-edge-viewport-width);
-  min-width: var(--app-edge-viewport-width);
+  width: 100%;
+  min-width: 100%;
   min-height: var(--app-edge-viewport-height);
   overflow: visible;
   overscroll-behavior: auto;
   touch-action: pan-y;
-  transform: translate3d(
-    calc(var(--app-scroll-x) * -1),
-    calc(var(--app-scroll-y) * -1),
-    0
-  );
-  will-change: transform;
 }
 
 .app-bubbles-layer {
@@ -252,22 +228,10 @@ video {
   min-height: var(--app-full-layer-height);
   height: var(--app-full-layer-height);
   box-sizing: border-box;
-  padding-top: calc(
-    var(--full-viewport-bleed-top) +
-      max(var(--hero-safe-padding), var(--safe-area-inset-top))
-  );
-  padding-right: calc(
-    var(--full-viewport-bleed-right) +
-      max(var(--hero-safe-padding), var(--safe-area-inset-right))
-  );
-  padding-bottom: calc(
-    var(--full-viewport-bleed-bottom) +
-      max(var(--hero-safe-padding), var(--safe-area-inset-bottom))
-  );
-  padding-left: calc(
-    var(--full-viewport-bleed-left) +
-      max(var(--hero-safe-padding), var(--safe-area-inset-left))
-  );
+  padding-top: calc(var(--full-viewport-bleed-top) + max(var(--hero-safe-padding), var(--safe-area-inset-top)));
+  padding-right: calc(var(--full-viewport-bleed-right) + max(var(--hero-safe-padding), var(--safe-area-inset-right)));
+  padding-bottom: calc(var(--full-viewport-bleed-bottom) + max(var(--hero-safe-padding), var(--safe-area-inset-bottom)));
+  padding-left: calc(var(--full-viewport-bleed-left) + max(var(--hero-safe-padding), var(--safe-area-inset-left)));
 }
 
 @media (min-width: 640px) {
@@ -286,11 +250,10 @@ video {
 .app-edge-layer,
 .edge-video-bg,
 .fixed-video-bg,
-.app-loading-overlay,
 .liquid-glass-canvas,
 .liquid-glass-visual-root,
 .app-edge-fixed-frame {
-  position: absolute;
+  position: sticky;
   top: var(--app-full-layer-top);
   left: var(--app-full-layer-left);
   right: auto;
@@ -301,6 +264,7 @@ video {
   min-height: var(--app-full-layer-height);
   max-width: none;
   max-height: none;
+  margin-bottom: calc(var(--app-full-layer-height) * -1);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
@@ -332,8 +296,20 @@ video {
 }
 
 .app-loading-overlay {
+  position: fixed;
   z-index: 999;
-  transform: translate3d(var(--app-scroll-x), var(--app-scroll-y), 0);
+  top: var(--app-full-layer-top);
+  left: var(--app-full-layer-left);
+  right: auto;
+  bottom: auto;
+  width: var(--app-full-layer-width);
+  height: var(--app-full-layer-height);
+  min-width: var(--app-full-layer-width);
+  min-height: var(--app-full-layer-height);
+  max-width: none;
+  max-height: none;
+  margin-bottom: 0;
+  transform: translate3d(0, 0, 0);
 }
 
 .app-loading-overlay__content {
@@ -342,18 +318,10 @@ video {
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  padding-top: calc(
-    var(--full-viewport-bleed-top) + max(1rem, var(--safe-area-inset-top))
-  );
-  padding-right: calc(
-    var(--full-viewport-bleed-right) + max(1rem, var(--safe-area-inset-right))
-  );
-  padding-bottom: calc(
-    var(--full-viewport-bleed-bottom) + max(1rem, var(--safe-area-inset-bottom))
-  );
-  padding-left: calc(
-    var(--full-viewport-bleed-left) + max(1rem, var(--safe-area-inset-left))
-  );
+  padding-top: calc(var(--full-viewport-bleed-top) + max(1rem, var(--safe-area-inset-top)));
+  padding-right: calc(var(--full-viewport-bleed-right) + max(1rem, var(--safe-area-inset-right)));
+  padding-bottom: calc(var(--full-viewport-bleed-bottom) + max(1rem, var(--safe-area-inset-bottom)));
+  padding-left: calc(var(--full-viewport-bleed-left) + max(1rem, var(--safe-area-inset-left)));
 }
 
 .liquid-glass-canvas {
@@ -386,6 +354,20 @@ video {
   opacity: 0.001;
 }
 
+
+.liquid-glass-canvas-frame,
+.liquid-glass-visual-frame,
+.edge-video-bg-frame,
+.fixed-video-bg {
+  overflow: hidden;
+}
+
+.liquid-glass-canvas-frame,
+.liquid-glass-visual-frame,
+.edge-video-bg-frame {
+  pointer-events: none;
+}
+
 .app-edge-fixed-frame > .edge-video-bg,
 .app-edge-fixed-frame > .liquid-glass-canvas,
 .app-edge-fixed-frame > .liquid-glass-visual-root {
@@ -400,10 +382,11 @@ video {
   min-height: 100%;
   max-width: none;
   max-height: none;
+  margin-bottom: 0;
 }
 
 .app-modal-overlay {
-  position: absolute;
+  position: fixed;
   top: var(--app-full-layer-top);
   left: var(--app-full-layer-left);
   width: var(--app-full-layer-width);
@@ -411,14 +394,9 @@ video {
 }
 
 .app-floating-navigation {
-  position: absolute;
-  right: calc(
-    var(--full-viewport-bleed-right) + max(1.5rem, var(--safe-area-inset-right))
-  );
-  bottom: calc(
-    var(--full-viewport-bleed-bottom) +
-      max(1.5rem, var(--safe-area-inset-bottom))
-  );
+  position: fixed;
+  right: calc(var(--full-viewport-bleed-right) + max(1.5rem, var(--safe-area-inset-right)));
+  bottom: calc(var(--full-viewport-bleed-bottom) + max(1.5rem, var(--safe-area-inset-bottom)));
   z-index: 30;
 }
 
